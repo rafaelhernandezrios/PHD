@@ -1,4 +1,4 @@
-## AURA_Software — EEG LSL Toolkit (Doctoral Research)
+# AURA_Software — EEG LSL Toolkit (Doctoral Research)
 
 Resumen (ES): Este repositorio contiene un conjunto de scripts en Python para adquirir señales EEG desde el software Aura mediante Lab Streaming Layer (LSL), aplicar filtrado (notch y pasabanda), filtrado Kalman, calcular potencia espectral por bandas (bandpower/PSD), visualizar en tiempo real y guardar resultados en CSV. Está diseñado como evidencia y soporte metodológico para un proyecto de doctorado que requiere trazabilidad de la conexión con EEG, preprocesamiento, métricas de potencia por banda y almacenamiento de datos.
 
@@ -304,8 +304,3 @@ Esto te desplegará el siguiente panel de visualización.
 ---
 
 ¡Esperamos que este manual te sea útil para sacar el máximo provecho de Aura! Si tienes alguna pregunta o sugerencia, no dudes en ponerte en contacto con nuestro equipo de soporte. ¡Disfruta explorando las capacidades de Aura integrado en Wavex!
-
-
- 
-#   P H D  
- 
