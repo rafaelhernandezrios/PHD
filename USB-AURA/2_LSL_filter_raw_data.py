@@ -1,6 +1,6 @@
 ################################ Librerias #############################################################################
 
-from pylsl import StreamInlet, resolve_stream
+from pylsl import StreamInlet, resolve_bypred
 import numpy as np
 from pylsl import StreamInfo, StreamOutlet
 from scipy import signal
@@ -11,7 +11,7 @@ from scipy import signal
 ######################## LSL INPUT EEG #################################################################################
 
 print("looking for an EEG stream...")
-streams = resolve_stream('name', 'AURA')
+streams = resolve_bypred('name', 'AURA')
 inlet = StreamInlet(streams[0])
 
 

@@ -1,4 +1,4 @@
-from pylsl import StreamInlet, resolve_stream, resolve_bypred
+from pylsl import StreamInlet, resolve_bypred, resolve_bypred
 import numpy as np
 import matplotlib
 matplotlib.use('TKAgg')
@@ -10,13 +10,13 @@ import collections
 SCALE_FACTOR_EEG = (4500000)/24/(2**23-1) #uV/count
 
 print("looking for an EEG stream...")
-#streams = resolve_stream('name', 'AURA')
+#streams = resolve_bypred('name', 'AURA')
 #SCALE_FACTOR_EEG = (4500000)/24/(2**23-1) #if raw data
 
-streams = resolve_stream('name', 'AURAFilteredEEG')
+streams = resolve_bypred('name', 'AURAFilteredEEG')
 SCALE_FACTOR_EEG = 1 #if data is already filtered
 
-#streams = resolve_stream('name', 'AURA_Power')
+#streams = resolve_bypred('name', 'AURA_Power')
 
 plot_channel=2 # channels 0 to 7
 

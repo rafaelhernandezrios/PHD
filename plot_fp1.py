@@ -5,26 +5,104 @@ import numpy as np
 from scipy import signal
 import pywt
 
-# Leer el CSV
-# Saltamos la segunda línea (unidades) pero mantenemos los headers
-df = pd.read_csv('data/eeg.csv', skiprows=[1])
+# Leer el CSV - Buscar automáticamente archivos disponibles
+import glob
+import os
+
+# Buscar archivos CSV disponibles (AURA o eeg.csv)
+aura_files = glob.glob('aura_data_*.csv')
+eeg_file = 'eeg.csv' if os.path.exists('eeg.csv') else None
+
+# Prioridad: eeg.csv si existe, sino el más reciente de AURA
+if eeg_file and os.path.exists(eeg_file):
+    csv_path = eeg_file
+    print(f"Usando archivo: {csv_path} (formato eeg.csv)")
+    # eeg.csv tiene segunda fila con unidades, saltarla
+    try:
+        df = pd.read_csv(csv_path, skiprows=[1])
+    except (pd.errors.ParserError, IndexError):
+        df = pd.read_csv(csv_path)
+elif aura_files:
+    # Usar el más reciente de AURA
+    csv_path = max(aura_files, key=os.path.getmtime)
+    print(f"Usando archivo: {csv_path} (formato AURA)")
+    try:
+        df = pd.read_csv(csv_path, skiprows=[1])
+    except (pd.errors.ParserError, IndexError):
+        df = pd.read_csv(csv_path)
+else:
+    # Si no se encuentra ningún archivo, intentar con nombres por defecto
+    if os.path.exists('eeg.csv'):
+        csv_path = 'eeg.csv'
+        print(f"Usando archivo por defecto: {csv_path}")
+        try:
+            df = pd.read_csv(csv_path, skiprows=[1])
+        except (pd.errors.ParserError, IndexError):
+            df = pd.read_csv(csv_path)
+    else:
+        csv_path = 'aura_data_20251114_140333.csv'
+        print(f"Archivo no encontrado, intentando: {csv_path}")
+        try:
+            df = pd.read_csv(csv_path, skiprows=[1])
+        except (pd.errors.ParserError, IndexError):
+            df = pd.read_csv(csv_path)
 
 # Limpiar los nombres de columnas (quitar comillas)
 df.columns = df.columns.str.strip().str.replace("'", "")
 
+# Debug: mostrar columnas después de limpiar
+print(f"Columnas después de limpiar: {list(df.columns)[:5]}...")
+
+# Detectar columna de tiempo (buscar de forma flexible)
+timestamp_col = None
+for col in df.columns:
+    col_lower = col.lower().strip()
+    if col_lower == 'timestamp' or col_lower == 'time and date' or 'time' in col_lower:
+        timestamp_col = col
+        print(f"Columna de tiempo detectada: '{col}'")
+        break
+
+if timestamp_col is None:
+    raise ValueError(f"No se encontró columna de tiempo. Columnas disponibles: {list(df.columns)}")
+
+# Renombrar a 'timestamp' para consistencia
+if timestamp_col != 'timestamp':
+    df = df.rename(columns={timestamp_col: 'timestamp'})
+    print(f"Columna renombrada de '{timestamp_col}' a 'timestamp'")
+
+# Verificar que 'timestamp' existe
+if 'timestamp' not in df.columns:
+    raise ValueError(f"Error al renombrar columna. Columnas disponibles: {list(df.columns)}")
+
 # Convertir la columna de tiempo
-def parse_time(time_str):
+def parse_time_string(time_value):
     """Convierte el formato '[hh:mm:ss.mmm dd/mm/yyyy]' a datetime"""
+    if pd.isna(time_value):
+        return None
     try:
         # Quitar corchetes y comillas
-        time_str = str(time_str).strip().replace("'", "").replace("[", "").replace("]", "")
-        # Parsear el formato
+        time_str = str(time_value).strip().replace("'", "").replace("[", "").replace("]", "")
         return datetime.strptime(time_str, '%H:%M:%S.%f %d/%m/%Y')
     except:
         return None
 
-# Aplicar parseo de tiempo
-df['Time and date'] = df['Time and date'].apply(parse_time)
+# Usar 'timestamp' directamente después del renombrado
+timestamp_series = df['timestamp']
+
+if pd.api.types.is_numeric_dtype(timestamp_series):
+    # Interpretar como segundos absolutos y convertir a tiempo relativo
+    base_ts = timestamp_series.iloc[0]
+    relative_seconds = timestamp_series - base_ts
+    df['timestamp'] = pd.to_timedelta(relative_seconds, unit='s')
+else:
+    df['timestamp'] = timestamp_series.apply(parse_time_string)
+
+# Eliminar filas sin timestamp válido
+rows_before = len(df)
+df = df[df['timestamp'].notna()].copy()
+rows_after = len(df)
+if rows_after < rows_before:
+    print(f"Filas sin timestamp descartadas: {rows_before - rows_after}")
 
 # Función Wavelet-Assisted Adaptive Filter (WAAF)
 def dcaro_WAAF(eeg, wavelet='db4', level=7, attn=None):
@@ -119,31 +197,82 @@ def dcaro_WAAF(eeg, wavelet='db4', level=7, attn=None):
     
     return eeg2, refs, weights
 
+# Detectar nombres de canales automáticamente
+# Buscar canales que empiecen con 'ch', 'Channel', o 'Fp', 'C', 'P', 'O'
+canales_eeg = []
+canales_estandar = ['fp1', 'fp2', 'c3', 'c4', 'p3', 'p4', 'o1', 'o2']
+for col in df.columns:
+    col_lower = col.lower().strip()
+    # Detectar diferentes formatos de nombres de canales
+    if (col_lower.startswith('ch') and len(col_lower) > 2 and col_lower[2:].isdigit()) or \
+       (col_lower.startswith('channel_')) or \
+       (col_lower in canales_estandar):
+        canales_eeg.append(col)
+
+# Si no se encontraron canales, usar nombres por defecto
+if not canales_eeg:
+    # Intentar con nombres comunes (tanto mayúsculas como minúsculas)
+    posibles_canales = ['ch1', 'ch2', 'ch3', 'ch4', 'ch5', 'ch6', 'ch7', 'ch8',
+                        'Channel_1', 'Channel_2', 'Channel_3', 'Channel_4',
+                        'Channel_5', 'Channel_6', 'Channel_7', 'Channel_8',
+                        'Fp1', 'Fp2', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2',
+                        'fp1', 'fp2', 'c3', 'c4', 'p3', 'p4', 'o1', 'o2']
+    canales_eeg = [c for c in posibles_canales if c in df.columns]
+
+if not canales_eeg:
+    raise ValueError("No se encontraron canales EEG en el CSV. Columnas disponibles: " + str(list(df.columns)))
+
+print(f"Canales detectados: {canales_eeg}")
+
 # Convertir todos los canales EEG a numérico (quitar comillas si las hay)
-canales_eeg = ['Fp1', 'Fp2', 'C3', 'C4', 'P3', 'P4', 'O1', 'O2']
 for canal in canales_eeg:
     df[canal] = df[canal].astype(str).str.replace("'", "").astype(float)
 
 # Calcular frecuencia de muestreo
 # Calcular diferencias de tiempo entre muestras consecutivas
-df_sorted = df.sort_values('Time and date').reset_index(drop=True)
-tiempos_diff = df_sorted['Time and date'].diff().dropna()
+df_sorted = df.sort_values('timestamp').reset_index(drop=True)
+tiempos_diff = df_sorted['timestamp'].diff().dropna()
+
 # Convertir a segundos y calcular frecuencia promedio
-tiempos_segundos = tiempos_diff.dt.total_seconds()
+# Manejar tanto Timedelta como valores numéricos
+if pd.api.types.is_timedelta64_dtype(tiempos_diff):
+    tiempos_segundos = tiempos_diff.dt.total_seconds()
+else:
+    # Si ya es numérico, asumir que está en segundos
+    tiempos_segundos = tiempos_diff
+
 frecuencia_muestreo = 1.0 / tiempos_segundos.mean()
+print(f"Frecuencia de muestreo calculada: {frecuencia_muestreo:.2f} Hz")
+
+# Trabajar con todo el dataset ordenado
+df_full = df.sort_values('timestamp').reset_index(drop=True)
 
 # Filtrar 15 segundos a partir de la mitad del dataset
-tiempo_min = df['Time and date'].min()
-tiempo_max = df['Time and date'].max()
+# Calcular el tiempo medio
+tiempo_min = df_full['timestamp'].min()
+tiempo_max = df_full['timestamp'].max()
 tiempo_medio = tiempo_min + (tiempo_max - tiempo_min) / 2
 
-# Tomar 15 segundos a partir del punto medio
-tiempo_inicio = tiempo_medio
-tiempo_limite = tiempo_medio + pd.Timedelta(seconds=15)
-df_15s = df[(df['Time and date'] >= tiempo_inicio) & (df['Time and date'] <= tiempo_limite)].copy()
+# Detectar tipo de timestamp y calcular límite apropiadamente
+if pd.api.types.is_datetime64_any_dtype(df_full['timestamp']):
+    # Timestamps son datetime (como en eeg.csv)
+    tiempo_inicio = tiempo_medio
+    tiempo_limite = tiempo_medio + pd.Timedelta(seconds=4)
+elif pd.api.types.is_timedelta64_dtype(df_full['timestamp']):
+    # Timestamps son Timedelta
+    tiempo_inicio = tiempo_medio
+    tiempo_limite = tiempo_medio + pd.Timedelta(seconds=4)
+else:
+    # Timestamps son numéricos (segundos absolutos, como en AURA)
+    tiempo_inicio = tiempo_medio
+    tiempo_limite = tiempo_medio + 4.0
+
+df_15s = df_full[(df_full['timestamp'] >= tiempo_inicio) & (df_full['timestamp'] <= tiempo_limite)].copy()
 
 # Ordenar por tiempo para asegurar orden correcto
-df_15s = df_15s.sort_values('Time and date').reset_index(drop=True)
+df_15s = df_15s.sort_values('timestamp').reset_index(drop=True)
+
+print(f"Seleccionados {len(df_15s)} muestras (15 segundos desde la mitad del registro)")
 
 # Aplicar filtro bandpass 0.2-50 Hz
 # Parámetros del filtro
@@ -196,55 +325,57 @@ canales_waaf = {}
 for idx, canal in enumerate(canales_eeg):
     canales_waaf[canal] = eeg_waaf[idx, :]
 
-# Extraer Fp1 en cada etapa
-fp1_filtrado = canales_filtrados['Fp1']
-fp1_car = canales_car['Fp1']
-fp1_car_stopband = canales_car_stopband['Fp1']
-fp1_waaf = canales_waaf['Fp1']
+# Extraer el primer canal (ch1 o Channel_1) en cada etapa
+# Usar el primer canal detectado
+canal_principal = canales_eeg[0]
+ch1_filtrado = canales_filtrados[canal_principal]
+ch1_car = canales_car[canal_principal]
+ch1_car_stopband = canales_car_stopband[canal_principal]
+ch1_waaf = canales_waaf[canal_principal]
 
 # Aplicar normalización z-score a la señal después del WAAF
-fp1_waaf_mean = np.mean(fp1_waaf)
-fp1_waaf_std = np.std(fp1_waaf)
-fp1_waaf_zscore = (fp1_waaf - fp1_waaf_mean) / fp1_waaf_std
+ch1_waaf_mean = np.mean(ch1_waaf)
+ch1_waaf_std = np.std(ch1_waaf)
+ch1_waaf_zscore = (ch1_waaf - ch1_waaf_mean) / ch1_waaf_std
 
 # Crear figura con seis subplots
 fig, (ax1, ax2, ax3, ax4, ax5, ax6) = plt.subplots(6, 1, figsize=(14, 18), sharex=True)
 
 # Gráfico 1: Señal original
-ax1.plot(df_15s['Time and date'], df_15s['Fp1'], linewidth=0.5, color='blue', alpha=0.7)
-ax1.set_ylabel('Fp1 (μV)', fontsize=12)
-ax1.set_title(f'Señal EEG Original - Canal Fp1 (15 segundos desde la mitad, {frecuencia_muestreo:.1f} Hz) / Original EEG Signal - Fp1 Channel (15 seconds from middle, {frecuencia_muestreo:.1f} Hz)', fontsize=12, fontweight='bold')
+ax1.plot(df_15s['timestamp'], df_15s[canal_principal], linewidth=0.5, color='blue', alpha=0.7)
+ax1.set_ylabel(f'{canal_principal} (μV)', fontsize=12)
+ax1.set_title(f'Señal EEG Original - Canal {canal_principal} (15 segundos desde la mitad, {frecuencia_muestreo:.1f} Hz) / Original EEG Signal - {canal_principal} Channel (15 seconds from middle, {frecuencia_muestreo:.1f} Hz)', fontsize=12, fontweight='bold')
 ax1.grid(True, alpha=0.3)
 
 # Gráfico 2: Señal filtrada
-ax2.plot(df_15s['Time and date'], fp1_filtrado, linewidth=0.5, color='red', alpha=0.7)
-ax2.set_ylabel('Fp1 Filtrado (μV)', fontsize=12)
-ax2.set_title(f'Señal EEG Filtrada - Canal Fp1 (Bandpass 0.2-50 Hz, {frecuencia_muestreo:.1f} Hz) / Filtered EEG Signal - Fp1 Channel (Bandpass 0.2-50 Hz, {frecuencia_muestreo:.1f} Hz)', fontsize=12, fontweight='bold')
+ax2.plot(df_15s['timestamp'], ch1_filtrado, linewidth=0.5, color='red', alpha=0.7)
+ax2.set_ylabel(f'{canal_principal} Filtrado (μV)', fontsize=12)
+ax2.set_title(f'Señal EEG Filtrada - Canal {canal_principal} (Bandpass 0.2-50 Hz, {frecuencia_muestreo:.1f} Hz) / Filtered EEG Signal - {canal_principal} Channel (Bandpass 0.2-50 Hz, {frecuencia_muestreo:.1f} Hz)', fontsize=12, fontweight='bold')
 ax2.grid(True, alpha=0.3)
 
 # Gráfico 3: Señal filtrada + CAR
-ax3.plot(df_15s['Time and date'], fp1_car, linewidth=0.5, color='green', alpha=0.7)
-ax3.set_ylabel('Fp1 CAR (μV)', fontsize=12)
-ax3.set_title(f'Señal EEG Filtrada + CAR - Canal Fp1 (Bandpass 0.2-50 Hz + Common Average Reference, {frecuencia_muestreo:.1f} Hz) / Filtered + CAR EEG Signal - Fp1 Channel (Bandpass 0.2-50 Hz + Common Average Reference, {frecuencia_muestreo:.1f} Hz)', fontsize=12, fontweight='bold')
+ax3.plot(df_15s['timestamp'], ch1_car, linewidth=0.5, color='green', alpha=0.7)
+ax3.set_ylabel(f'{canal_principal} CAR (μV)', fontsize=12)
+ax3.set_title(f'Señal EEG Filtrada + CAR - Canal {canal_principal} (Bandpass 0.2-50 Hz + Common Average Reference, {frecuencia_muestreo:.1f} Hz) / Filtered + CAR EEG Signal - {canal_principal} Channel (Bandpass 0.2-50 Hz + Common Average Reference, {frecuencia_muestreo:.1f} Hz)', fontsize=12, fontweight='bold')
 ax3.grid(True, alpha=0.3)
 
 # Gráfico 4: Señal filtrada + CAR + Stopband 60 Hz
-ax4.plot(df_15s['Time and date'], fp1_car_stopband, linewidth=0.5, color='purple', alpha=0.7)
-ax4.set_ylabel('Fp1 CAR+Stopband (μV)', fontsize=12)
-ax4.set_title(f'Señal EEG Filtrada + CAR + Stopband 60 Hz - Canal Fp1 (Bandpass 0.2-50 Hz + CAR + Stopband 60 Hz, {frecuencia_muestreo:.1f} Hz) / Filtered + CAR + Stopband 60 Hz EEG Signal - Fp1 Channel (Bandpass 0.2-50 Hz + CAR + Stopband 60 Hz, {frecuencia_muestreo:.1f} Hz)', fontsize=12, fontweight='bold')
+ax4.plot(df_15s['timestamp'], ch1_car_stopband, linewidth=0.5, color='purple', alpha=0.7)
+ax4.set_ylabel(f'{canal_principal} CAR+Stopband (μV)', fontsize=12)
+ax4.set_title(f'Señal EEG Filtrada + CAR + Stopband 60 Hz - Canal {canal_principal} (Bandpass 0.2-50 Hz + CAR + Stopband 60 Hz, {frecuencia_muestreo:.1f} Hz) / Filtered + CAR + Stopband 60 Hz EEG Signal - {canal_principal} Channel (Bandpass 0.2-50 Hz + CAR + Stopband 60 Hz, {frecuencia_muestreo:.1f} Hz)', fontsize=12, fontweight='bold')
 ax4.grid(True, alpha=0.3)
 
 # Gráfico 5: Señal filtrada + CAR + Stopband + WAAF
-ax5.plot(df_15s['Time and date'], fp1_waaf, linewidth=0.5, color='orange', alpha=0.7)
-ax5.set_ylabel('Fp1 WAAF (μV)', fontsize=12)
-ax5.set_title(f'Señal EEG Filtrada + CAR + Stopband + WAAF - Canal Fp1 (Bandpass 0.2-50 Hz + CAR + Stopband 60 Hz + Wavelet-Assisted Adaptive Filter, {frecuencia_muestreo:.1f} Hz) / Filtered + CAR + Stopband + WAAF EEG Signal - Fp1 Channel (Bandpass 0.2-50 Hz + CAR + Stopband 60 Hz + Wavelet-Assisted Adaptive Filter, {frecuencia_muestreo:.1f} Hz)', fontsize=12, fontweight='bold')
+ax5.plot(df_15s['timestamp'], ch1_waaf, linewidth=0.5, color='orange', alpha=0.7)
+ax5.set_ylabel(f'{canal_principal} WAAF (μV)', fontsize=12)
+ax5.set_title(f'Señal EEG Filtrada + CAR + Stopband + WAAF - Canal {canal_principal} (Bandpass 0.2-50 Hz + CAR + Stopband 60 Hz + Wavelet-Assisted Adaptive Filter, {frecuencia_muestreo:.1f} Hz) / Filtered + CAR + Stopband + WAAF EEG Signal - {canal_principal} Channel (Bandpass 0.2-50 Hz + CAR + Stopband 60 Hz + Wavelet-Assisted Adaptive Filter, {frecuencia_muestreo:.1f} Hz)', fontsize=12, fontweight='bold')
 ax5.grid(True, alpha=0.3)
 
 # Gráfico 6: Señal filtrada + CAR + Stopband + WAAF + Z-score
-ax6.plot(df_15s['Time and date'], fp1_waaf_zscore, linewidth=0.5, color='brown', alpha=0.7)
+ax6.plot(df_15s['timestamp'], ch1_waaf_zscore, linewidth=0.5, color='brown', alpha=0.7)
 ax6.set_xlabel('Tiempo / Time', fontsize=12)
-ax6.set_ylabel('Fp1 Z-score', fontsize=12)
-ax6.set_title(f'Señal EEG Normalizada (Z-score) - Canal Fp1 (Bandpass 0.2-50 Hz + CAR + Stopband 60 Hz + WAAF + Z-score normalization, {frecuencia_muestreo:.1f} Hz) / Z-score Normalized EEG Signal - Fp1 Channel (Bandpass 0.2-50 Hz + CAR + Stopband 60 Hz + WAAF + Z-score normalization, {frecuencia_muestreo:.1f} Hz)', fontsize=12, fontweight='bold')
+ax6.set_ylabel(f'{canal_principal} Z-score', fontsize=12)
+ax6.set_title(f'Señal EEG Normalizada (Z-score) - Canal {canal_principal} (Bandpass 0.2-50 Hz + CAR + Stopband 60 Hz + WAAF + Z-score normalization, {frecuencia_muestreo:.1f} Hz) / Z-score Normalized EEG Signal - {canal_principal} Channel (Bandpass 0.2-50 Hz + CAR + Stopband 60 Hz + WAAF + Z-score normalization, {frecuencia_muestreo:.1f} Hz)', fontsize=12, fontweight='bold')
 ax6.grid(True, alpha=0.3)
 ax6.axhline(y=0, color='black', linestyle='--', linewidth=0.8, alpha=0.5)  # Línea en y=0
 
@@ -288,15 +419,15 @@ def calcular_potencia_alpha(señal, fs, fmin, fmax):
     return potencia, f[idx_alpha], psd[idx_alpha], f, psd
 
 # Señal raw (sin procesar)
-fp1_raw = df_15s['Fp1'].values
+ch1_raw = df_15s[canal_principal].values
 
 # Calcular Alpha para señal RAW
 potencia_alpha_raw, f_alpha_raw, psd_alpha_raw, f_psd_raw, psd_raw = calcular_potencia_alpha(
-    fp1_raw, frecuencia_muestreo, alpha_min, alpha_max)
+    ch1_raw, frecuencia_muestreo, alpha_min, alpha_max)
 
 # Calcular Alpha para señal PROCESADA (después de WAAF)
 potencia_alpha_proc, f_alpha_proc, psd_alpha_proc, f_psd_proc, psd_proc = calcular_potencia_alpha(
-    fp1_waaf, frecuencia_muestreo, alpha_min, alpha_max)
+    ch1_waaf, frecuencia_muestreo, alpha_min, alpha_max)
 
 # Imprimir resultados
 print(f"\nPotencia Alpha - Datos RAW / Alpha Power - Raw Data:")
@@ -367,6 +498,103 @@ for bar, valor in zip(bars, potencias):
 ax_comparacion.plot([0, 1], [potencia_alpha_raw, potencia_alpha_proc], 
                    'k--', linewidth=2, alpha=0.5, label=f'Diferencia: {diferencia:+.2f} μV²/Hz ({porcentaje_cambio:+.1f}%)')
 ax_comparacion.legend(loc='upper left')
+
+plt.tight_layout()
+plt.show()
+
+# ============================================================================
+# GRÁFICA DE BANDA ALPHA EN DOMINIO DEL TIEMPO
+# ============================================================================
+
+print("\n" + "="*70)
+print("GRÁFICA DE BANDA ALPHA (8-13 Hz) EN DOMINIO DEL TIEMPO")
+print("ALPHA BAND (8-13 Hz) TIME DOMAIN PLOT")
+print("="*70)
+
+# Aplicar filtro bandpass para banda Alpha (8-13 Hz)
+alpha_low = 8.0  # Hz
+alpha_high = 13.0  # Hz
+nyquist_alpha = frecuencia_muestreo / 2.0
+low_alpha = alpha_low / nyquist_alpha
+high_alpha = alpha_high / nyquist_alpha
+
+# Crear el filtro Butterworth para banda Alpha
+b_alpha, a_alpha = signal.butter(4, [low_alpha, high_alpha], btype='band')
+
+# Aplicar filtro Alpha a la señal raw y procesada
+ch1_alpha_raw = signal.filtfilt(b_alpha, a_alpha, ch1_raw)
+ch1_alpha = signal.filtfilt(b_alpha, a_alpha, ch1_waaf)
+
+# Calcular envolvente de la señal Alpha (usando valor absoluto de Hilbert)
+from scipy.signal import hilbert
+analytical_signal_raw = hilbert(ch1_alpha_raw)
+analytical_signal = hilbert(ch1_alpha)
+envelope_alpha_raw = np.abs(analytical_signal_raw)
+envelope_alpha = np.abs(analytical_signal)
+
+# Crear figura con gráficas de banda Alpha - Separadas Raw y Procesado
+fig_alpha, axes = plt.subplots(3, 2, figsize=(16, 12))
+ax_alpha_time_raw, ax_alpha_time_proc = axes[0, 0], axes[0, 1]
+ax_alpha_env_raw, ax_alpha_env_proc = axes[1, 0], axes[1, 1]
+ax_alpha_psd_raw, ax_alpha_psd_proc = axes[2, 0], axes[2, 1]
+
+# Gráfico 1: Señal Alpha en dominio del tiempo - RAW
+ax_alpha_time_raw.plot(df_15s['timestamp'], ch1_alpha_raw, linewidth=0.8, color='red', alpha=0.7)
+ax_alpha_time_raw.set_ylabel(f'{canal_principal} Alpha (μV)', fontsize=12)
+ax_alpha_time_raw.set_title(f'Banda Alpha (8-13 Hz) - RAW - Canal {canal_principal} en Dominio del Tiempo / Alpha Band (8-13 Hz) - RAW - {canal_principal} Channel in Time Domain', fontsize=11, fontweight='bold')
+ax_alpha_time_raw.grid(True, alpha=0.3)
+ax_alpha_time_raw.axhline(y=0, color='black', linestyle='--', linewidth=0.5, alpha=0.3)
+ax_alpha_time_raw.set_xlabel('Tiempo / Time', fontsize=12)
+
+# Gráfico 1: Señal Alpha en dominio del tiempo - PROCESADO
+ax_alpha_time_proc.plot(df_15s['timestamp'], ch1_alpha, linewidth=0.8, color='blue', alpha=0.7)
+ax_alpha_time_proc.set_ylabel(f'{canal_principal} Alpha (μV)', fontsize=12)
+ax_alpha_time_proc.set_title(f'Banda Alpha (8-13 Hz) - PROCESADO - Canal {canal_principal} en Dominio del Tiempo / Alpha Band (8-13 Hz) - PROCESSED - {canal_principal} Channel in Time Domain', fontsize=11, fontweight='bold')
+ax_alpha_time_proc.grid(True, alpha=0.3)
+ax_alpha_time_proc.axhline(y=0, color='black', linestyle='--', linewidth=0.5, alpha=0.3)
+ax_alpha_time_proc.set_xlabel('Tiempo / Time', fontsize=12)
+
+# Gráfico 2: Envolvente de la señal Alpha - RAW
+ax_alpha_env_raw.plot(df_15s['timestamp'], envelope_alpha_raw, linewidth=1.0, color='red', alpha=0.7, label='Envolvente / Envelope')
+ax_alpha_env_raw.fill_between(df_15s['timestamp'], -envelope_alpha_raw, envelope_alpha_raw, alpha=0.2, color='red')
+ax_alpha_env_raw.set_ylabel('Envolvente Alpha (μV)', fontsize=12)
+ax_alpha_env_raw.set_title(f'Envolvente de Banda Alpha (8-13 Hz) - RAW - Canal {canal_principal} / Alpha Band Envelope (8-13 Hz) - RAW - {canal_principal} Channel', fontsize=11, fontweight='bold')
+ax_alpha_env_raw.grid(True, alpha=0.3)
+ax_alpha_env_raw.legend(loc='upper right')
+ax_alpha_env_raw.set_xlabel('Tiempo / Time', fontsize=12)
+
+# Gráfico 2: Envolvente de la señal Alpha - PROCESADO
+ax_alpha_env_proc.plot(df_15s['timestamp'], envelope_alpha, linewidth=1.0, color='blue', alpha=0.7, label='Envolvente / Envelope')
+ax_alpha_env_proc.fill_between(df_15s['timestamp'], -envelope_alpha, envelope_alpha, alpha=0.2, color='blue')
+ax_alpha_env_proc.set_ylabel('Envolvente Alpha (μV)', fontsize=12)
+ax_alpha_env_proc.set_title(f'Envolvente de Banda Alpha (8-13 Hz) - PROCESADO - Canal {canal_principal} / Alpha Band Envelope (8-13 Hz) - PROCESSED - {canal_principal} Channel', fontsize=11, fontweight='bold')
+ax_alpha_env_proc.grid(True, alpha=0.3)
+ax_alpha_env_proc.legend(loc='upper right')
+ax_alpha_env_proc.set_xlabel('Tiempo / Time', fontsize=12)
+
+# Gráfico 3: PSD de la banda Alpha - RAW
+ax_alpha_psd_raw.plot(f_alpha_raw, psd_alpha_raw, linewidth=2, color='red', alpha=0.8, marker='s', markersize=4)
+ax_alpha_psd_raw.fill_between(f_alpha_raw, 0, psd_alpha_raw, alpha=0.3, color='red')
+ax_alpha_psd_raw.set_xlabel('Frecuencia (Hz) / Frequency (Hz)', fontsize=12)
+ax_alpha_psd_raw.set_ylabel('PSD Alpha (μV²/Hz)', fontsize=12)
+ax_alpha_psd_raw.set_title(f'PSD - Banda Alpha (8-13 Hz) - RAW - Canal {canal_principal} / PSD - Alpha Band (8-13 Hz) - RAW - {canal_principal} Channel', fontsize=11, fontweight='bold')
+ax_alpha_psd_raw.set_xlim(alpha_min - 1, alpha_max + 1)
+ax_alpha_psd_raw.grid(True, alpha=0.3, which='both')
+textstr_raw = f'Potencia Alpha: {potencia_alpha_raw:.2f} μV²/Hz'
+ax_alpha_psd_raw.text(0.02, 0.98, textstr_raw, transform=ax_alpha_psd_raw.transAxes, 
+                      fontsize=10, verticalalignment='top', bbox=dict(boxstyle='round', facecolor='wheat', alpha=0.7))
+
+# Gráfico 3: PSD de la banda Alpha - PROCESADO
+ax_alpha_psd_proc.plot(f_alpha_proc, psd_alpha_proc, linewidth=2, color='green', alpha=0.8, marker='o', markersize=4)
+ax_alpha_psd_proc.fill_between(f_alpha_proc, 0, psd_alpha_proc, alpha=0.3, color='green')
+ax_alpha_psd_proc.set_xlabel('Frecuencia (Hz) / Frequency (Hz)', fontsize=12)
+ax_alpha_psd_proc.set_ylabel('PSD Alpha (μV²/Hz)', fontsize=12)
+ax_alpha_psd_proc.set_title(f'PSD - Banda Alpha (8-13 Hz) - PROCESADO - Canal {canal_principal} / PSD - Alpha Band (8-13 Hz) - PROCESSED - {canal_principal} Channel', fontsize=11, fontweight='bold')
+ax_alpha_psd_proc.set_xlim(alpha_min - 1, alpha_max + 1)
+ax_alpha_psd_proc.grid(True, alpha=0.3, which='both')
+textstr_proc = f'Potencia Alpha: {potencia_alpha_proc:.2f} μV²/Hz\nDiferencia: {diferencia:+.2f} μV²/Hz\n({porcentaje_cambio:+.1f}%)'
+ax_alpha_psd_proc.text(0.02, 0.98, textstr_proc, transform=ax_alpha_psd_proc.transAxes, 
+                       fontsize=10, verticalalignment='top', bbox=dict(boxstyle='round', facecolor='lightgreen', alpha=0.7))
 
 plt.tight_layout()
 plt.show()
