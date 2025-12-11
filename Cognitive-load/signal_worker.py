@@ -1,7 +1,7 @@
 """
 signal_worker.py
-Clase QThread para adquisición de datos EEG vía LSL y procesamiento de señal en tiempo real.
-Maneja filtrado, buffer circular y cálculo de bandpower.
+QThread class for EEG data acquisition via LSL and real-time signal processing.
+Handles filtering, circular buffer and bandpower calculation.
 """
 
 import numpy as np
@@ -14,14 +14,14 @@ import time
 
 class RingBuffer:
     """
-    Buffer circular para almacenar datos de señal EEG.
-    Permite cálculo de FFT en ventanas móviles.
+    Circular buffer for storing EEG signal data.
+    Allows FFT calculation in moving windows.
     """
     def __init__(self, maxlen, n_channels=8):
         """
         Args:
-            maxlen: Tamaño máximo del buffer (número de muestras)
-            n_channels: Número de canales EEG
+            maxlen: Maximum buffer size (number of samples)
+            n_channels: Number of EEG channels
         """
         self.maxlen = maxlen
         self.n_channels = n_channels
@@ -32,11 +32,11 @@ class RingBuffer:
         
     def append(self, data, timestamp):
         """
-        Añade una nueva muestra al buffer.
+        Adds a new sample to the buffer.
         
         Args:
-            data: Array de shape (n_channels,) con los valores de los canales
-            timestamp: Timestamp de la muestra
+            data: Array of shape (n_channels,) with channel values
+            timestamp: Sample timestamp
         """
         self.buffer[self.write_idx] = data
         self.timestamps.append(timestamp)
@@ -46,158 +46,158 @@ class RingBuffer:
     
     def get_window(self, window_samples):
         """
-        Obtiene la última ventana de muestras.
+        Gets the latest window of samples.
         
         Args:
-            window_samples: Número de muestras a retornar
+            window_samples: Number of samples to return
             
         Returns:
-            Array de shape (window_samples, n_channels) con los datos más recientes
+            Array of shape (window_samples, n_channels) with the most recent data
         """
         if not self.is_full and self.write_idx < window_samples:
             return self.buffer[:self.write_idx]
         
         start_idx = (self.write_idx - window_samples) % self.maxlen
-        if start_idx + window_samples <= self.maxlen:
-            return self.buffer[start_idx:start_idx + window_samples]
-        else:
-            # Caso donde la ventana cruza el límite del buffer
-            part1 = self.buffer[start_idx:]
-            part2 = self.buffer[:start_idx + window_samples - self.maxlen]
-            return np.vstack([part1, part2])
+            if start_idx + window_samples <= self.maxlen:
+                return self.buffer[start_idx:start_idx + window_samples]
+            else:
+                # Case where window crosses buffer boundary
+                part1 = self.buffer[start_idx:]
+                part2 = self.buffer[:start_idx + window_samples - self.maxlen]
+                return np.vstack([part1, part2])
 
 
 class SignalWorker(QThread):
     """
-    Worker thread para adquisición y procesamiento de señal EEG.
-    No bloquea la interfaz gráfica durante la adquisición.
+    Worker thread for EEG signal acquisition and processing.
+    Does not block the graphical interface during acquisition.
     """
     
-    # Señales PyQt para comunicación con la UI
-    data_ready = pyqtSignal(np.ndarray, float)  # datos procesados, timestamp
-    raw_data_ready = pyqtSignal(np.ndarray, float)  # datos sin filtrar, timestamp
-    connection_status = pyqtSignal(bool, str)  # conectado, mensaje
+    # PyQt signals for communication with UI
+    data_ready = pyqtSignal(np.ndarray, float)  # processed data, timestamp
+    raw_data_ready = pyqtSignal(np.ndarray, float)  # unfiltered data, timestamp
+    connection_status = pyqtSignal(bool, str)  # connected, message
     
     def __init__(self, sample_rate=250, n_channels=8, buffer_duration=2.0):
         """
         Args:
-            sample_rate: Tasa de muestreo en Hz (250 Hz para AURA)
-            n_channels: Número de canales EEG (8 para AURA)
-            buffer_duration: Duración del buffer en segundos (2.0 s para ventana FFT)
+            sample_rate: Sampling rate in Hz (250 Hz for AURA)
+            n_channels: Number of EEG channels (8 for AURA)
+            buffer_duration: Buffer duration in seconds (2.0 s for FFT window)
         """
         super().__init__()
         self.sample_rate = sample_rate
         self.n_channels = n_channels
         self.buffer_samples = int(buffer_duration * sample_rate)
         
-        # Buffer circular
+        # Circular buffer
         self.ring_buffer = RingBuffer(maxlen=self.buffer_samples * 2, n_channels=n_channels)
         
-        # Filtros
+        # Filters
         self._setup_filters()
         
-        # Control del thread
+        # Thread control
         self.running = False
         self.inlet = None
         
-        # Índices de canales para análisis (Fz = canal 0, Pz = canal 4)
+        # Channel indices for analysis (Fz = channel 0, Pz = channel 4)
         self.fz_channel = 0
         self.pz_channel = 4
         
-        # Buffer para acumular muestras antes de emitir (reduce carga en UI)
+        # Buffer to accumulate samples before emitting (reduces UI load)
         self.plot_buffer = []
-        self.plot_buffer_size = 20  # Emitir cada 20 muestras (~80ms a 250Hz, aumentado para mejor rendimiento)
+        self.plot_buffer_size = 20  # Emit every 20 samples (~80ms at 250Hz, increased for better performance)
         self.last_plot_time = 0
-        self.plot_interval = 0.1  # Emitir cada 100ms máximo (aumentado de 40ms)
+        self.plot_interval = 0.1  # Emit every 100ms maximum (increased from 40ms)
     
     def _setup_filters(self):
-        """Configura los filtros digitales para procesamiento de señal."""
-        # Filtro pasabanda 1-40 Hz (Butterworth, orden 4)
+        """Configures digital filters for signal processing."""
+        # Bandpass filter 1-40 Hz (Butterworth, order 4)
         nyquist = self.sample_rate / 2
         low = 1.0 / nyquist
         high = 40.0 / nyquist
         self.b, self.a = signal.butter(4, [low, high], btype='band')
         
-        # Filtro Notch 60 Hz (para eliminar ruido de línea eléctrica)
+        # Notch filter 60 Hz (to eliminate electrical line noise)
         notch_freq = 60.0
         quality_factor = 30.0
         self.b_notch, self.a_notch = signal.iirnotch(notch_freq, quality_factor, self.sample_rate)
         
-        # Estado inicial de los filtros (uno por canal)
+        # Initial filter state (one per channel)
         zi_band_single = signal.lfilter_zi(self.b, self.a)
         zi_notch_single = signal.lfilter_zi(self.b_notch, self.a_notch)
         self.zi_band = np.tile(zi_band_single[:, np.newaxis], (1, self.n_channels))
         self.zi_notch = np.tile(zi_notch_single[:, np.newaxis], (1, self.n_channels))
     
     def connect_to_stream(self):
-        """Busca y conecta al stream LSL de AURA."""
+        """Searches for and connects to AURA LSL stream."""
         try:
-            print("Buscando stream EEG AURA...")
+            print("Searching for AURA EEG stream...")
             streams = resolve_byprop('name', 'AURA', timeout=1.0)
             
             if len(streams) == 0:
-                self.connection_status.emit(False, "No se encontró el stream AURA")
+                self.connection_status.emit(False, "AURA stream not found")
                 return False
             
             self.inlet = StreamInlet(streams[0])
             info = self.inlet.info()
-            print(f"Conectado a: {info.name()}")
-            print(f"Canales: {info.channel_count()}")
+            print(f"Connected to: {info.name()}")
+            print(f"Channels: {info.channel_count()}")
             print(f"Sample rate: {info.nominal_srate()}")
             
-            self.connection_status.emit(True, f"Conectado a {info.name()}")
+            self.connection_status.emit(True, f"Connected to {info.name()}")
             return True
             
         except Exception as e:
-            error_msg = f"Error al conectar: {str(e)}"
+            error_msg = f"Connection error: {str(e)}"
             print(error_msg)
             self.connection_status.emit(False, error_msg)
             return False
     
     def calculate_bandpower(self, signal_data, freq_band, sample_rate):
         """
-        Calcula la potencia espectral en una banda de frecuencias usando Welch's method.
+        Calculates spectral power in a frequency band using Welch's method.
         
         Args:
-            signal_data: Array 1D con los datos de señal
-            freq_band: Tupla (fmin, fmax) con los límites de la banda
-            sample_rate: Tasa de muestreo
+            signal_data: 1D array with signal data
+            freq_band: Tuple (fmin, fmax) with band limits
+            sample_rate: Sampling rate
             
         Returns:
-            Potencia promedio en la banda especificada
+            Average power in the specified band
         """
-        if len(signal_data) < sample_rate // 2:  # Necesitamos al menos 0.5 segundos de datos
+        if len(signal_data) < sample_rate // 2:  # We need at least 0.5 seconds of data
             return 0.0
         
-        # Método de Welch para estimación espectral
+        # Welch's method for spectral estimation
         nperseg = min(len(signal_data), sample_rate)
         freqs, psd = signal.welch(signal_data, sample_rate, nperseg=nperseg, noverlap=nperseg//2)
         
-        # Encontrar índices de la banda de frecuencia
+        # Find frequency band indices
         idx_band = np.logical_and(freqs >= freq_band[0], freqs <= freq_band[1])
         
-        # Calcular potencia promedio en la banda
+        # Calculate average power in the band
         bandpower = np.trapz(psd[idx_band], freqs[idx_band])
         
         return bandpower
     
     def get_cognitive_load_ratio(self):
         """
-        Calcula el ratio de carga cognitiva: Theta_Fz / Alpha_Pz
+        Calculates the cognitive load ratio: Theta_Fz / Alpha_Pz
         
         Returns:
-            Ratio de carga cognitiva o None si no hay suficientes datos
+            Cognitive load ratio or None if there's not enough data
         """
         window_data = self.ring_buffer.get_window(self.buffer_samples)
         
         if len(window_data) < self.buffer_samples:
             return None
         
-        # Extraer canales Fz y Pz
+        # Extract Fz and Pz channels
         fz_signal = window_data[:, self.fz_channel]
         pz_signal = window_data[:, self.pz_channel]
         
-        # Calcular bandpower
+        # Calculate bandpower
         theta_band = (4.0, 7.0)  # Theta: 4-7 Hz
         alpha_band = (8.0, 12.0)  # Alpha: 8-12 Hz
         
@@ -211,37 +211,37 @@ class SignalWorker(QThread):
         return None
     
     def run(self):
-        """Loop principal del thread. Adquiere y procesa datos continuamente."""
+        """Main thread loop. Acquires and processes data continuously."""
         if not self.inlet:
             if not self.connect_to_stream():
                 return
         
         self.running = True
-        print("Iniciando adquisición de datos...")
+        print("Starting data acquisition...")
         
         while self.running:
             try:
-                # Pull sample from LSL (timeout de 0.1 segundos)
+                # Pull sample from LSL (0.1 second timeout)
                 sample, timestamp = self.inlet.pull_sample(timeout=0.1)
                 
                 if sample:
-                    # Convertir a numpy array
+                    # Convert to numpy array
                     sample_array = np.array(sample[:self.n_channels])
                     
-                    # DEBUG: Imprimir datos recibidos (solo las primeras 10 muestras)
+                    # DEBUG: Print received data (only first 10 samples)
                     if not hasattr(self, '_debug_counter'):
                         self._debug_counter = 0
                     if self._debug_counter < 10:
-                        print(f"\n[Muestra {self._debug_counter}]")
-                        print(f"  Tipo de sample: {type(sample)}")
-                        print(f"  Longitud de sample: {len(sample)}")
-                        print(f"  Sample completo: {sample}")
+                        print(f"\n[Sample {self._debug_counter}]")
+                        print(f"  Sample type: {type(sample)}")
+                        print(f"  Sample length: {len(sample)}")
+                        print(f"  Full sample: {sample}")
                         print(f"  sample_array shape: {sample_array.shape}")
-                        print(f"  sample_array valores: {sample_array}")
+                        print(f"  sample_array values: {sample_array}")
                         print(f"  Timestamp: {timestamp}")
                         self._debug_counter += 1
                     
-                    # Aplicar filtros (procesar cada muestra individualmente)
+                    # Apply filters (process each sample individually)
                     # Notch filter
                     filtered_notch = np.zeros(self.n_channels)
                     for i in range(self.n_channels):
@@ -258,18 +258,18 @@ class SignalWorker(QThread):
                             zi=self.zi_band[:, i]
                         )
                     
-                    # Añadir al buffer
+                    # Add to buffer
                     self.ring_buffer.append(filtered_sample, timestamp)
                     
-                    # Acumular muestras para emitir en lotes (reduce saturación)
+                    # Accumulate samples to emit in batches (reduces saturation)
                     current_time = time.time()
                     self.plot_buffer.append((sample_array, filtered_sample, timestamp))
                     
-                    # Emitir en lotes o cuando pase el intervalo máximo
+                    # Emit in batches or when maximum interval passes
                     if (len(self.plot_buffer) >= self.plot_buffer_size or 
                         (current_time - self.last_plot_time) >= self.plot_interval):
                         if self.plot_buffer:
-                            # Emitir la última muestra del buffer
+                            # Emit the last sample from buffer
                             last_raw, last_filtered, last_ts = self.plot_buffer[-1]
                             self.raw_data_ready.emit(last_raw, last_ts)
                             self.data_ready.emit(last_filtered, last_ts)
@@ -277,11 +277,11 @@ class SignalWorker(QThread):
                             self.last_plot_time = current_time
                 
             except Exception as e:
-                print(f"Error en adquisición: {str(e)}")
-                time.sleep(0.01)  # Pequeña pausa para evitar loops infinitos
+                print(f"Acquisition error: {str(e)}")
+                time.sleep(0.01)  # Small pause to avoid infinite loops
     
     def stop(self):
-        """Detiene la adquisición de datos."""
+        """Stops data acquisition."""
         self.running = False
-        print("Deteniendo adquisición de datos...")
+        print("Stopping data acquisition...")
 

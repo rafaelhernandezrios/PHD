@@ -1,7 +1,7 @@
 """
 experiment_logic.py
-Máquina de estados para el protocolo experimental de carga cognitiva.
-Maneja las fases: Setup, Baseline, Baja Carga, Alta Carga.
+State machine for the cognitive load experimental protocol.
+Handles phases: Setup, Baseline, Low Load, High Load.
 """
 
 from enum import Enum
@@ -10,7 +10,7 @@ import time
 
 
 class ExperimentPhase(Enum):
-    """Fases del protocolo experimental."""
+    """Phases of the experimental protocol."""
     IDLE = "idle"
     SETUP = "setup"
     BASELINE_EYES_OPEN = "baseline_eyes_open"
@@ -23,13 +23,13 @@ class ExperimentPhase(Enum):
 
 class ExperimentLogic(QObject):
     """
-    Lógica del experimento. Controla los timers y transiciones entre fases.
+    Experiment logic. Controls timers and transitions between phases.
     """
     
-    # Señales para comunicación con la UI
-    phase_changed = pyqtSignal(str, str)  # fase, mensaje
-    timer_update = pyqtSignal(int)  # segundos restantes
-    instruction_update = pyqtSignal(str)  # instrucción actual
+    # Signals for communication with UI
+    phase_changed = pyqtSignal(str, str)  # phase, message
+    timer_update = pyqtSignal(int)  # remaining seconds
+    instruction_update = pyqtSignal(str)  # current instruction
     
     def __init__(self):
         super().__init__()
@@ -38,42 +38,42 @@ class ExperimentLogic(QObject):
         self.timer.timeout.connect(self._on_timer_tick)
         self.time_remaining = 0
         
-        # Duraciones de las fases (en segundos)
+        # Phase durations (in seconds)
         self.durations = {
-            ExperimentPhase.BASELINE_EYES_OPEN: 90,  # 90 segundos
-            ExperimentPhase.BASELINE_EYES_CLOSED: 90,  # 90 segundos
-            ExperimentPhase.LOW_LOAD: 180,  # 3 minutos
-            ExperimentPhase.HIGH_LOAD: 180,  # 3 minutos
+            ExperimentPhase.BASELINE_EYES_OPEN: 90,  # 90 seconds
+            ExperimentPhase.BASELINE_EYES_CLOSED: 90,  # 90 seconds
+            ExperimentPhase.LOW_LOAD: 180,  # 3 minutes
+            ExperimentPhase.HIGH_LOAD: 180,  # 3 minutes
         }
         
-        # Instrucciones para cada fase
+        # Instructions for each phase
         self.instructions = {
-            ExperimentPhase.SETUP: "Verifique la calidad de la señal EEG. Asegúrese de que todos los canales muestren actividad.",
-            ExperimentPhase.BASELINE_EYES_OPEN: "Mantenga los ojos abiertos y relájese. Mire fijamente el punto central.",
-            ExperimentPhase.BASELINE_EYES_CLOSED: "Cierre los ojos y relájese completamente.",
-            ExperimentPhase.LOW_LOAD: "Lea el texto que aparece en pantalla de manera pasiva. No necesita hacer nada más.",
-            ExperimentPhase.HIGH_LOAD: "Realice la tarea N-Back. Presione la tecla cuando el estímulo coincida con el de N posiciones atrás.",
-            ExperimentPhase.ANALYSIS: "Análisis de datos en curso...",
-            ExperimentPhase.COMPLETED: "Experimento completado. Puede cerrar la aplicación."
+            ExperimentPhase.SETUP: "Check the EEG signal quality. Make sure all channels show activity.",
+            ExperimentPhase.BASELINE_EYES_OPEN: "Keep your eyes open and relax. Stare at the center point.",
+            ExperimentPhase.BASELINE_EYES_CLOSED: "Close your eyes and relax completely.",
+            ExperimentPhase.LOW_LOAD: "Read the text on screen passively. You don't need to do anything else.",
+            ExperimentPhase.HIGH_LOAD: "Perform the Stroop task. Press the key for the COLOR of the ink, not the written word.",
+            ExperimentPhase.ANALYSIS: "Data analysis in progress...",
+            ExperimentPhase.COMPLETED: "Experiment completed. You can close the application."
         }
     
     def start_setup(self):
-        """Inicia la fase de Setup."""
+        """Starts the Setup phase."""
         self.current_phase = ExperimentPhase.SETUP
         self.phase_changed.emit(self.current_phase.value, self.instructions[self.current_phase])
         self.instruction_update.emit(self.instructions[self.current_phase])
     
     def start_baseline(self):
-        """Inicia la fase Baseline (primero ojos abiertos)."""
+        """Starts the Baseline phase (first eyes open)."""
         self.current_phase = ExperimentPhase.BASELINE_EYES_OPEN
         self.time_remaining = self.durations[self.current_phase]
         self.phase_changed.emit(self.current_phase.value, self.instructions[self.current_phase])
         self.instruction_update.emit(self.instructions[self.current_phase])
-        self.timer.start(1000)  # Timer cada 1 segundo
+        self.timer.start(1000)  # Timer every 1 second
         self.timer_update.emit(self.time_remaining)
     
     def start_low_load(self):
-        """Inicia la fase de Baja Carga Cognitiva."""
+        """Starts the Low Cognitive Load phase."""
         self.timer.stop()
         self.current_phase = ExperimentPhase.LOW_LOAD
         self.time_remaining = self.durations[self.current_phase]
@@ -83,7 +83,7 @@ class ExperimentLogic(QObject):
         self.timer_update.emit(self.time_remaining)
     
     def start_high_load(self):
-        """Inicia la fase de Alta Carga Cognitiva (N-Back)."""
+        """Starts the High Cognitive Load phase (Stroop)."""
         self.timer.stop()
         self.current_phase = ExperimentPhase.HIGH_LOAD
         self.time_remaining = self.durations[self.current_phase]
@@ -93,28 +93,28 @@ class ExperimentLogic(QObject):
         self.timer_update.emit(self.time_remaining)
     
     def start_analysis(self):
-        """Inicia la fase de Análisis."""
+        """Starts the Analysis phase."""
         self.timer.stop()
         self.current_phase = ExperimentPhase.ANALYSIS
         self.phase_changed.emit(self.current_phase.value, self.instructions[self.current_phase])
         self.instruction_update.emit(self.instructions[self.current_phase])
     
     def complete_experiment(self):
-        """Marca el experimento como completado."""
+        """Marks the experiment as completed."""
         self.timer.stop()
         self.current_phase = ExperimentPhase.COMPLETED
         self.phase_changed.emit(self.current_phase.value, self.instructions[self.current_phase])
         self.instruction_update.emit(self.instructions[self.current_phase])
     
     def _on_timer_tick(self):
-        """Callback del timer. Se ejecuta cada segundo."""
+        """Timer callback. Executes every second."""
         if self.time_remaining > 0:
             self.time_remaining -= 1
             self.timer_update.emit(self.time_remaining)
             
-            # Transiciones automáticas
+            # Automatic transitions
             if self.current_phase == ExperimentPhase.BASELINE_EYES_OPEN and self.time_remaining == 0:
-                # Transición a ojos cerrados
+                # Transition to eyes closed
                 self.current_phase = ExperimentPhase.BASELINE_EYES_CLOSED
                 self.time_remaining = self.durations[self.current_phase]
                 self.phase_changed.emit(self.current_phase.value, self.instructions[self.current_phase])
@@ -122,37 +122,37 @@ class ExperimentLogic(QObject):
                 self.timer_update.emit(self.time_remaining)
             
             elif self.current_phase == ExperimentPhase.BASELINE_EYES_CLOSED and self.time_remaining == 0:
-                # Baseline completado, esperar inicio manual de siguiente fase
+                # Baseline completed, wait for manual start of next phase
                 self.timer.stop()
-                self.phase_changed.emit("baseline_completed", "Baseline completado. Presione 'Iniciar Baja Carga' para continuar.")
+                self.phase_changed.emit("baseline_completed", "Baseline completed. Press 'Start Low Load' to continue.")
             
             elif self.current_phase == ExperimentPhase.LOW_LOAD and self.time_remaining == 0:
-                # Baja carga completada, esperar inicio manual de siguiente fase
+                # Low load completed, wait for manual start of next phase
                 self.timer.stop()
-                self.phase_changed.emit("low_load_completed", "Baja Carga completada. Presione 'Iniciar Alta Carga' para continuar.")
+                self.phase_changed.emit("low_load_completed", "Low Load completed. Press 'Start High Load' to continue.")
             
             elif self.current_phase == ExperimentPhase.HIGH_LOAD and self.time_remaining == 0:
-                # Alta carga completada
+                # High load completed
                 self.timer.stop()
                 self.start_analysis()
     
     def get_current_phase(self):
-        """Retorna la fase actual del experimento."""
+        """Returns the current experiment phase."""
         return self.current_phase
     
     def pause(self):
-        """Pausa el timer del experimento."""
+        """Pauses the experiment timer."""
         self.timer.stop()
     
     def resume(self):
-        """Reanuda el timer del experimento."""
+        """Resumes the experiment timer."""
         if self.time_remaining > 0:
             self.timer.start(1000)
     
     def reset(self):
-        """Reinicia el experimento a la fase IDLE."""
+        """Resets the experiment to IDLE phase."""
         self.timer.stop()
         self.current_phase = ExperimentPhase.IDLE
         self.time_remaining = 0
-        self.phase_changed.emit(self.current_phase.value, "Experimento reiniciado")
+        self.phase_changed.emit(self.current_phase.value, "Experiment reset")
 

@@ -1,7 +1,7 @@
 """
 main.py
-Punto de entrada de la aplicación.
-Conecta todos los módulos: SignalWorker, ExperimentLogic y MainWindow.
+Application entry point.
+Connects all modules: SignalWorker, ExperimentLogic and MainWindow.
 """
 
 import sys
@@ -19,61 +19,60 @@ from ui_main import MainWindow
 
 class EEGExperimentApp:
     """
-    Clase principal que coordina todos los componentes de la aplicación.
+    Main class that coordinates all application components.
     """
     
     def __init__(self):
         self.app = QApplication(sys.argv)
         self.window = MainWindow()
         
-        # Componentes principales
+        # Main components
         self.signal_worker = SignalWorker(sample_rate=250, n_channels=8, buffer_duration=2.0)
         self.experiment_logic = ExperimentLogic()
         
-        # Datos para logging
+        # Data for logging
         self.data_log = []
         self.current_phase_name = "idle"
         self.is_logging = False
         self.current_user = None
         self.user_folder = None
         
-        # Texto para la fase de baja carga
+        # Text for low cognitive load phase
         self.low_load_text = """
-        La neurotecnología es un campo interdisciplinario que combina neurociencia, 
-        ingeniería y tecnología para desarrollar interfaces que conecten el cerebro 
-        humano con sistemas computacionales. Las interfaces cerebro-computadora (BCI) 
-        permiten la comunicación directa entre el cerebro y dispositivos externos, 
-        abriendo nuevas posibilidades para la rehabilitación, el control de prótesis 
-        y la mejora de capacidades cognitivas.
+        Neurotechnology is an interdisciplinary field that combines neuroscience, 
+        engineering, and technology to develop interfaces that connect the human 
+        brain with computational systems. Brain-computer interfaces (BCI) enable 
+        direct communication between the brain and external devices, opening new 
+        possibilities for rehabilitation, prosthetic control, and enhancement of 
+        cognitive capabilities.
         
-        Los sistemas BCI utilizan diversas modalidades de adquisición de señales 
-        neuronales, incluyendo electroencefalografía (EEG), magnetoencefalografía (MEG), 
-        y registros intracraneales. El EEG es particularmente atractivo debido a su 
-        naturaleza no invasiva, bajo costo y alta resolución temporal, aunque presenta 
-        limitaciones en la resolución espacial.
+        BCI systems use various modalities for acquiring neural signals, including 
+        electroencephalography (EEG), magnetoencephalography (MEG), and intracranial 
+        recordings. EEG is particularly attractive due to its non-invasive nature, 
+        low cost, and high temporal resolution, although it has limitations in 
+        spatial resolution.
         
-        El procesamiento de señales EEG requiere técnicas avanzadas de filtrado, 
-        análisis espectral y clasificación de patrones. Los algoritmos de machine 
-        learning, especialmente las redes neuronales profundas, han demostrado ser 
-        efectivos para la decodificación de intenciones motoras y estados cognitivos 
-        a partir de señales EEG.
+        EEG signal processing requires advanced filtering techniques, spectral analysis, 
+        and pattern classification. Machine learning algorithms, especially deep neural 
+        networks, have proven effective for decoding motor intentions and cognitive 
+        states from EEG signals.
         """
         
-        # Conectar señales
+        # Connect signals
         self._connect_signals()
         
-        # Timer para actualizar gráficos (reducido para mejor rendimiento)
+        # Timer to update plots (reduced for better performance)
         self.plot_timer = QTimer()
         self.plot_timer.timeout.connect(self.update_plots)
-        self.plot_timer.start(200)  # Actualizar cada 200ms (~5 FPS, reducido para evitar saturación)
+        self.plot_timer.start(200)  # Update every 200ms (~5 FPS, reduced to avoid saturation)
         
-        # Timer para calcular ratio
+        # Timer to calculate ratio
         self.ratio_timer = QTimer()
         self.ratio_timer.timeout.connect(self.calculate_and_update_ratio)
-        self.ratio_timer.start(1000)  # Calcular ratio cada 1 segundo (reducido de 500ms)
+        self.ratio_timer.start(1000)  # Calculate ratio every 1 second (reduced from 500ms)
     
     def _connect_signals(self):
-        """Conecta todas las señales entre componentes."""
+        """Connects all signals between components."""
         
         # SignalWorker -> UI
         self.signal_worker.raw_data_ready.connect(self.window.update_raw_plot)
@@ -96,9 +95,9 @@ class EEGExperimentApp:
         self.signal_worker.data_ready.connect(self.log_data_sample)
     
     def on_connect_clicked(self):
-        """Maneja el clic en el botón de conexión."""
+        """Handles the connection button click."""
         if not self.signal_worker.isRunning():
-            self.window.connect_btn.setText("Conectando...")
+            self.window.connect_btn.setText("Connecting...")
             self.window.connect_btn.setEnabled(False)
             self.signal_worker.connect_to_stream()
             if self.signal_worker.inlet:
@@ -107,67 +106,67 @@ class EEGExperimentApp:
         else:
             self.signal_worker.stop()
             self.signal_worker.wait()
-            self.window.connect_btn.setText("Conectar AURA")
+            self.window.connect_btn.setText("Connect AURA")
             self.window.start_setup_btn.setEnabled(False)
             self.window.start_baseline_btn.setEnabled(False)
             self.window.start_low_load_btn.setEnabled(False)
             self.window.start_high_load_btn.setEnabled(False)
     
     def on_connection_status(self, connected, message):
-        """Maneja cambios en el estado de conexión."""
+        """Handles connection status changes."""
         if connected:
-            self.window.connect_btn.setText("Desconectar")
+            self.window.connect_btn.setText("Disconnect")
             self.window.connect_btn.setEnabled(True)
-            self.window.update_status("Conectado", "#00ff88")
+            self.window.update_status("Connected", "#00ff88")
         else:
-            self.window.connect_btn.setText("Conectar AURA")
+            self.window.connect_btn.setText("Connect AURA")
             self.window.connect_btn.setEnabled(True)
-            self.window.update_status("Desconectado", "#ff4444")
+            self.window.update_status("Disconnected", "#ff4444")
             if message:
-                QMessageBox.warning(self.window, "Error de Conexión", message)
+                QMessageBox.warning(self.window, "Connection Error", message)
     
     def on_start_setup(self):
-        """Inicia la fase de Setup."""
-        # Solicitar nombre de usuario si no se ha establecido
+        """Starts the Setup phase."""
+        # Request user name if not set
         if self.current_user is None:
             user_name, ok = QInputDialog.getText(
                 self.window, 
-                "Usuario del Experimento", 
-                "Ingrese el nombre o ID del usuario:"
+                "Experiment User", 
+                "Enter the user name or ID:"
             )
             if not ok or not user_name.strip():
-                QMessageBox.warning(self.window, "Usuario Requerido", 
-                                  "Debe ingresar un nombre de usuario para continuar.")
+                QMessageBox.warning(self.window, "User Required", 
+                                  "You must enter a user name to continue.")
                 return
             
             self.current_user = user_name.strip()
-            # Crear carpeta para el usuario
+            # Create folder for the user
             self.user_folder = f"data_{self.current_user}"
             os.makedirs(self.user_folder, exist_ok=True)
-            self.window.update_status(f"Usuario: {self.current_user}", "#00ff88")
+            self.window.update_status(f"User: {self.current_user}", "#00ff88")
         
         self.experiment_logic.start_setup()
         self.current_phase_name = "setup"
         self.window.show_instructions(
-            "Verifique la calidad de la señal EEG en los gráficos. "
-            "Asegúrese de que todos los canales muestren actividad sin artefactos excesivos. "
-            "Cuando esté listo, presione 'Iniciar Baseline'."
+            "Check the EEG signal quality in the plots. "
+            "Make sure all channels show activity without excessive artifacts. "
+            "When ready, press 'Start Baseline'."
         )
         self.window.start_baseline_btn.setEnabled(True)
         self.is_logging = True
     
     def on_start_baseline(self):
-        """Inicia la fase Baseline."""
+        """Starts the Baseline phase."""
         self.experiment_logic.start_baseline()
         self.current_phase_name = "baseline_eyes_open"
         self.window.show_instructions(
-            "Mantenga los ojos abiertos y relájese. "
-            "Mire fijamente el punto central de la pantalla."
+            "Keep your eyes open and relax. "
+            "Stare at the center point of the screen."
         )
         self.window.start_baseline_btn.setEnabled(False)
     
     def on_start_low_load(self):
-        """Inicia la fase de Baja Carga Cognitiva."""
+        """Starts the Low Cognitive Load phase."""
         self.experiment_logic.start_low_load()
         self.current_phase_name = "low_load"
         self.window.show_text_reading(self.low_load_text)
@@ -175,21 +174,21 @@ class EEGExperimentApp:
         self.window.start_high_load_btn.setEnabled(True)
     
     def on_start_high_load(self):
-        """Inicia la fase de Alta Carga Cognitiva (Stroop)."""
+        """Starts the High Cognitive Load phase (Stroop)."""
         self.experiment_logic.start_high_load()
         self.current_phase_name = "high_load"
         stroop_widget = self.window.show_stroop_task()
-        # Conectar señal de respuesta del Stroop si es necesario
+        # Connect Stroop response signal if needed
         self.window.start_high_load_btn.setEnabled(False)
         self.window.save_data_btn.setEnabled(True)
     
     def on_phase_changed(self, phase, message):
-        """Maneja cambios de fase del experimento."""
+        """Handles experiment phase changes."""
         if phase == "baseline_eyes_closed":
             self.current_phase_name = "baseline_eyes_closed"
             self.window.show_instructions(
-                "Cierre los ojos y relájese completamente. "
-                "No se mueva y mantenga una respiración tranquila."
+                "Close your eyes and relax completely. "
+                "Do not move and maintain calm breathing."
             )
         elif phase == "baseline_completed":
             self.current_phase_name = "baseline_completed"
@@ -200,30 +199,30 @@ class EEGExperimentApp:
         elif phase == "analysis":
             self.current_phase_name = "analysis"
             self.window.show_instructions(
-                "Análisis de datos en curso. "
-                "Los resultados se están procesando."
+                "Data analysis in progress. "
+                "Results are being processed."
             )
         elif phase == "completed":
             self.current_phase_name = "completed"
             self.window.show_instructions(
-                "Experimento completado exitosamente. "
-                "Puede guardar los datos y cerrar la aplicación."
+                "Experiment completed successfully. "
+                "You can save the data and close the application."
             )
     
     def log_data_sample(self, data, timestamp):
         """
-        Registra una muestra de datos para posterior guardado.
-        Submuestreo para evitar saturación de memoria.
+        Logs a data sample for later saving.
+        Subsampling to avoid memory saturation.
         
         Args:
-            data: Array con datos filtrados de los 8 canales
-            timestamp: Timestamp de la muestra
+            data: Array with filtered data from 8 channels
+            timestamp: Sample timestamp
         """
         if not self.is_logging:
             return
         
-        # Submuestreo: guardar cada 5 muestras (~50 Hz en lugar de 250 Hz)
-        # Esto reduce significativamente el uso de memoria
+        # Subsampling: save every 5 samples (~50 Hz instead of 250 Hz)
+        # This significantly reduces memory usage
         if not hasattr(self, '_log_counter'):
             self._log_counter = 0
         
@@ -231,7 +230,7 @@ class EEGExperimentApp:
         if self._log_counter % 5 != 0:
             return
         
-        # Mapeo de fases a labels más descriptivos
+        # Phase mapping to more descriptive labels
         phase_labels = {
             'idle': 'idle',
             'setup': 'setup',
@@ -246,7 +245,7 @@ class EEGExperimentApp:
             'completed': 'completed'
         }
         
-        # Crear registro con todos los canales y metadatos
+        # Create record with all channels and metadata
         record = {
             'timestamp': timestamp,
             'phase': self.current_phase_name,
@@ -264,7 +263,7 @@ class EEGExperimentApp:
         self.data_log.append(record)
     
     def calculate_and_update_ratio(self):
-        """Calcula y actualiza el ratio de carga cognitiva."""
+        """Calculates and updates the cognitive load ratio."""
         if not self.signal_worker.isRunning():
             return
         result = self.signal_worker.get_cognitive_load_ratio()
@@ -273,55 +272,55 @@ class EEGExperimentApp:
             self.window.update_ratio_plot(ratio, theta_power, alpha_power)
     
     def update_plots(self):
-        """Actualiza los gráficos (llamado por el timer)."""
-        # Los gráficos se actualizan automáticamente vía señales
-        # Esta función puede usarse para actualizaciones adicionales si es necesario
+        """Updates the plots (called by timer)."""
+        # Plots are updated automatically via signals
+        # This function can be used for additional updates if needed
         pass
     
     def on_save_data(self):
-        """Guarda los datos registrados en un archivo CSV."""
+        """Saves logged data to a CSV file."""
         if not self.data_log:
-            QMessageBox.warning(self.window, "Sin Datos", "No hay datos para guardar.")
+            QMessageBox.warning(self.window, "No Data", "No data to save.")
             return
         
         if self.current_user is None:
-            QMessageBox.warning(self.window, "Usuario Requerido", 
-                              "No se ha establecido un usuario. Los datos no se guardarán.")
+            QMessageBox.warning(self.window, "User Required", 
+                              "No user has been set. Data will not be saved.")
             return
         
         try:
-            # Crear DataFrame
+            # Create DataFrame
             df = pd.DataFrame(self.data_log)
             
-            # Generar nombre de archivo con timestamp
+            # Generate filename with timestamp
             timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
             filename = f"eeg_data_{timestamp}.csv"
             
-            # Guardar en la carpeta del usuario
+            # Save in user folder
             filepath = os.path.join(self.user_folder, filename)
             df.to_csv(filepath, index=False)
             
             QMessageBox.information(
                 self.window, 
-                "Datos Guardados", 
-                f"Los datos se han guardado exitosamente en:\n{filepath}"
+                "Data Saved", 
+                f"Data has been saved successfully to:\n{filepath}"
             )
             
         except Exception as e:
             QMessageBox.critical(
                 self.window, 
-                "Error al Guardar", 
-                f"Error al guardar los datos:\n{str(e)}"
+                "Save Error", 
+                f"Error saving data:\n{str(e)}"
             )
     
     def run(self):
-        """Ejecuta la aplicación."""
+        """Runs the application."""
         self.window.show()
         return self.app.exec()
 
 
 def main():
-    """Función principal."""
+    """Main function."""
     app = EEGExperimentApp()
     sys.exit(app.run())
 

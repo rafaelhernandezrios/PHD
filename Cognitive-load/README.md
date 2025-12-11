@@ -1,61 +1,61 @@
-# Plataforma de Experimentación EEG - Carga Cognitiva
+# EEG Experimentation Platform - Cognitive Load
 
-Plataforma completa para experimentación EEG en tiempo real con análisis de carga cognitiva utilizando el dispositivo AURA.
+Complete platform for real-time EEG experimentation with cognitive load analysis using the AURA device.
 
-## 📋 Descripción
+## 📋 Description
 
-Sistema de adquisición y análisis de señales EEG diseñado para experimentos de carga cognitiva. La plataforma permite:
+EEG signal acquisition and analysis system designed for cognitive load experiments. The platform allows:
 
-- **Adquisición en tiempo real** de señales EEG vía LSL (Lab Streaming Layer)
-- **Procesamiento de señal** con filtrado digital y análisis espectral
-- **Protocolo experimental estructurado** con múltiples fases
-- **Visualización en tiempo real** de señales y métricas de carga cognitiva
-- **Tareas cognitivas integradas** (Stroop, lectura pasiva)
-- **Data logging** organizado por usuario
+- **Real-time acquisition** of EEG signals via LSL (Lab Streaming Layer)
+- **Signal processing** with digital filtering and spectral analysis
+- **Structured experimental protocol** with multiple phases
+- **Real-time visualization** of signals and cognitive load metrics
+- **Integrated cognitive tasks** (Stroop, passive reading)
+- **Data logging** organized by user
 
-## 🎯 Características Principales
+## 🎯 Main Features
 
-### Adquisición y Procesamiento
-- Conexión vía LSL al dispositivo AURA (8 canales, 250 Hz)
-- Filtrado digital: Notch 60 Hz + Pasabanda 1-40 Hz
-- Análisis espectral en tiempo real (Método de Welch)
-- Cálculo de bandpower: Theta (4-7 Hz) y Alpha (8-12 Hz)
-- Índice de carga cognitiva: Ratio Theta_Fz / Alpha_Pz
+### Acquisition and Processing
+- LSL connection to AURA device (8 channels, 250 Hz)
+- Digital filtering: Notch 60 Hz + Bandpass 1-40 Hz
+- Real-time spectral analysis (Welch's method)
+- Bandpower calculation: Theta (4-7 Hz) and Alpha (8-12 Hz)
+- Cognitive load index: Theta_Fz / Alpha_Pz ratio
 
-### Protocolo Experimental
-1. **Setup**: Verificación de calidad de señal
-2. **Baseline**: 90s ojos abiertos + 90s ojos cerrados
-3. **Baja Carga**: Lectura pasiva de texto (3 min)
-4. **Alta Carga**: Tarea Stroop (3 min)
-5. **Análisis**: Procesamiento y visualización de resultados
+### Experimental Protocol
+1. **Setup**: Signal quality verification
+2. **Baseline**: 90s eyes open + 90s eyes closed
+3. **Low Load**: Passive text reading (3 min)
+4. **High Load**: Stroop task (3 min)
+5. **Analysis**: Processing and visualization of results
 
-### Interfaz Gráfica
-- Dashboard científico con tema oscuro
-- Visualización de 8 canales EEG individuales
-- Gráfico en tiempo real del ratio de carga cognitiva
-- Tareas cognitivas integradas con feedback inmediato
+### Graphical Interface
+- Scientific dashboard with dark theme
+- Visualization of 8 individual EEG channels
+- Real-time cognitive load ratio graph
+- Integrated cognitive tasks with immediate feedback
 
-## 🚀 Instalación
+## 🚀 Installation
 
-### Requisitos
-- Python 3.9 o superior
-- Dispositivo AURA con drivers instalados
-- LSL (Lab Streaming Layer) configurado
+### Requirements
+- Python 3.9 or higher
+- AURA device with drivers installed
+- LSL (Lab Streaming Layer) configured
 
-### Pasos de Instalación
+### Installation Steps
 
-1. **Clonar el repositorio**
+1. **Clone the repository**
 ```bash
 git clone https://github.com/tu-usuario/Cognitive-load.git
 cd Cognitive-load
 ```
 
-2. **Crear entorno virtual**
+2. **Create virtual environment**
 ```bash
 python -m venv venv
 ```
 
-3. **Activar entorno virtual**
+3. **Activate virtual environment**
 
 **Windows (PowerShell):**
 ```powershell
@@ -72,137 +72,136 @@ venv\Scripts\activate.bat
 source venv/bin/activate
 ```
 
-4. **Instalar dependencias**
+4. **Install dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-## 📖 Uso
+## 📖 Usage
 
-### Ejecutar la Aplicación
+### Run the Application
 
 ```bash
 python main.py
 ```
 
-### Flujo de Uso
+### Usage Flow
 
-1. **Conectar Dispositivo**
-   - Asegúrate de que el dispositivo AURA esté encendido y transmitiendo vía LSL
-   - Haz clic en "Conectar AURA"
-   - Verifica que aparezca "Conectado" en verde
+1. **Connect Device**
+   - Make sure the AURA device is on and transmitting via LSL
+   - Click "Connect AURA"
+   - Verify that "Connected" appears in green
 
-2. **Iniciar Setup**
-   - Haz clic en "Iniciar Setup"
-   - Ingresa el nombre o ID del usuario cuando se solicite
-   - Verifica la calidad de la señal en los gráficos de los 8 canales
+2. **Start Setup**
+   - Click "Start Setup"
+   - Enter the user name or ID when prompted
+   - Check signal quality in the 8 channel plots
 
-3. **Ejecutar Protocolo**
-   - **Baseline**: Haz clic en "Iniciar Baseline"
-     - Mantén los ojos abiertos durante 90 segundos
-     - Luego cierra los ojos durante 90 segundos
-   - **Baja Carga**: Haz clic en "Iniciar Baja Carga"
-     - Lee el texto que aparece en pantalla de manera pasiva
-   - **Alta Carga**: Haz clic en "Iniciar Alta Carga"
-     - Realiza la tarea Stroop:
-       - Presiona **R** para Rojo
-       - Presiona **A** para Azul
-       - Presiona **V** para Verde
-       - Presiona **Y** para Amarillo
-       - Identifica el **COLOR de la tinta**, no la palabra escrita
+3. **Execute Protocol**
+   - **Baseline**: Click "Start Baseline"
+     - Keep your eyes open for 90 seconds
+     - Then close your eyes for 90 seconds
+   - **Low Load**: Click "Start Low Load"
+     - Read the text on screen passively
+   - **High Load**: Click "Start High Load"
+     - Perform the Stroop task:
+       - Press **R** for Red
+       - Press **B** for Blue
+       - Press **G** for Green
+       - Press **Y** for Yellow
+       - Identify the **COLOR of the ink**, not the written word
 
-4. **Guardar Datos**
-   - Al finalizar, haz clic en "Guardar Datos"
-   - Los datos se guardarán en `data_[nombre_usuario]/eeg_data_[timestamp].csv`
+4. **Save Data**
+   - When finished, click "Save Data"
+   - Data will be saved in `data_[user_name]/eeg_data_[timestamp].csv`
 
-## 📁 Estructura del Proyecto
+## 📁 Project Structure
 
 ```
 Cognitive-load/
-├── main.py                      # Punto de entrada de la aplicación
-├── signal_worker.py             # Worker thread para adquisición LSL
-├── experiment_logic.py           # Máquina de estados del protocolo
-├── ui_main.py                   # Interfaz gráfica PyQt5
-├── requirements.txt             # Dependencias del proyecto
-├── FLUJO_CARGA_COGNITIVA.md    # Documentación técnica detallada
-├── README.md                    # Este archivo
-├── .gitignore                   # Archivos ignorados por Git
-└── data_*/                      # Carpetas de datos por usuario (no versionadas)
-    └── eeg_data_*.csv           # Archivos CSV con datos experimentales
+├── main.py                      # Application entry point
+├── signal_worker.py             # Worker thread for LSL acquisition
+├── experiment_logic.py           # Protocol state machine
+├── ui_main.py                   # PyQt5 graphical interface
+├── requirements.txt             # Project dependencies
+├── FLUJO_CARGA_COGNITIVA.md    # Detailed technical documentation
+├── README.md                    # This file
+├── .gitignore                   # Files ignored by Git
+└── data_*/                      # User data folders (not versioned)
+    └── eeg_data_*.csv           # CSV files with experimental data
 ```
 
-## 📊 Formato de Datos
+## 📊 Data Format
 
-Los archivos CSV guardados contienen las siguientes columnas:
+The saved CSV files contain the following columns:
 
-- `timestamp`: Timestamp de la muestra
-- `phase`: Fase del experimento (setup, baseline_eyes_open, etc.)
-- `label`: Etiqueta descriptiva de la fase (setup, baseline_eyes_open, low_cognitive_load, high_cognitive_load, etc.)
-- `channel_0` a `channel_7`: Valores de los 8 canales EEG (filtrados, en unidades del dispositivo)
+- `timestamp`: Sample timestamp
+- `phase`: Experiment phase (setup, baseline_eyes_open, etc.)
+- `label`: Descriptive phase label (setup, baseline_eyes_open, low_cognitive_load, high_cognitive_load, etc.)
+- `channel_0` to `channel_7`: Values of the 8 EEG channels (filtered, in device units)
 
-## 🔧 Configuración Técnica
+## 🔧 Technical Configuration
 
-### Parámetros del Sistema
+### System Parameters
 
-| Parámetro | Valor |
+| Parameter | Value |
 |-----------|-------|
-| Tasa de muestreo | 250 Hz |
-| Canales EEG | 8 |
-| Filtro Notch | 60 Hz, Q=30 |
-| Filtro Pasabanda | 1-40 Hz, orden 4 |
-| Ventana de análisis | 2 segundos (500 muestras) |
-| Banda Theta | 4-7 Hz (Canal Fz) |
-| Banda Alpha | 8-12 Hz (Canal Pz) |
-| Frecuencia de cálculo | 1 Hz |
+| Sampling rate | 250 Hz |
+| EEG Channels | 8 |
+| Notch Filter | 60 Hz, Q=30 |
+| Bandpass Filter | 1-40 Hz, order 4 |
+| Analysis window | 2 seconds (500 samples) |
+| Theta Band | 4-7 Hz (Channel Fz) |
+| Alpha Band | 8-12 Hz (Channel Pz) |
+| Calculation frequency | 1 Hz |
 
-### Mapeo de Canales
+### Channel Mapping
 
-- **Canal 0**: Fz (Frontal) - Usado para análisis Theta
-- **Canal 1-3**: Canales adicionales
-- **Canal 4**: Pz (Parietal) - Usado para análisis Alpha
-- **Canal 5-7**: Canales adicionales
+- **Channel 0**: Fz (Frontal) - Used for Theta analysis
+- **Channel 1-3**: Additional channels
+- **Channel 4**: Pz (Parietal) - Used for Alpha analysis
+- **Channel 5-7**: Additional channels
 
-## 📚 Documentación
+## 📚 Documentation
 
-Para información técnica detallada sobre el flujo de procesamiento, consulta:
-- [FLUJO_CARGA_COGNITIVA.md](FLUJO_CARGA_COGNITIVA.md) - Documentación completa del sistema
+For detailed technical information about the processing flow, see:
+- [FLUJO_CARGA_COGNITIVA.md](FLUJO_CARGA_COGNITIVA.md) - Complete system documentation
 
-## 🛠️ Tecnologías Utilizadas
+## 🛠️ Technologies Used
 
 - **Python 3.9+**
-- **PyQt5** - Interfaz gráfica
-- **pyqtgraph** - Visualización en tiempo real
-- **NumPy** - Procesamiento numérico
-- **SciPy** - Filtros digitales y análisis espectral
-- **Pandas** - Manejo de datos y exportación CSV
-- **pylsl** - Comunicación con Lab Streaming Layer
+- **PyQt5** - Graphical interface
+- **pyqtgraph** - Real-time visualization
+- **NumPy** - Numerical processing
+- **SciPy** - Digital filters and spectral analysis
+- **Pandas** - Data handling and CSV export
+- **pylsl** - Communication with Lab Streaming Layer
 
-## 📝 Licencia
+## 📝 License
 
-Este proyecto está bajo la licencia MIT. Ver archivo `LICENSE` para más detalles.
+This project is under the MIT license. See `LICENSE` file for more details.
 
-## 👥 Contribuciones
+## 👥 Contributions
 
-Las contribuciones son bienvenidas. Por favor:
+Contributions are welcome. Please:
 
-1. Fork el proyecto
-2. Crea una rama para tu feature (`git checkout -b feature/AmazingFeature`)
-3. Commit tus cambios (`git commit -m 'Add some AmazingFeature'`)
-4. Push a la rama (`git push origin feature/AmazingFeature`)
-5. Abre un Pull Request
+1. Fork the project
+2. Create a branch for your feature (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## 📧 Contacto
+## 📧 Contact
 
-Para preguntas o soporte, por favor abre un issue en el repositorio.
+For questions or support, please open an issue in the repository.
 
-## 🙏 Agradecimientos
+## 🙏 Acknowledgments
 
-- Dispositivo AURA por la adquisición de señales EEG
-- Comunidad de Lab Streaming Layer (LSL)
-- Comunidad científica de neurotecnología
+- AURA device for EEG signal acquisition
+- Lab Streaming Layer (LSL) community
+- Neurotechnology scientific community
 
 ---
 
-**Versión:** 1.0  
-**Última actualización:** Diciembre 2024
-
+**Version:** 1.0  
+**Last update:** December 2024

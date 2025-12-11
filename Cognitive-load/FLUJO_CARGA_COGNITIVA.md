@@ -1,288 +1,288 @@
-# Flujo de Procesamiento: Adquisición EEG hasta Cálculo de Carga Cognitiva
+# Processing Flow: EEG Acquisition to Cognitive Load Calculation
 
-## Descripción General
+## General Description
 
-Este documento describe el flujo completo de procesamiento de señales EEG desde la adquisición del dispositivo AURA hasta el cálculo del índice de carga cognitiva en tiempo real.
+This document describes the complete flow of EEG signal processing from AURA device acquisition to real-time cognitive load index calculation.
 
 ---
 
-## 1. Adquisición de Datos (LSL Stream)
+## 1. Data Acquisition (LSL Stream)
 
-### 1.1 Conexión al Dispositivo AURA
+### 1.1 Connection to AURA Device
 
-**Archivo:** `signal_worker.py` - Método `connect_to_stream()`
+**File:** `signal_worker.py` - Method `connect_to_stream()`
 
-- **Protocolo:** Lab Streaming Layer (LSL)
-- **Búsqueda del stream:** `resolve_byprop('name', 'AURA', timeout=1.0)`
-- **Configuración del dispositivo:**
-  - **Nombre del stream:** "AURA"
-  - **Canales:** 8 canales EEG
-  - **Tasa de muestreo:** 250 Hz (250 muestras por segundo)
-  - **Formato de datos:** Valores en nanovolts (nV)
+- **Protocol:** Lab Streaming Layer (LSL)
+- **Stream search:** `resolve_byprop('name', 'AURA', timeout=1.0)`
+- **Device configuration:**
+  - **Stream name:** "AURA"
+  - **Channels:** 8 EEG channels
+  - **Sampling rate:** 250 Hz (250 samples per second)
+  - **Data format:** Values in nanovolts (nV)
 
-### 1.2 Adquisición Continua
+### 1.2 Continuous Acquisition
 
-**Archivo:** `signal_worker.py` - Método `run()`
+**File:** `signal_worker.py` - Method `run()`
 
-El loop principal adquiere datos continuamente:
+The main loop acquires data continuously:
 
 ```python
 while self.running:
     sample, timestamp = self.inlet.pull_sample(timeout=0.1)
 ```
 
-**Características:**
-- **Frecuencia:** 250 muestras/segundo (4 ms entre muestras)
-- **Formato de sample:** Lista con 8 valores (uno por canal)
-- **Valores típicos:** Rango de -70,000 a -156,000 nV (nanovolts)
-- **Timestamp:** Tiempo absoluto del sistema LSL
+**Characteristics:**
+- **Frequency:** 250 samples/second (4 ms between samples)
+- **Sample format:** List with 8 values (one per channel)
+- **Typical values:** Range from -70,000 to -156,000 nV (nanovolts)
+- **Timestamp:** Absolute time from LSL system
 
 ---
 
-## 2. Preprocesamiento de Señal
+## 2. Signal Preprocessing
 
-### 2.1 Conversión de Datos
+### 2.1 Data Conversion
 
-**Archivo:** `signal_worker.py` - Línea 229
+**File:** `signal_worker.py` - Line 229
 
 ```python
 sample_array = np.array(sample[:self.n_channels])
 ```
 
-- Convierte la lista de Python a array NumPy
-- Extrae los primeros 8 valores (uno por canal)
-- Shape resultante: `(8,)` - array 1D con 8 elementos
+- Converts Python list to NumPy array
+- Extracts first 8 values (one per channel)
+- Resulting shape: `(8,)` - 1D array with 8 elements
 
-### 2.2 Filtrado Digital
+### 2.2 Digital Filtering
 
-**Archivo:** `signal_worker.py` - Líneas 244-259
+**File:** `signal_worker.py` - Lines 244-259
 
-Se aplican dos filtros en cascada a cada muestra:
+Two filters are applied in cascade to each sample:
 
-#### A. Filtro Notch (60 Hz)
-- **Propósito:** Eliminar ruido de línea eléctrica (50/60 Hz)
-- **Tipo:** IIR Notch filter
-- **Frecuencia central:** 60 Hz
-- **Factor de calidad (Q):** 30.0
-- **Implementación:** `signal.iirnotch(60.0, 30.0, 250.0)`
+#### A. Notch Filter (60 Hz)
+- **Purpose:** Eliminate electrical line noise (50/60 Hz)
+- **Type:** IIR Notch filter
+- **Central frequency:** 60 Hz
+- **Quality factor (Q):** 30.0
+- **Implementation:** `signal.iirnotch(60.0, 30.0, 250.0)`
 
-#### B. Filtro Pasabanda (1-40 Hz)
-- **Propósito:** Eliminar componentes de frecuencia fuera del rango EEG relevante
-- **Tipo:** Butterworth de orden 4
-- **Banda de paso:** 1-40 Hz
-- **Implementación:** `signal.butter(4, [low, high], btype='band')`
-  - `low = 1.0 / nyquist` (normalizado)
-  - `high = 40.0 / nyquist` (normalizado)
+#### B. Bandpass Filter (1-40 Hz)
+- **Purpose:** Eliminate frequency components outside the relevant EEG range
+- **Type:** Butterworth order 4
+- **Passband:** 1-40 Hz
+- **Implementation:** `signal.butter(4, [low, high], btype='band')`
+  - `low = 1.0 / nyquist` (normalized)
+  - `high = 40.0 / nyquist` (normalized)
   - `nyquist = sample_rate / 2 = 125 Hz`
 
-**Procesamiento:**
-- Los filtros se aplican **muestra por muestra** (filtrado en tiempo real)
-- Se mantiene el estado interno (`zi_band`, `zi_notch`) para cada canal
-- Esto permite filtrado causal sin necesidad de buffer previo
+**Processing:**
+- Filters are applied **sample by sample** (real-time filtering)
+- Internal state (`zi_band`, `zi_notch`) is maintained for each channel
+- This allows causal filtering without needing a previous buffer
 
-**Resultado:** Señal filtrada lista para análisis espectral
+**Result:** Filtered signal ready for spectral analysis
 
 ---
 
-## 3. Almacenamiento en Buffer Circular
+## 3. Circular Buffer Storage
 
 ### 3.1 RingBuffer
 
-**Archivo:** `signal_worker.py` - Clase `RingBuffer`
+**File:** `signal_worker.py` - Class `RingBuffer`
 
-**Características:**
-- **Tipo:** Buffer circular (FIFO)
-- **Tamaño:** `buffer_samples * 2 = 500 * 2 = 1000 muestras`
-- **Duración:** ~4 segundos de datos (1000 muestras / 250 Hz)
-- **Estructura:** Array NumPy de shape `(1000, 8)`
+**Characteristics:**
+- **Type:** Circular buffer (FIFO)
+- **Size:** `buffer_samples * 2 = 500 * 2 = 1000 samples`
+- **Duration:** ~4 seconds of data (1000 samples / 250 Hz)
+- **Structure:** NumPy array of shape `(1000, 8)`
 
-**Operaciones:**
-- `append(data, timestamp)`: Añade nueva muestra
-- `get_window(window_samples)`: Obtiene ventana móvil de 2 segundos (500 muestras)
+**Operations:**
+- `append(data, timestamp)`: Adds new sample
+- `get_window(window_samples)`: Gets moving window of 2 seconds (500 samples)
 
-### 3.2 Almacenamiento de Datos Filtrados
+### 3.2 Filtered Data Storage
 
-**Archivo:** `signal_worker.py` - Línea 262
+**File:** `signal_worker.py` - Line 262
 
 ```python
 self.ring_buffer.append(filtered_sample, timestamp)
 ```
 
-- Almacena los datos **filtrados** (no los raw)
-- Mantiene los últimos 4 segundos de datos
-- Permite cálculo de análisis espectral en ventanas móviles
+- Stores **filtered** data (not raw)
+- Maintains last 4 seconds of data
+- Allows spectral analysis calculation in moving windows
 
 ---
 
-## 4. Optimización de Rendimiento
+## 4. Performance Optimization
 
-### 4.1 Buffer de Emisión
+### 4.1 Emission Buffer
 
-**Archivo:** `signal_worker.py` - Líneas 264-277
+**File:** `signal_worker.py` - Lines 264-277
 
-Para evitar saturar la cola de eventos de Qt:
+To avoid saturating Qt's event queue:
 
-- **Acumulación:** Se acumulan hasta 10 muestras antes de emitir
-- **Intervalo máximo:** Emite cada 40ms máximo (incluso con menos muestras)
-- **Frecuencia efectiva:** ~25 Hz en lugar de 250 Hz
+- **Accumulation:** Up to 20 samples accumulated before emitting
+- **Maximum interval:** Emits every 100ms maximum (even with fewer samples)
+- **Effective frequency:** ~10 Hz instead of 250 Hz
 
-**Resultado:** Reduce la carga en la interfaz gráfica sin perder información significativa
+**Result:** Reduces load on graphical interface without losing significant information
 
-### 4.2 Señales Emitidas
+### 4.2 Emitted Signals
 
-**Archivo:** `signal_worker.py` - Líneas 274-275
+**File:** `signal_worker.py` - Lines 274-275
 
 ```python
-self.raw_data_ready.emit(last_raw, last_ts)      # Datos sin filtrar
-self.data_ready.emit(last_filtered, last_ts)    # Datos filtrados
+self.raw_data_ready.emit(last_raw, last_ts)      # Unfiltered data
+self.data_ready.emit(last_filtered, last_ts)    # Filtered data
 ```
 
-- `raw_data_ready`: Para visualización de señales raw
-- `data_ready`: Para logging y análisis
+- `raw_data_ready`: For raw signal visualization
+- `data_ready`: For logging and analysis
 
 ---
 
-## 5. Visualización de Señales Raw
+## 5. Raw Signal Visualization
 
-### 5.1 Recepción en UI
+### 5.1 Reception in UI
 
-**Archivo:** `ui_main.py` - Método `update_raw_plot()`
+**File:** `ui_main.py` - Method `update_raw_plot()`
 
-**Proceso:**
-1. Recibe datos raw (sin filtrar) vía señal PyQt
-2. Aplica submuestreo: actualiza cada 2 muestras recibidas
-3. Convierte nanovolts a microvolts: `values_microvolts = raw_values / 1000.0`
+**Process:**
+1. Receives raw (unfiltered) data via PyQt signal
+2. Applies subsampling: updates every 5 received samples
+3. Converts nanovolts to microvolts: `values_microvolts = raw_values / 1000.0`
 
-### 5.2 Escalado y Offset
+### 5.2 Scaling and Offset
 
-**Archivo:** `ui_main.py` - Líneas 437-450
+**File:** `ui_main.py` - Lines 437-450
 
-**Conversión de unidades:**
-- **Entrada:** Nanovolts (nV) - rango típico: -70,000 a -156,000 nV
-- **Salida:** Microvolts (μV) - rango típico: -70 a -156 μV
-- **Fórmula:** `μV = nV / 1000`
+**Unit conversion:**
+- **Input:** Nanovolts (nV) - typical range: -70,000 to -156,000 nV
+- **Output:** Microvolts (μV) - typical range: -70 to -156 μV
+- **Formula:** `μV = nV / 1000`
 
-**Separación de canales:**
-- **Offset por canal:** 200 μV entre cada canal
-- **Canal 0:** Offset = 0 μV
-- **Canal 1:** Offset = 200 μV
-- **Canal 2:** Offset = 400 μV
+**Channel separation:**
+- **Offset per channel:** 200 μV between each channel
+- **Channel 0:** Offset = 0 μV
+- **Channel 1:** Offset = 200 μV
+- **Channel 2:** Offset = 400 μV
 - ...
-- **Canal 7:** Offset = 1400 μV
+- **Channel 7:** Offset = 1400 μV
 
-**Visualización:**
-- Cada canal se grafica con un color diferente
-- Los canales están separados verticalmente para evitar solapamiento
-- Rango Y del gráfico: -300 a 1500 μV
+**Visualization:**
+- Each channel is plotted with a different color
+- Channels are separated vertically to avoid overlap
+- Y-axis range of plot: -300 to 1500 μV
 
 ---
 
-## 6. Cálculo de Bandpower Espectral
+## 6. Spectral Bandpower Calculation
 
-### 6.1 Extracción de Ventana Temporal
+### 6.1 Temporal Window Extraction
 
-**Archivo:** `signal_worker.py` - Método `get_cognitive_load_ratio()`
+**File:** `signal_worker.py` - Method `get_cognitive_load_ratio()`
 
 ```python
 window_data = self.ring_buffer.get_window(self.buffer_samples)
 ```
 
-- **Tamaño de ventana:** 500 muestras = 2 segundos (a 250 Hz)
-- **Datos:** Señal filtrada (1-40 Hz, sin 60 Hz)
-- **Shape:** `(500, 8)` - 500 muestras × 8 canales
+- **Window size:** 500 samples = 2 seconds (at 250 Hz)
+- **Data:** Filtered signal (1-40 Hz, without 60 Hz)
+- **Shape:** `(500, 8)` - 500 samples × 8 channels
 
-### 6.2 Selección de Canales
+### 6.2 Channel Selection
 
-**Archivo:** `signal_worker.py` - Líneas 196-198
+**File:** `signal_worker.py` - Lines 196-198
 
 ```python
-fz_signal = window_data[:, self.fz_channel]  # Canal 0 (Fz - frontal)
-pz_signal = window_data[:, self.pz_channel]  # Canal 4 (Pz - parietal)
+fz_signal = window_data[:, self.fz_channel]  # Channel 0 (Fz - frontal)
+pz_signal = window_data[:, self.pz_channel]  # Channel 4 (Pz - parietal)
 ```
 
-**Mapeo de canales:**
-- **Canal 0 (Fz):** Electrodo frontal - usado para banda Theta
-- **Canal 4 (Pz):** Electrodo parietal - usado para banda Alpha
+**Channel mapping:**
+- **Channel 0 (Fz):** Frontal electrode - used for Theta band
+- **Channel 4 (Pz):** Parietal electrode - used for Alpha band
 
-### 6.3 Método de Welch para Estimación Espectral
+### 6.3 Welch's Method for Spectral Estimation
 
-**Archivo:** `signal_worker.py` - Método `calculate_bandpower()`
+**File:** `signal_worker.py` - Method `calculate_bandpower()`
 
-**Parámetros:**
-- **Método:** Welch's periodogram
-- **Ventana:** `nperseg = min(len(signal_data), sample_rate) = 250 muestras`
-- **Solapamiento:** `noverlap = nperseg // 2 = 125 muestras`
-- **Resolución frecuencial:** ~1 Hz
+**Parameters:**
+- **Method:** Welch's periodogram
+- **Window:** `nperseg = min(len(signal_data), sample_rate) = 250 samples`
+- **Overlap:** `noverlap = nperseg // 2 = 125 samples`
+- **Frequency resolution:** ~1 Hz
 
-**Proceso:**
-1. Divide la señal en segmentos solapados
-2. Calcula FFT de cada segmento
-3. Promedia los periodogramas
-4. Obtiene Power Spectral Density (PSD) en μV²/Hz
+**Process:**
+1. Divides signal into overlapping segments
+2. Calculates FFT of each segment
+3. Averages periodograms
+4. Obtains Power Spectral Density (PSD) in μV²/Hz
 
-**Resultado:** `freqs, psd` - Frecuencias y densidad espectral de potencia
+**Result:** `freqs, psd` - Frequencies and power spectral density
 
-### 6.4 Cálculo de Potencia en Bandas
+### 6.4 Band Power Calculation
 
-**Archivo:** `signal_worker.py` - Líneas 177-180
+**File:** `signal_worker.py` - Lines 177-180
 
-**Bandas de frecuencia:**
+**Frequency bands:**
 
-#### Banda Theta (4-7 Hz)
-- **Canal:** Fz (frontal)
-- **Rango:** 4.0 a 7.0 Hz
-- **Cálculo:**
+#### Theta Band (4-7 Hz)
+- **Channel:** Fz (frontal)
+- **Range:** 4.0 to 7.0 Hz
+- **Calculation:**
   ```python
   idx_band = np.logical_and(freqs >= 4.0, freqs <= 7.0)
   theta_power = np.trapz(psd[idx_band], freqs[idx_band])
   ```
-- **Unidades:** μV² (integral de PSD sobre la banda)
+- **Units:** μV² (integral of PSD over the band)
 
-#### Banda Alpha (8-12 Hz)
-- **Canal:** Pz (parietal)
-- **Rango:** 8.0 a 12.0 Hz
-- **Cálculo:**
+#### Alpha Band (8-12 Hz)
+- **Channel:** Pz (parietal)
+- **Range:** 8.0 to 12.0 Hz
+- **Calculation:**
   ```python
   idx_band = np.logical_and(freqs >= 8.0, freqs <= 12.0)
   alpha_power = np.trapz(psd[idx_band], freqs[idx_band])
   ```
-- **Unidades:** μV² (integral de PSD sobre la banda)
+- **Units:** μV² (integral of PSD over the band)
 
-**Método de integración:** Regla del trapecio (`np.trapz`) para calcular el área bajo la curva PSD en cada banda.
+**Integration method:** Trapezoidal rule (`np.trapz`) to calculate the area under the PSD curve in each band.
 
 ---
 
-## 7. Cálculo del Índice de Carga Cognitiva
+## 7. Cognitive Load Index Calculation
 
-### 7.1 Fórmula del Ratio
+### 7.1 Ratio Formula
 
-**Archivo:** `signal_worker.py` - Líneas 207-209
+**File:** `signal_worker.py` - Lines 207-209
 
 ```python
 ratio = theta_power / alpha_power
 ```
 
-**Fórmula matemática:**
+**Mathematical formula:**
 
 \[
 \text{Cognitive Load Ratio} = \frac{\text{Theta Power}_{Fz}}{\text{Alpha Power}_{Pz}}
 \]
 
-### 7.2 Interpretación
+### 7.2 Interpretation
 
-**Valores del ratio:**
-- **Ratio > 1:** Mayor potencia Theta relativa → **Mayor carga cognitiva**
-- **Ratio < 1:** Mayor potencia Alpha relativa → **Menor carga cognitiva**
-- **Ratio ≈ 1:** Carga cognitiva moderada
+**Ratio values:**
+- **Ratio > 1:** Higher relative Theta power → **Higher cognitive load**
+- **Ratio < 1:** Higher relative Alpha power → **Lower cognitive load**
+- **Ratio ≈ 1:** Moderate cognitive load
 
-**Justificación neurofisiológica:**
-- **Theta (4-7 Hz) en Fz:** Asociado con esfuerzo mental, atención sostenida, memoria de trabajo
-- **Alpha (8-12 Hz) en Pz:** Asociado con relajación, procesamiento pasivo, estado de reposo
-- **Ratio Theta/Alpha:** Indicador robusto de carga cognitiva en tareas de atención
+**Neurophysiological justification:**
+- **Theta (4-7 Hz) in Fz:** Associated with mental effort, sustained attention, working memory
+- **Alpha (8-12 Hz) in Pz:** Associated with relaxation, passive processing, rest state
+- **Theta/Alpha Ratio:** Robust indicator of cognitive load in attention tasks
 
-### 7.3 Validación
+### 7.3 Validation
 
-**Archivo:** `signal_worker.py` - Línea 207
+**File:** `signal_worker.py` - Line 207
 
 ```python
 if alpha_power > 0:
@@ -290,147 +290,146 @@ if alpha_power > 0:
     return ratio, theta_power, alpha_power
 ```
 
-- Verifica que `alpha_power > 0` para evitar división por cero
-- Retorna `None` si no hay suficientes datos o alpha_power es cero
+- Verifies that `alpha_power > 0` to avoid division by zero
+- Returns `None` if there's not enough data or alpha_power is zero
 
 ---
 
-## 8. Actualización en Tiempo Real
+## 8. Real-Time Update
 
-### 8.1 Timer de Cálculo
+### 8.1 Calculation Timer
 
-**Archivo:** `main.py` - Líneas 68-70
+**File:** `main.py` - Lines 68-70
 
 ```python
 self.ratio_timer = QTimer()
 self.ratio_timer.timeout.connect(self.calculate_and_update_ratio)
-self.ratio_timer.start(1000)  # Cada 1 segundo
+self.ratio_timer.start(1000)  # Every 1 second
 ```
 
-**Frecuencia de actualización:**
-- **Cálculo del ratio:** Cada 1 segundo
-- **Ventana de análisis:** 2 segundos (500 muestras)
-- **Solapamiento:** 50% entre ventanas consecutivas
+**Update frequency:**
+- **Ratio calculation:** Every 1 second
+- **Analysis window:** 2 seconds (500 samples)
+- **Overlap:** 50% between consecutive windows
 
-### 8.2 Flujo de Actualización
+### 8.2 Update Flow
 
-**Archivo:** `main.py` - Método `calculate_and_update_ratio()`
+**File:** `main.py` - Method `calculate_and_update_ratio()`
 
-1. **Timer dispara** cada 1 segundo
-2. **Llama a** `signal_worker.get_cognitive_load_ratio()`
-3. **Obtiene** ventana de 2 segundos del buffer circular
-4. **Calcula** bandpower Theta y Alpha
-5. **Calcula** ratio = Theta / Alpha
-6. **Emite** resultado a la UI para visualización
+1. **Timer triggers** every 1 second
+2. **Calls** `signal_worker.get_cognitive_load_ratio()`
+3. **Gets** 2-second window from circular buffer
+4. **Calculates** Theta and Alpha bandpower
+5. **Calculates** ratio = Theta / Alpha
+6. **Emits** result to UI for visualization
 
-### 8.3 Visualización del Ratio
+### 8.3 Ratio Visualization
 
-**Archivo:** `ui_main.py` - Método `update_ratio_plot()`
+**File:** `ui_main.py` - Method `update_ratio_plot()`
 
-- **Gráfico:** Línea temporal del ratio
-- **Actualización:** Cada vez que se calcula un nuevo ratio
-- **Buffer:** Últimos 300 puntos (~5 minutos a 1 Hz)
-- **Eje X:** Tiempo relativo (segundos desde el presente)
-- **Eje Y:** Valor del ratio (adimensional)
+- **Plot:** Temporal line of ratio
+- **Update:** Every time a new ratio is calculated
+- **Buffer:** Last 300 points (~5 minutes at 1 Hz)
+- **X-axis:** Relative time (seconds from present)
+- **Y-axis:** Ratio value (dimensionless)
 
 ---
 
-## 9. Resumen del Flujo Completo
+## 9. Complete Flow Summary
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ 1. ADQUISICIÓN LSL                                           │
+│ 1. LSL ACQUISITION                                           │
 │    AURA → LSL Stream → pull_sample()                         │
-│    Frecuencia: 250 Hz                                        │
-│    Formato: 8 canales en nanovolts                           │
+│    Frequency: 250 Hz                                          │
+│    Format: 8 channels in nanovolts                           │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 2. PREPROCESAMIENTO                                          │
-│    • Conversión a NumPy array                                 │
-│    • Filtro Notch 60 Hz                                       │
-│    • Filtro Pasabanda 1-40 Hz                                │
+│ 2. PREPROCESSING                                             │
+│    • Conversion to NumPy array                                │
+│    • Notch filter 60 Hz                                       │
+│    • Bandpass filter 1-40 Hz                                │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ▼
 ┌─────────────────────────────────────────────────────────────┐
-│ 3. ALMACENAMIENTO                                            │
-│    • RingBuffer circular (1000 muestras = 4 seg)            │
-│    • Mantiene estado de filtros                              │
+│ 3. STORAGE                                                   │
+│    • Circular RingBuffer (1000 samples = 4 sec)            │
+│    • Maintains filter state                                  │
 └──────────────────────┬──────────────────────────────────────┘
                        │
                        ├─────────────────┐
                        ▼                 ▼
         ┌──────────────────────┐  ┌──────────────────────┐
-        │ 4. VISUALIZACIÓN     │  │ 5. ANÁLISIS          │
-        │    Raw signals       │  │    Espectral         │
-        │    (8 canales)       │  │    • Welch PSD       │
-        └──────────────────────┘  │    • Bandpower       │
+        │ 4. VISUALIZATION     │  │ 5. ANALYSIS          │
+        │    Raw signals       │  │    Spectral          │
+        │    (8 channels)      │  │    • Welch PSD       │
+        └──────────────────────┘  │    • Bandpower        │
                                   └──────────┬───────────┘
                                              │
                                              ▼
                                   ┌──────────────────────┐
-                                  │ 6. CÁLCULO RATIO     │
+                                  │ 6. RATIO CALCULATION │
                                   │    Theta_Fz /        │
                                   │    Alpha_Pz           │
                                   └──────────┬───────────┘
                                              │
                                              ▼
                                   ┌──────────────────────┐
-                                  │ 7. VISUALIZACIÓN    │
-                                  │    Ratio temporal    │
-                                  │    (actualización    │
-                                  │     cada 1 segundo)  │
+                                  │ 7. VISUALIZATION     │
+                                  │    Temporal ratio     │
+                                  │    (update            │
+                                  │     every 1 second)   │
                                   └──────────────────────┘
 ```
 
 ---
 
-## 10. Parámetros Técnicos Clave
+## 10. Key Technical Parameters
 
-| Parámetro | Valor | Descripción |
+| Parameter | Value | Description |
 |-----------|-------|-------------|
-| **Tasa de muestreo** | 250 Hz | Muestras por segundo del dispositivo |
-| **Número de canales** | 8 | Canales EEG simultáneos |
-| **Filtro Notch** | 60 Hz, Q=30 | Eliminación de ruido de línea |
-| **Filtro Pasabanda** | 1-40 Hz, orden 4 | Rango de frecuencias EEG |
-| **Ventana de análisis** | 2 segundos (500 muestras) | Para cálculo de bandpower |
-| **Banda Theta** | 4-7 Hz | Canal Fz (frontal) |
-| **Banda Alpha** | 8-12 Hz | Canal Pz (parietal) |
-| **Frecuencia de cálculo** | 1 Hz | Cada segundo se actualiza el ratio |
-| **Método espectral** | Welch's periodogram | Estimación de PSD |
-| **Ventana Welch** | 250 muestras (1 segundo) | Tamaño de segmento |
-| **Solapamiento Welch** | 50% (125 muestras) | Entre segmentos |
+| **Sampling rate** | 250 Hz | Samples per second from device |
+| **Number of channels** | 8 | Simultaneous EEG channels |
+| **Notch Filter** | 60 Hz, Q=30 | Electrical line noise elimination |
+| **Bandpass Filter** | 1-40 Hz, order 4 | EEG frequency range |
+| **Analysis window** | 2 seconds (500 samples) | For bandpower calculation |
+| **Theta Band** | 4-7 Hz | Channel Fz (frontal) |
+| **Alpha Band** | 8-12 Hz | Channel Pz (parietal) |
+| **Calculation frequency** | 1 Hz | Ratio updates every second |
+| **Spectral method** | Welch's periodogram | PSD estimation |
+| **Welch window** | 250 samples (1 second) | Segment size |
+| **Welch overlap** | 50% (125 samples) | Between segments |
 
 ---
 
-## 11. Consideraciones de Rendimiento
+## 11. Performance Considerations
 
-### 11.1 Optimizaciones Implementadas
+### 11.1 Implemented Optimizations
 
-1. **Buffer de emisión:** Reduce señales de 250 Hz a ~25 Hz
-2. **Submuestreo en UI:** Actualiza gráficos cada 2 muestras
-3. **Submuestreo en logging:** Guarda cada 5 muestras (50 Hz)
-4. **Timers ajustados:** Gráficos a 10 FPS, ratio a 1 Hz
+1. **Emission buffer:** Reduces signals from 250 Hz to ~10 Hz
+2. **UI subsampling:** Updates plots every 5 samples
+3. **Logging subsampling:** Saves every 5 samples (50 Hz)
+4. **Adjusted timers:** Plots at ~5 FPS, ratio at 1 Hz
 
-### 11.2 Uso de Memoria
+### 11.2 Memory Usage
 
-- **RingBuffer:** ~32 KB (1000 muestras × 8 canales × 4 bytes)
-- **Buffers de gráficos:** ~40 KB por gráfico
-- **Logging:** Depende de duración del experimento (submuestreado)
+- **RingBuffer:** ~32 KB (1000 samples × 8 channels × 4 bytes)
+- **Plot buffers:** ~40 KB per plot
+- **Logging:** Depends on experiment duration (subsampled)
 
 ---
 
-## 12. Referencias Técnicas
+## 12. Technical References
 
-- **LSL (Lab Streaming Layer):** Protocolo de streaming de datos biomédicos
+- **LSL (Lab Streaming Layer):** Biomedical data streaming protocol
 - **Welch's Method:** Welch, P. D. (1967). "The use of fast Fourier transform for the estimation of power spectra"
-- **Filtros Digitales:** Oppenheim & Schafer, "Discrete-Time Signal Processing"
-- **Bandas EEG:** Klimesch, W. (1999). "EEG alpha and theta oscillations reflect cognitive and memory performance"
+- **Digital Filters:** Oppenheim & Schafer, "Discrete-Time Signal Processing"
+- **EEG Bands:** Klimesch, W. (1999). "EEG alpha and theta oscillations reflect cognitive and memory performance"
 
 ---
 
-**Última actualización:** Diciembre 2025 
-**Versión del sistema:** 1.0
-
+**Last update:** December 2025 
+**System version:** 1.0

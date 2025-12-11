@@ -1,7 +1,7 @@
 """
 ui_main.py
-Interfaz gráfica principal de la plataforma de experimentación EEG.
-Utiliza PyQt6 con diseño oscuro tipo dashboard científico.
+Main graphical interface for the EEG experimentation platform.
+Uses PyQt5 with dark scientific dashboard design.
 """
 
 import numpy as np
@@ -18,31 +18,31 @@ from collections import deque
 
 class StroopTask(QWidget):
     """
-    Widget para la tarea Stroop (Alta Carga Cognitiva).
-    El usuario debe identificar el COLOR de la tinta, no la palabra escrita.
+    Widget for the Stroop task (High Cognitive Load).
+    The user must identify the COLOR of the ink, not the written word.
     """
     
-    response_signal = pyqtSignal(bool)  # True si respuesta correcta, False si incorrecta
+    response_signal = pyqtSignal(bool)  # True if correct answer, False if incorrect
     
     def __init__(self):
         super().__init__()
         self.colors = {
-            'ROJO': '#ff4444',
-            'AZUL': '#4444ff',
-            'VERDE': '#44ff44',
-            'AMARILLO': '#ffff44'
+            'RED': '#ff4444',
+            'BLUE': '#4444ff',
+            'GREEN': '#44ff44',
+            'YELLOW': '#ffff44'
         }
         self.color_keys = {
-            Qt.Key_R: 'ROJO',
-            Qt.Key_A: 'AZUL',
-            Qt.Key_V: 'VERDE',
-            Qt.Key_Y: 'AMARILLO'
+            Qt.Key_R: 'RED',
+            Qt.Key_B: 'BLUE',
+            Qt.Key_G: 'GREEN',
+            Qt.Key_Y: 'YELLOW'
         }
-        self.color_names_spanish = {
-            'ROJO': 'R',
-            'AZUL': 'A',
-            'VERDE': 'V',
-            'AMARILLO': 'Y'
+        self.color_names = {
+            'RED': 'R',
+            'BLUE': 'B',
+            'GREEN': 'G',
+            'YELLOW': 'Y'
         }
         self.trial_count = 0
         self.correct_count = 0
@@ -61,11 +61,11 @@ class StroopTask(QWidget):
         self.generate_stimulus()
     
     def init_ui(self):
-        """Inicializa la interfaz de la tarea Stroop."""
+        """Initializes the Stroop task interface."""
         layout = QVBoxLayout()
         
-        # Título
-        title = QLabel("Tarea Stroop")
+        # Title
+        title = QLabel("Stroop Task")
         title.setAlignment(Qt.AlignCenter)
         title_font = QFont()
         title_font.setPointSize(22)
@@ -74,10 +74,10 @@ class StroopTask(QWidget):
         title.setStyleSheet("color: #00ff88; margin: 10px;")
         layout.addWidget(title)
         
-        # Instrucciones
+        # Instructions
         instructions = QLabel(
-            "Presione la tecla del COLOR de la tinta, NO la palabra escrita:\n"
-            "R = Rojo | A = Azul | V = Verde | Y = Amarillo"
+            "Press the key for the COLOR of the ink, NOT the written word:\n"
+            "R = Red | B = Blue | G = Green | Y = Yellow"
         )
         instructions.setAlignment(Qt.AlignCenter)
         instructions_font = QFont()
@@ -86,7 +86,7 @@ class StroopTask(QWidget):
         instructions.setStyleSheet("color: #cccccc; margin: 10px; font-size: 18px;")
         layout.addWidget(instructions)
         
-        # Área de estímulo
+        # Stimulus area
         self.stimulus_label = QLabel("")
         self.stimulus_label.setAlignment(Qt.AlignCenter)
         stimulus_font = QFont()
@@ -111,9 +111,9 @@ class StroopTask(QWidget):
         self.feedback_label.setStyleSheet("color: #ffaa00; margin: 10px; font-size: 20px;")
         layout.addWidget(self.feedback_label)
         
-        # Estadísticas
+        # Statistics
         stats_layout = QVBoxLayout()
-        self.stats_label = QLabel("Aciertos: 0 / Respuestas: 0")
+        self.stats_label = QLabel("Correct: 0 / Responses: 0")
         self.stats_label.setAlignment(Qt.AlignCenter)
         stats_font = QFont()
         stats_font.setPointSize(16)
@@ -121,7 +121,7 @@ class StroopTask(QWidget):
         self.stats_label.setStyleSheet("color: #888888;")
         stats_layout.addWidget(self.stats_label)
         
-        self.congruency_label = QLabel("Congruentes: 0 | Incongruentes: 0")
+        self.congruency_label = QLabel("Congruent: 0 | Incongruent: 0")
         self.congruency_label.setAlignment(Qt.AlignCenter)
         self.congruency_label.setFont(stats_font)
         self.congruency_label.setStyleSheet("color: #888888;")
@@ -132,43 +132,43 @@ class StroopTask(QWidget):
         self.setLayout(layout)
     
     def start_stimulus_timer(self):
-        """Inicia el timer para cambio automático de estímulos."""
+        """Starts the timer for automatic stimulus changes."""
         self.stimulus_timer.start(self.stimulus_interval)
     
     def stop_stimulus_timer(self):
-        """Detiene el timer de estímulos."""
+        """Stops the stimulus timer."""
         self.stimulus_timer.stop()
     
     def on_stimulus_timeout(self):
-        """Callback cuando el timer de estímulo expira."""
+        """Callback when the stimulus timer expires."""
         if self.waiting_for_response:
-            # Timeout - no respuesta
+            # Timeout - no response
             self.check_response(None)
     
     def generate_stimulus(self):
-        """Genera un nuevo estímulo Stroop."""
-        # Detener timer mientras se procesa
+        """Generates a new Stroop stimulus."""
+        # Stop timer while processing
         self.stop_stimulus_timer()
         self.waiting_for_response = False
         
-        # Decidir si será congruente o incongruente (70% incongruentes para más carga)
-        self.is_congruent = np.random.random() < 0.3  # 30% congruentes, 70% incongruentes
+        # Decide if it will be congruent or incongruent (70% incongruent for more load)
+        self.is_congruent = np.random.random() < 0.3  # 30% congruent, 70% incongruent
         
-        # Seleccionar palabra y color
+        # Select word and color
         word_options = list(self.colors.keys())
         self.current_word = np.random.choice(word_options)
         
         if self.is_congruent:
-            # Congruente: palabra y color coinciden
+            # Congruent: word and color match
             self.current_color = self.current_word
             self.congruent_count += 1
         else:
-            # Incongruente: palabra y color NO coinciden
+            # Incongruent: word and color do NOT match
             color_options = [c for c in word_options if c != self.current_word]
             self.current_color = np.random.choice(color_options)
             self.incongruent_count += 1
         
-        # Mostrar estímulo con el color correspondiente
+        # Show stimulus with corresponding color
         color_hex = self.colors[self.current_color]
         self.stimulus_label.setText(self.current_word)
         self.stimulus_label.setStyleSheet(
@@ -183,87 +183,87 @@ class StroopTask(QWidget):
         self.trial_count += 1
         self.waiting_for_response = True
         
-        # Limpiar feedback anterior
+        # Clear previous feedback
         self.feedback_label.setText("")
         
-        # Reiniciar el timer
+        # Restart timer
         self.start_stimulus_timer()
     
     def check_response(self, pressed_key):
         """
-        Verifica si la respuesta del usuario fue correcta.
+        Checks if the user's response was correct.
         
         Args:
-            pressed_key: Qt.Key de la tecla presionada, o None si fue timeout
+            pressed_key: Qt.Key of the pressed key, or None if timeout
         """
-        # Detener el timer ya que se procesó una respuesta
+        # Stop timer since a response was processed
         self.stop_stimulus_timer()
         self.waiting_for_response = False
         
         if pressed_key is None:
-            # Timeout - no respuesta
-            self.feedback_label.setText("⏱ Sin respuesta")
+            # Timeout - no response
+            self.feedback_label.setText("⏱ No response")
             self.feedback_label.setStyleSheet("color: #ffaa00; margin: 10px; font-size: 20px;")
             self.total_responses += 1
-            self.stats_label.setText(f"Aciertos: {self.correct_count} / Respuestas: {self.total_responses}")
-            # Generar nuevo estímulo después de timeout
+            self.stats_label.setText(f"Correct: {self.correct_count} / Responses: {self.total_responses}")
+            # Generate new stimulus after timeout
             QTimer.singleShot(500, self.generate_stimulus)
             return
         
-        # Verificar si la tecla presionada corresponde al color correcto
+        # Check if the pressed key corresponds to the correct color
         if pressed_key in self.color_keys:
             selected_color = self.color_keys[pressed_key]
             is_correct = selected_color == self.current_color
             
             if is_correct:
                 self.correct_count += 1
-                self.feedback_label.setText("✓ Correcto")
+                self.feedback_label.setText("✓ Correct")
                 self.feedback_label.setStyleSheet("color: #00ff88; margin: 10px; font-size: 20px;")
                 self.response_signal.emit(True)
             else:
-                self.feedback_label.setText(f"✗ Incorrecto (Era {self.color_names_spanish[self.current_color]})")
+                self.feedback_label.setText(f"✗ Incorrect (Was {self.color_names[self.current_color]})")
                 self.feedback_label.setStyleSheet("color: #ff4444; margin: 10px; font-size: 20px;")
                 self.response_signal.emit(False)
             
             self.total_responses += 1
-            self.stats_label.setText(f"Aciertos: {self.correct_count} / Respuestas: {self.total_responses}")
+            self.stats_label.setText(f"Correct: {self.correct_count} / Responses: {self.total_responses}")
             self.congruency_label.setText(
-                f"Congruentes: {self.congruent_count} | Incongruentes: {self.incongruent_count}"
+                f"Congruent: {self.congruent_count} | Incongruent: {self.incongruent_count}"
             )
             
-            # Generar nuevo estímulo después de mostrar feedback
+            # Generate new stimulus after showing feedback
             QTimer.singleShot(500, self.generate_stimulus)
         else:
-            # Tecla no válida, ignorar
+            # Invalid key, ignore
             pass
     
     def keyPressEvent(self, event: QKeyEvent):
-        """Maneja las teclas presionadas durante la tarea."""
+        """Handles keys pressed during the task."""
         if self.waiting_for_response:
             if event.key() in self.color_keys:
-                # Detener el timer y procesar respuesta inmediatamente
+                # Stop timer and process response immediately
                 self.stop_stimulus_timer()
                 self.check_response(event.key())
         else:
             super().keyPressEvent(event)
     
     def focusInEvent(self, event):
-        """Asegura que el widget reciba eventos de teclado."""
+        """Ensures the widget receives keyboard events."""
         self.setFocus()
         super().focusInEvent(event)
 
 
 class NBackTask(QWidget):
     """
-    Widget para la tarea N-Back (Alta Carga Cognitiva).
-    Implementa una versión visual de N-Back.
+    Widget for the N-Back task (High Cognitive Load).
+    Implements a visual version of N-Back.
     """
     
-    response_signal = pyqtSignal(bool)  # True si respuesta correcta, False si incorrecta
+    response_signal = pyqtSignal(bool)  # True if correct answer, False if incorrect
     
     def __init__(self, n_level=2):
         super().__init__()
-        self.n_level = n_level  # N-Back level (ej: 2-Back)
+        self.n_level = n_level  # N-Back level (e.g., 2-Back)
         self.stimulus_history = deque(maxlen=n_level + 1)
         self.current_stimulus = None
         self.trial_count = 0
@@ -278,11 +278,11 @@ class NBackTask(QWidget):
         self.start_stimulus_timer()
     
     def init_ui(self):
-        """Inicializa la interfaz de la tarea N-Back."""
+        """Initializes the N-Back task interface."""
         layout = QVBoxLayout()
         
-        # Título
-        title = QLabel(f"Tarea {self.n_level}-Back")
+        # Title
+        title = QLabel(f"{self.n_level}-Back Task")
         title.setAlignment(Qt.AlignCenter)
         title_font = QFont()
         title_font.setPointSize(22)
@@ -291,9 +291,9 @@ class NBackTask(QWidget):
         title.setStyleSheet("color: #00ff88; margin: 10px;")
         layout.addWidget(title)
         
-        # Instrucciones
+        # Instructions
         instructions = QLabel(
-            f"Presione ESPACIO cuando el número coincida con el de {self.n_level} posiciones atrás"
+            f"Press SPACE when the number matches the one {self.n_level} positions back"
         )
         instructions.setAlignment(Qt.AlignCenter)
         instructions.setStyleSheet("color: #cccccc; margin: 5px;")
@@ -322,9 +322,9 @@ class NBackTask(QWidget):
         self.feedback_label.setStyleSheet("color: #ffaa00; margin: 10px;")
         layout.addWidget(self.feedback_label)
         
-        # Estadísticas
+        # Statistics
         stats_layout = QHBoxLayout()
-        self.stats_label = QLabel("Aciertos: 0 / Respuestas: 0")
+        self.stats_label = QLabel("Correct: 0 / Responses: 0")
         self.stats_label.setAlignment(Qt.AlignCenter)
         self.stats_label.setStyleSheet("color: #888888;")
         stats_layout.addWidget(self.stats_label)
@@ -334,114 +334,114 @@ class NBackTask(QWidget):
         self.setLayout(layout)
     
     def start_stimulus_timer(self):
-        """Inicia el timer para cambio automático de estímulos."""
+        """Starts the timer for automatic stimulus changes."""
         self.stimulus_timer.start(self.stimulus_interval)
     
     def stop_stimulus_timer(self):
-        """Detiene el timer de estímulos."""
+        """Stops the stimulus timer."""
         self.stimulus_timer.stop()
     
     def on_stimulus_timeout(self):
-        """Callback cuando el timer de estímulo expira."""
-        # Si no se presionó espacio, se considera como "no respuesta"
+        """Callback when the stimulus timer expires."""
+        # If space was not pressed, it's considered "no response"
         if len(self.stimulus_history) >= self.n_level:
-            self.check_response(False)  # No se presionó espacio
+            self.check_response(False)  # Space was not pressed
         else:
-            # Si aún no hay suficientes estímulos, solo generar el siguiente
-            # sin evaluar respuesta
+            # If there aren't enough stimuli yet, just generate the next one
+            # without evaluating response
             self.generate_stimulus()
     
     def generate_stimulus(self):
-        """Genera un nuevo estímulo (número del 1 al 9)."""
-        # Detener timer mientras se procesa
+        """Generates a new stimulus (number from 1 to 9)."""
+        # Stop timer while processing
         self.stop_stimulus_timer()
         
-        # Añadir el estímulo actual al historial antes de generar uno nuevo
+        # Add current stimulus to history before generating a new one
         if self.current_stimulus is not None:
             self.stimulus_history.append(self.current_stimulus)
         
-        # Generar nuevo estímulo
+        # Generate new stimulus
         self.current_stimulus = np.random.randint(1, 10)
         self.stimulus_label.setText(str(self.current_stimulus))
         self.trial_count += 1
         
-        # Limpiar feedback anterior
+        # Clear previous feedback
         self.feedback_label.setText("")
         
-        # IMPORTANTE: Reiniciar el timer para que el siguiente estímulo aparezca automáticamente
+        # IMPORTANT: Restart timer so next stimulus appears automatically
         self.start_stimulus_timer()
     
     def check_response(self, responded):
         """
-        Verifica si la respuesta del usuario fue correcta.
+        Checks if the user's response was correct.
         
         Args:
-            responded: True si el usuario presionó espacio, False si no
+            responded: True if user pressed space, False if not
         """
-        # Detener el timer ya que se procesó una respuesta
+        # Stop timer since a response was processed
         self.stop_stimulus_timer()
         
-        # Necesitamos al menos n_level estímulos en el historial para comparar
+        # We need at least n_level stimuli in history to compare
         if len(self.stimulus_history) < self.n_level:
-            # Aún no hay suficientes estímulos, solo continuar
+            # Not enough stimuli yet, just continue
             return
         
-        # Verificar si el estímulo actual coincide con el de n_level posiciones atrás
+        # Check if current stimulus matches the one n_level positions back
         expected_response = False
         if len(self.stimulus_history) >= self.n_level:
             expected_response = self.stimulus_history[-self.n_level] == self.current_stimulus
         
-        # Evaluar respuesta
+        # Evaluate response
         if responded == expected_response:
             self.correct_count += 1
-            self.feedback_label.setText("✓ Correcto")
+            self.feedback_label.setText("✓ Correct")
             self.feedback_label.setStyleSheet("color: #00ff88; margin: 10px;")
             self.response_signal.emit(True)
         else:
             if responded:
-                # Solo mostrar "Incorrecto" si presionó espacio (no si fue timeout)
-                self.feedback_label.setText("✗ Incorrecto")
+                # Only show "Incorrect" if space was pressed (not if timeout)
+                self.feedback_label.setText("✗ Incorrect")
                 self.feedback_label.setStyleSheet("color: #ff4444; margin: 10px;")
             else:
-                # Timeout - no respuesta
-                self.feedback_label.setText("⏱ Sin respuesta")
+                # Timeout - no response
+                self.feedback_label.setText("⏱ No response")
                 self.feedback_label.setStyleSheet("color: #ffaa00; margin: 10px;")
             self.response_signal.emit(False)
         
         self.total_responses += 1
-        self.stats_label.setText(f"Aciertos: {self.correct_count} / Respuestas: {self.total_responses}")
+        self.stats_label.setText(f"Correct: {self.correct_count} / Responses: {self.total_responses}")
         
-        # Generar nuevo estímulo después de mostrar feedback (500ms de delay)
-        # generate_stimulus ya reinicia el timer automáticamente
+        # Generate new stimulus after showing feedback (500ms delay)
+        # generate_stimulus already restarts timer automatically
         QTimer.singleShot(500, self.generate_stimulus)
     
     def keyPressEvent(self, event: QKeyEvent):
-        """Maneja las teclas presionadas durante la tarea."""
+        """Handles keys pressed during the task."""
         if event.key() == Qt.Key_Space:
-            # Detener el timer y procesar respuesta inmediatamente
+            # Stop timer and process response immediately
             self.stop_stimulus_timer()
             self.check_response(True)
         else:
             super().keyPressEvent(event)
     
     def focusInEvent(self, event):
-        """Asegura que el widget reciba eventos de teclado."""
+        """Ensures the widget receives keyboard events."""
         self.setFocus()
         super().focusInEvent(event)
 
 
 class MainWindow(QMainWindow):
     """
-    Ventana principal de la aplicación.
-    Dashboard científico con visualización en tiempo real.
+    Main application window.
+    Scientific dashboard with real-time visualization.
     """
     
     def __init__(self):
         super().__init__()
-        self.setWindowTitle("Plataforma de Experimentación EEG - Carga Cognitiva")
+        self.setWindowTitle("EEG Experimentation Platform - Cognitive Load")
         self.setGeometry(100, 100, 1400, 900)
         
-        # Estilo oscuro
+        # Dark style
         self.setStyleSheet("""
             QMainWindow {
                 background-color: #0d1117;
@@ -479,98 +479,98 @@ class MainWindow(QMainWindow):
             }
         """)
         
-        # Buffers para gráficos (reducidos para mejor rendimiento)
-        self.plot_buffer_size = 750  # ~3 segundos a 250 Hz (reducido para mejor rendimiento)
+        # Buffers for plots (reduced for better performance)
+        self.plot_buffer_size = 750  # ~3 seconds at 250 Hz (reduced for better performance)
         self.raw_data_buffer = {i: deque(maxlen=self.plot_buffer_size) for i in range(8)}
         self.timestamp_buffer = deque(maxlen=self.plot_buffer_size)
-        self.ratio_buffer = deque(maxlen=300)  # Buffer más pequeño para ratio
+        self.ratio_buffer = deque(maxlen=300)  # Smaller buffer for ratio
         self.ratio_timestamps = deque(maxlen=300)
         
-        # Control de actualización de gráficos
+        # Plot update control
         self.plot_update_counter = 0
-        self.plot_update_skip = 5  # Actualizar cada 5 muestras recibidas (reducido de 2)
-        self.last_update_time = {}  # Para limitar frecuencia de actualización por canal
+        self.plot_update_skip = 5  # Update every 5 received samples (reduced from 2)
+        self.last_update_time = {}  # To limit update frequency per channel
         
-        # Inicializar lista de widgets de gráficos (se llenará en init_ui)
+        # Initialize list of plot widgets (will be filled in init_ui)
         self.raw_plot_widgets = []
         
         self.init_ui()
     
     def init_ui(self):
-        """Inicializa todos los componentes de la interfaz."""
+        """Initializes all interface components."""
         central_widget = QWidget()
         self.setCentralWidget(central_widget)
         
         main_layout = QVBoxLayout()
         central_widget.setLayout(main_layout)
         
-        # Barra superior con controles
+        # Top bar with controls
         controls_layout = QHBoxLayout()
         
-        self.connect_btn = QPushButton("Conectar AURA")
+        self.connect_btn = QPushButton("Connect AURA")
         self.connect_btn.clicked.connect(self.on_connect_clicked)
         controls_layout.addWidget(self.connect_btn)
         
-        self.start_setup_btn = QPushButton("Iniciar Setup")
+        self.start_setup_btn = QPushButton("Start Setup")
         self.start_setup_btn.clicked.connect(self.on_start_setup)
         self.start_setup_btn.setEnabled(False)
         controls_layout.addWidget(self.start_setup_btn)
         
-        self.start_baseline_btn = QPushButton("Iniciar Baseline")
+        self.start_baseline_btn = QPushButton("Start Baseline")
         self.start_baseline_btn.clicked.connect(self.on_start_baseline)
         self.start_baseline_btn.setEnabled(False)
         controls_layout.addWidget(self.start_baseline_btn)
         
-        self.start_low_load_btn = QPushButton("Iniciar Baja Carga")
+        self.start_low_load_btn = QPushButton("Start Low Load")
         self.start_low_load_btn.clicked.connect(self.on_start_low_load)
         self.start_low_load_btn.setEnabled(False)
         controls_layout.addWidget(self.start_low_load_btn)
         
-        self.start_high_load_btn = QPushButton("Iniciar Alta Carga")
+        self.start_high_load_btn = QPushButton("Start High Load")
         self.start_high_load_btn.clicked.connect(self.on_start_high_load)
         self.start_high_load_btn.setEnabled(False)
         controls_layout.addWidget(self.start_high_load_btn)
         
-        self.save_data_btn = QPushButton("Guardar Datos")
+        self.save_data_btn = QPushButton("Save Data")
         self.save_data_btn.clicked.connect(self.on_save_data)
         self.save_data_btn.setEnabled(False)
         controls_layout.addWidget(self.save_data_btn)
         
         controls_layout.addStretch()
         
-        # Estado y timer
-        self.status_label = QLabel("Estado: Desconectado")
+        # Status and timer
+        self.status_label = QLabel("Status: Disconnected")
         self.status_label.setStyleSheet("color: #ff4444; font-weight: bold; padding: 5px;")
         controls_layout.addWidget(self.status_label)
         
-        self.timer_label = QLabel("Tiempo: --:--")
+        self.timer_label = QLabel("Time: --:--")
         self.timer_label.setStyleSheet("color: #00ff88; font-weight: bold; padding: 5px;")
         controls_layout.addWidget(self.timer_label)
         
         main_layout.addLayout(controls_layout)
         
-        # Layout horizontal principal
+        # Main horizontal layout
         content_layout = QHBoxLayout()
         
-        # Panel izquierdo: Gráficos de señal
+        # Left panel: Signal plots
         left_panel = QVBoxLayout()
         
-        # Crear scroll area para los gráficos individuales
+        # Create scroll area for individual plots
         from PyQt5.QtWidgets import QScrollArea, QWidget as QW
         scroll = QScrollArea()
         scroll.setWidgetResizable(True)
         scroll.setStyleSheet("background-color: #0d1117; border: none;")
         scroll.setMinimumHeight(400)
         
-        # Widget contenedor para los gráficos
+        # Container widget for plots
         plots_container = QW()
         plots_layout = QVBoxLayout()
-        plots_layout.setSpacing(5)  # Espacio entre gráficos
+        plots_layout.setSpacing(5)  # Space between plots
         plots_layout.setContentsMargins(5, 5, 5, 5)
         plots_container.setLayout(plots_layout)
         
-        # Crear 8 gráficos individuales, uno por canal
-        # Reinicializar listas si ya existen
+        # Create 8 individual plots, one per channel
+        # Reinitialize lists if they already exist
         if hasattr(self, 'raw_plot_widgets'):
             self.raw_plot_widgets.clear()
         else:
@@ -583,23 +583,23 @@ class MainWindow(QMainWindow):
         
         colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', 
                   '#6c5ce7', '#a29bfe', '#fd79a8', '#00b894']
-        channel_names = ['Canal 0 (Fz)', 'Canal 1', 'Canal 2', 'Canal 3',
-                        'Canal 4 (Pz)', 'Canal 5', 'Canal 6', 'Canal 7']
+        channel_names = ['Channel 0 (Fz)', 'Channel 1', 'Channel 2', 'Channel 3',
+                        'Channel 4 (Pz)', 'Channel 5', 'Channel 6', 'Channel 7']
         
         for i in range(8):
             plot_widget = pg.PlotWidget(title=f"{channel_names[i]}")
             plot_widget.setBackground('#0d1117')
-            plot_widget.setLabel('left', 'Amplitud (μV)')
-            plot_widget.setLabel('bottom', 'Tiempo (s)')
+            plot_widget.setLabel('left', 'Amplitude (μV)')
+            plot_widget.setLabel('bottom', 'Time (s)')
             plot_widget.showGrid(x=True, y=True, alpha=0.3)
-            # Auto-range limitado para mejor rendimiento
-            # No usar enableAutoRange continuo, mejor actualizar manualmente cuando sea necesario
+            # Limited auto-range for better performance
+            # Don't use continuous enableAutoRange, better to update manually when needed
             plot_widget.setMinimumHeight(120)
             plot_widget.setMaximumHeight(150)
-            # Rango inicial razonable
+            # Reasonable initial range
             plot_widget.setYRange(-200, 200)
             
-            # Inicializar con datos vacíos para evitar errores
+            # Initialize with empty data to avoid errors
             curve = plot_widget.plot([], [], pen=pg.mkPen(color=colors[i], width=2))
             self.raw_curves.append(curve)
             self.raw_plot_widgets.append(plot_widget)
@@ -608,21 +608,21 @@ class MainWindow(QMainWindow):
         scroll.setWidget(plots_container)
         left_panel.addWidget(scroll)
         
-        # Gráfico de ratio de carga cognitiva
-        self.ratio_plot_widget = pg.PlotWidget(title="Ratio de Carga Cognitiva (Theta_Fz / Alpha_Pz)")
+        # Cognitive load ratio plot
+        self.ratio_plot_widget = pg.PlotWidget(title="Cognitive Load Ratio (Theta_Fz / Alpha_Pz)")
         self.ratio_plot_widget.setBackground('#0d1117')
         self.ratio_plot_widget.setLabel('left', 'Ratio')
-        self.ratio_plot_widget.setLabel('bottom', 'Tiempo (s)')
+        self.ratio_plot_widget.setLabel('bottom', 'Time (s)')
         self.ratio_plot_widget.showGrid(x=True, y=True, alpha=0.3)
         self.ratio_curve = self.ratio_plot_widget.plot(pen=pg.mkPen(color='#00ff88', width=2))
         
         left_panel.addWidget(self.ratio_plot_widget)
         
-        # Panel derecho: Área de tarea/instrucciones
+        # Right panel: Task/instructions area
         right_panel = QVBoxLayout()
         
-        # Instrucciones
-        self.instruction_label = QLabel("Conecte el dispositivo AURA para comenzar")
+        # Instructions
+        self.instruction_label = QLabel("Connect the AURA device to begin")
         self.instruction_label.setAlignment(Qt.AlignCenter)
         instruction_font = QFont()
         instruction_font.setPointSize(14)
@@ -638,7 +638,7 @@ class MainWindow(QMainWindow):
         )
         right_panel.addWidget(self.instruction_label)
         
-        # Área central (cambia según la fase)
+        # Central area (changes according to phase)
         self.central_area = QFrame()
         self.central_area.setStyleSheet("""
             QFrame {
@@ -651,59 +651,59 @@ class MainWindow(QMainWindow):
         self.central_layout = QVBoxLayout()
         self.central_area.setLayout(self.central_layout)
         
-        # Widget inicial (placeholder)
-        self.current_task_widget = QLabel("Esperando inicio del experimento...")
+        # Initial widget (placeholder)
+        self.current_task_widget = QLabel("Waiting for experiment to start...")
         self.current_task_widget.setAlignment(Qt.AlignCenter)
         self.current_task_widget.setStyleSheet("color: #888888; padding: 40px;")
         self.central_layout.addWidget(self.current_task_widget)
         
         right_panel.addWidget(self.central_area)
         
-        # Agregar paneles al layout principal
-        content_layout.addLayout(left_panel, 2)  # 60% del espacio
-        content_layout.addLayout(right_panel, 1)  # 40% del espacio
+        # Add panels to main layout
+        content_layout.addLayout(left_panel, 2)  # 60% of space
+        content_layout.addLayout(right_panel, 1)  # 40% of space
         
         main_layout.addLayout(content_layout)
     
     def on_connect_clicked(self):
-        """Callback para el botón de conexión."""
-        # Esta función será conectada desde main.py
+        """Callback for connection button."""
+        # This function will be connected from main.py
         pass
     
     def on_start_setup(self):
-        """Callback para iniciar Setup."""
-        # Esta función será conectada desde main.py
+        """Callback to start Setup."""
+        # This function will be connected from main.py
         pass
     
     def on_start_baseline(self):
-        """Callback para iniciar Baseline."""
-        # Esta función será conectada desde main.py
+        """Callback to start Baseline."""
+        # This function will be connected from main.py
         pass
     
     def on_start_low_load(self):
-        """Callback para iniciar Baja Carga."""
-        # Esta función será conectada desde main.py
+        """Callback to start Low Load."""
+        # This function will be connected from main.py
         pass
     
     def on_start_high_load(self):
-        """Callback para iniciar Alta Carga."""
-        # Esta función será conectada desde main.py
+        """Callback to start High Load."""
+        # This function will be connected from main.py
         pass
     
     def on_save_data(self):
-        """Callback para guardar datos."""
-        # Esta función será conectada desde main.py
+        """Callback to save data."""
+        # This function will be connected from main.py
         pass
     
     @pyqtSlot(np.ndarray, float)
     def update_raw_plot(self, data, timestamp):
         """
-        Actualiza el gráfico de señales raw.
-        Con submuestreo para evitar saturación.
+        Updates the raw signal plot.
+        With subsampling to avoid saturation.
         
         Args:
-            data: Array con 8 valores (uno por canal)
-            timestamp: Timestamp de la muestra
+            data: Array with 8 values (one per channel)
+            timestamp: Sample timestamp
         """
         # DEBUG: Imprimir datos recibidos en UI (solo las primeras 5 veces)
         if not hasattr(self, '_ui_debug_counter'):
@@ -720,12 +720,12 @@ class MainWindow(QMainWindow):
             print(f"  Timestamp: {timestamp}")
             self._ui_debug_counter += 1
         
-        # Submuestreo: actualizar cada N muestras (aumentado para mejor rendimiento)
+        # Subsampling: update every N samples (increased for better performance)
         self.plot_update_counter += 1
         if self.plot_update_counter % self.plot_update_skip != 0:
             return
         
-        # Añadir a buffers
+        # Add to buffers
         for i in range(min(8, len(data))):
             self.raw_data_buffer[i].append(data[i])
         self.timestamp_buffer.append(timestamp)
@@ -733,44 +733,44 @@ class MainWindow(QMainWindow):
         if len(self.timestamp_buffer) < 2:
             return
         
-        # Convertir a arrays numpy y normalizar tiempos
+        # Convert to numpy arrays and normalize times
         times = np.array(self.timestamp_buffer)
         if len(times) > 1:
-            # Normalizar al tiempo más reciente (último timestamp)
-            times = times - times[-1]  # Ahora el tiempo más reciente es 0
-            # Invertir para que el tiempo vaya de negativo (pasado) a 0 (presente)
-            times = -times  # Ahora va de negativo a 0, donde 0 es el presente
+            # Normalize to most recent time (last timestamp)
+            times = times - times[-1]  # Now the most recent time is 0
+            # Invert so time goes from negative (past) to 0 (present)
+            times = -times  # Now goes from negative to 0, where 0 is the present
         
-        # Actualizar curvas (solo si hay suficientes datos nuevos)
-        # Verificar que las curvas estén inicializadas
+        # Update curves (only if there's enough new data)
+        # Verify that curves are initialized
         if len(self.raw_curves) == 0:
             return
         
-        # Limitar frecuencia de actualización por canal (cada 200ms máximo)
+        # Limit update frequency per channel (maximum every 200ms)
         current_time = time.time()
         
         for i, curve in enumerate(self.raw_curves):
             if i >= len(self.raw_data_buffer) or len(self.raw_data_buffer[i]) == 0:
                 continue
             
-            # Throttling: actualizar cada canal máximo cada 200ms
+            # Throttling: update each channel maximum every 200ms
             if i in self.last_update_time:
                 if current_time - self.last_update_time[i] < 0.2:
-                    continue  # Saltar esta actualización para este canal
+                    continue  # Skip this update for this channel
             
             try:
-                # Convertir a microvolts
-                # Los valores de AURA vienen en nanovolts (nV), necesitamos dividir por 1000 para microvolts (μV)
+                # Convert to microvolts
+                # AURA values come in nanovolts (nV), we need to divide by 1000 for microvolts (μV)
                 raw_values = np.array(self.raw_data_buffer[i])
                 
-                # Escalar de nanovolts a microvolts
-                # AURA envía datos en nanovolts, así que dividimos por 1000
+                # Scale from nanovolts to microvolts
+                # AURA sends data in nanovolts, so we divide by 1000
                 values_microvolts = raw_values / 1000.0
                 
-                # Sin offset - cada gráfico tiene su propia escala
+                # No offset - each plot has its own scale
                 values = values_microvolts
                 
-                # Asegurar que times y values tengan la misma longitud
+                # Ensure times and values have the same length
                 if len(times) != len(values):
                     min_len = min(len(times), len(values))
                     times_plot = times[:min_len]
@@ -779,38 +779,38 @@ class MainWindow(QMainWindow):
                     times_plot = times
                     values_plot = values
                 
-                # Actualizar curva solo si hay datos válidos
+                # Update curve only if there's valid data
                 if len(times_plot) > 0 and len(values_plot) > 0:
-                    # Actualizar datos
+                    # Update data
                     curve.setData(times_plot, values_plot)
                     
-                    # Actualizar rango Y solo ocasionalmente (cada 1 segundo) para mejor rendimiento
+                    # Update Y range only occasionally (every 1 second) for better performance
                     if i not in self.last_update_time or (current_time - self.last_update_time[i]) >= 1.0:
                         if len(values_plot) > 10:
                             y_min = np.min(values_plot)
                             y_max = np.max(values_plot)
                             y_range = y_max - y_min
                             if y_range > 0:
-                                # Añadir margen del 20%
+                                # Add 20% margin
                                 margin = y_range * 0.2
                                 self.raw_plot_widgets[i].setYRange(y_min - margin, y_max + margin)
                     
-                    # Registrar tiempo de actualización
+                    # Record update time
                     self.last_update_time[i] = current_time
                     
             except Exception as e:
-                print(f"Error actualizando gráfico canal {i}: {str(e)}")
+                print(f"Error updating plot channel {i}: {str(e)}")
                 continue
     
     @pyqtSlot(float, float, float)
     def update_ratio_plot(self, ratio, theta_power, alpha_power):
         """
-        Actualiza el gráfico del ratio de carga cognitiva.
+        Updates the cognitive load ratio plot.
         
         Args:
-            ratio: Ratio Theta_Fz / Alpha_Pz
-            theta_power: Potencia en banda Theta
-            alpha_power: Potencia en banda Alpha
+            ratio: Theta_Fz / Alpha_Pz ratio
+            theta_power: Power in Theta band
+            alpha_power: Power in Alpha band
         """
         current_time = time.time()
         self.ratio_buffer.append(ratio)
@@ -827,7 +827,7 @@ class MainWindow(QMainWindow):
         self.ratio_curve.setData(times, ratios)
     
     def show_instructions(self, text):
-        """Muestra instrucciones en el área central."""
+        """Shows instructions in the central area."""
         self.clear_central_area()
         label = QLabel(text)
         label.setAlignment(Qt.AlignCenter)
@@ -837,7 +837,7 @@ class MainWindow(QMainWindow):
         self.current_task_widget = label
     
     def show_text_reading(self, text):
-        """Muestra texto para lectura pasiva (Baja Carga)."""
+        """Shows text for passive reading (Low Load)."""
         self.clear_central_area()
         text_edit = QTextEdit()
         text_edit.setReadOnly(True)
@@ -851,7 +851,7 @@ class MainWindow(QMainWindow):
                 padding: 40px;
             }
         """)
-        # Aumentar tamaño de fuente programáticamente también
+        # Increase font size programmatically as well
         font = QFont()
         font.setPointSize(28)
         text_edit.setFont(font)
@@ -859,42 +859,42 @@ class MainWindow(QMainWindow):
         self.current_task_widget = text_edit
     
     def show_nback_task(self):
-        """Muestra la tarea N-Back (Alta Carga)."""
+        """Shows the N-Back task (High Load)."""
         self.clear_central_area()
         nback_widget = NBackTask(n_level=2)
         nback_widget.setFocusPolicy(Qt.StrongFocus)
         self.central_layout.addWidget(nback_widget)
         self.current_task_widget = nback_widget
-        # Asegurar que el widget reciba el foco
+        # Ensure widget receives focus
         QTimer.singleShot(100, lambda: nback_widget.setFocus())
         return nback_widget
     
     def show_stroop_task(self):
-        """Muestra la tarea Stroop (Alta Carga Cognitiva)."""
+        """Shows the Stroop task (High Cognitive Load)."""
         self.clear_central_area()
         stroop_widget = StroopTask()
         stroop_widget.setFocusPolicy(Qt.StrongFocus)
         self.central_layout.addWidget(stroop_widget)
         self.current_task_widget = stroop_widget
-        # Asegurar que el widget reciba el foco
+        # Ensure widget receives focus
         QTimer.singleShot(100, lambda: stroop_widget.setFocus())
         return stroop_widget
     
     def clear_central_area(self):
-        """Limpia el área central."""
+        """Clears the central area."""
         while self.central_layout.count():
             child = self.central_layout.takeAt(0)
             if child.widget():
                 child.widget().deleteLater()
     
     def update_status(self, message, color="#c9d1d9"):
-        """Actualiza el label de estado."""
-        self.status_label.setText(f"Estado: {message}")
+        """Updates the status label."""
+        self.status_label.setText(f"Status: {message}")
         self.status_label.setStyleSheet(f"color: {color}; font-weight: bold; padding: 5px;")
     
     def update_timer(self, seconds):
-        """Actualiza el label del timer."""
+        """Updates the timer label."""
         minutes = seconds // 60
         secs = seconds % 60
-        self.timer_label.setText(f"Tiempo: {minutes:02d}:{secs:02d}")
+        self.timer_label.setText(f"Time: {minutes:02d}:{secs:02d}")
 
