@@ -58,13 +58,13 @@ class RingBuffer:
             return self.buffer[:self.write_idx]
         
         start_idx = (self.write_idx - window_samples) % self.maxlen
-            if start_idx + window_samples <= self.maxlen:
-                return self.buffer[start_idx:start_idx + window_samples]
-            else:
-                # Case where window crosses buffer boundary
-                part1 = self.buffer[start_idx:]
-                part2 = self.buffer[:start_idx + window_samples - self.maxlen]
-                return np.vstack([part1, part2])
+        if start_idx + window_samples <= self.maxlen:
+            return self.buffer[start_idx:start_idx + window_samples]
+        else:
+            # Case where window crosses buffer boundary
+            part1 = self.buffer[start_idx:]
+            part2 = self.buffer[:start_idx + window_samples - self.maxlen]
+            return np.vstack([part1, part2])
 
 
 class SignalWorker(QThread):
