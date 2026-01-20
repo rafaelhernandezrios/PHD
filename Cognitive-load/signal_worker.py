@@ -100,9 +100,10 @@ class SignalWorker(QThread):
         self.running = False
         self.inlet = None
         
-        # Channel indices for analysis (Fz = channel 0, Pz = channel 4)
-        self.fz_channel = 0
-        self.pz_channel = 4
+        # Channel indices for analysis (Fz = channel 3, Pz = channel 6)
+        # Channel mapping: 0=Fp1, 1=Fp2, 2=F3, 3=Fz, 4=F4, 5=P3, 6=Pz, 7=P4
+        self.fz_channel = 3
+        self.pz_channel = 6
         
         # Buffer to accumulate samples before emitting (reduces UI load)
         self.plot_buffer = []

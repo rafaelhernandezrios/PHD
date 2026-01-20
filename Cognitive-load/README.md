@@ -151,16 +151,20 @@ The saved CSV files contain the following columns:
 | Notch Filter | 60 Hz, Q=30 |
 | Bandpass Filter | 1-40 Hz, order 4 |
 | Analysis window | 2 seconds (500 samples) |
-| Theta Band | 4-7 Hz (Channel Fz) |
-| Alpha Band | 8-12 Hz (Channel Pz) |
+| Theta Band | 4-7 Hz (Channel 3 - Fz) |
+| Alpha Band | 8-12 Hz (Channel 6 - Pz) |
 | Calculation frequency | 1 Hz |
 
 ### Channel Mapping
 
-- **Channel 0**: Fz (Frontal) - Used for Theta analysis
-- **Channel 1-3**: Additional channels
-- **Channel 4**: Pz (Parietal) - Used for Alpha analysis
-- **Channel 5-7**: Additional channels
+- **Channel 0**: Fp1 (Frontopolar) 
+- **Channel 1**: Fp2 (Frontopolar)
+- **Channel 2**: F3 (Frontal)
+- **Channel 3**: Fz (Frontal) - Used for Theta analysis (4-7 Hz)
+- **Channel 4**: F4 (Frontal)
+- **Channel 5**: P3 (Parietal)
+- **Channel 6**: Pz (Parietal) - Used for Alpha analysis (8-12 Hz)
+- **Channel 7**: P4 (Parietal)
 
 ## 📚 Documentation
 

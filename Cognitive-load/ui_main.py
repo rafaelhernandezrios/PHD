@@ -583,8 +583,9 @@ class MainWindow(QMainWindow):
         
         colors = ['#ff6b6b', '#4ecdc4', '#45b7d1', '#f9ca24', 
                   '#6c5ce7', '#a29bfe', '#fd79a8', '#00b894']
-        channel_names = ['Channel 0 (Fz)', 'Channel 1', 'Channel 2', 'Channel 3',
-                        'Channel 4 (Pz)', 'Channel 5', 'Channel 6', 'Channel 7']
+        # Channel mapping: 0=Fp1, 1=Fp2, 2=F3, 3=Fz, 4=F4, 5=P3, 6=Pz, 7=P4
+        channel_names = ['Channel 0 (Fp1)', 'Channel 1 (Fp2)', 'Channel 2 (F3)', 'Channel 3 (Fz)',
+                        'Channel 4 (F4)', 'Channel 5 (P3)', 'Channel 6 (Pz)', 'Channel 7 (P4)']
         
         for i in range(8):
             plot_widget = pg.PlotWidget(title=f"{channel_names[i]}")

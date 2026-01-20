@@ -34,9 +34,10 @@ SAMPLE_RATE = 250  # Hz (frecuencia de muestreo de AURA)
 WINDOW_DURATION = 2.0  # segundos para análisis espectral
 WINDOW_SAMPLES = int(WINDOW_DURATION * SAMPLE_RATE)  # 500 muestras
 # Configuración de canales (configurable)
-FZ_CHANNEL = 0  # Canal Fz (frontal)
-PZ_CHANNEL = 3  # Canal Pz (parietal)
-BAD_CHANNEL = 4  # Canal defectuoso que debe ser excluido del CAR
+# Channel mapping: 0=Fp1, 1=Fp2, 2=F3, 3=Fz, 4=F4, 5=P3, 6=Pz, 7=P4
+FZ_CHANNEL = 3  # Canal Fz (frontal) - índice 3
+PZ_CHANNEL = 6  # Canal Pz (parietal) - índice 6
+BAD_CHANNEL = None  # Canal defectuoso que debe ser excluido del CAR (None si no hay canal defectuoso)
 N_CHANNELS = 8  # Total de canales
 THETA_BAND = (4.0, 7.0)  # Hz
 ALPHA_BAND = (8.0, 12.0)  # Hz
@@ -107,8 +108,11 @@ def apply_car(eeg_data, bad_channel_idx=BAD_CHANNEL):
     
     n_samples, n_channels = eeg_data.shape
     
-    # Crear máscara de canales válidos (excluir canal defectuoso)
-    valid_channels = [i for i in range(n_channels) if i != bad_channel_idx]
+    # Crear máscara de canales válidos (excluir canal defectuoso si existe)
+    if bad_channel_idx is not None:
+        valid_channels = [i for i in range(n_channels) if i != bad_channel_idx]
+    else:
+        valid_channels = list(range(n_channels))  # Todos los canales son válidos
     
     if len(valid_channels) == 0:
         print("Advertencia: No hay canales validos para CAR. Retornando datos sin modificar.")
@@ -333,9 +337,9 @@ def robust_preprocessing_pipeline(data_matrix, bad_channel_index=BAD_CHANNEL, sa
     quality_factor = 30.0
     b_notch, a_notch = signal.iirnotch(notch_freq, quality_factor, sample_rate)
     
-    # Aplicar filtros a todos los canales (incluyendo el defectuoso)
+    # Aplicar filtros a todos los canales
     for ch in range(n_channels):
-        if ch == bad_channel_index:
+        if bad_channel_index is not None and ch == bad_channel_index:
             # Para el canal defectuoso, solo aplicar filtros básicos
             # pero no lo usaremos en cálculos posteriores
             eeg_processed[:, ch] = signal.filtfilt(b_notch, a_notch, eeg_processed[:, ch])
@@ -348,10 +352,14 @@ def robust_preprocessing_pipeline(data_matrix, bad_channel_index=BAD_CHANNEL, sa
     # ============================================================
     # Paso 2: Common Average Reference (CAR) Selectivo
     # ============================================================
-    print(f"    [Paso 2/4] CAR Selectivo: Calculando promedio usando SOLO los 7 canales buenos (excluyendo canal {bad_channel_index})...")
-    
-    # Identificar canales válidos (excluir el defectuoso)
-    valid_channels = [i for i in range(n_channels) if i != bad_channel_index]
+    if bad_channel_index is not None:
+        print(f"    [Paso 2/4] CAR Selectivo: Calculando promedio usando SOLO los 7 canales buenos (excluyendo canal {bad_channel_index})...")
+        # Identificar canales válidos (excluir el defectuoso)
+        valid_channels = [i for i in range(n_channels) if i != bad_channel_index]
+    else:
+        print(f"    [Paso 2/4] CAR: Calculando promedio usando todos los {n_channels} canales...")
+        # Todos los canales son válidos
+        valid_channels = list(range(n_channels))
     
     if len(valid_channels) == 0:
         raise ValueError("No hay canales validos para CAR. Todos los canales estan marcados como defectuosos.")
@@ -369,7 +377,7 @@ def robust_preprocessing_pipeline(data_matrix, bad_channel_index=BAD_CHANNEL, sa
     
     if HAS_WAVELETS:
         for ch in range(n_channels):
-            if ch == bad_channel_index:
+            if bad_channel_index is not None and ch == bad_channel_index:
                 # Para el canal defectuoso, aplicar denoising pero será rellenado después
                 eeg_processed[:, ch] = wavelet_denoise(
                     eeg_processed[:, ch],
@@ -407,10 +415,11 @@ def robust_preprocessing_pipeline(data_matrix, bad_channel_index=BAD_CHANNEL, sa
             eeg_processed[:, ch] = channel_data - mean_val
     
     # ============================================================
-    # Post-procesamiento: Rellenar canal defectuoso
+    # Post-procesamiento: Rellenar canal defectuoso (si existe)
     # ============================================================
-    # Mantener el array con 8 columnas pero rellenar el canal 4 con ceros
-    eeg_processed[:, bad_channel_index] = 0.0
+    # Mantener el array con 8 columnas pero rellenar el canal defectuoso con ceros
+    if bad_channel_index is not None:
+        eeg_processed[:, bad_channel_index] = 0.0
     
     return eeg_processed
 
@@ -584,10 +593,13 @@ def load_and_analyze_data(csv_path):
     
     print(f"Pipeline de preprocesamiento: 'Limpieza Agresiva' para eliminar ruido EMG:")
     print(f"  1. Filtrado temporal: Bandpass 0.5-30 Hz (Butterworth orden 4) + Notch 60 Hz")
-    print(f"  2. CAR Selectivo: Common Average Reference usando SOLO 7 canales buenos (excluyendo canal {BAD_CHANNEL})")
+    if BAD_CHANNEL is not None:
+        print(f"  2. CAR Selectivo: Common Average Reference usando SOLO 7 canales buenos (excluyendo canal {BAD_CHANNEL})")
+        print(f"  Nota: Canal {BAD_CHANNEL} se mantiene en el array pero rellenado con ceros")
+    else:
+        print(f"  2. CAR: Common Average Reference usando todos los {N_CHANNELS} canales")
     print(f"  3. WAAF: Wavelet Artifact Removal (db4, nivel 4, soft thresholding, Universal Threshold)")
     print(f"  4. Z-Score normalization: Estandarizacion por canal (media=0, std=1)")
-    print(f"  Nota: Canal {BAD_CHANNEL} se mantiene en el array pero rellenado con ceros")
     print()
     
     # Filtrar fases de interés (excluir setup y baseline_completed)
