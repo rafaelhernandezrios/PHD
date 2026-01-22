@@ -27,9 +27,13 @@ wheels/
 *.egg
 
 # Datos experimentales
-data_*/
-*.csv
-eeg_data_*.csv
+# data_*/  # Comentado para incluir datos en Git
+# *.csv    # Comentado para incluir datos en Git
+# eeg_data_*.csv  # Comentado para incluir datos en Git
+
+# Ignorar solo archivos temporales grandes
+*.mat
+*.tmp
 
 # IDE
 .vscode/
