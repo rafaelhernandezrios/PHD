@@ -79,10 +79,21 @@ pip install -r requirements.txt
 
 ## 📖 Usage
 
-### Run the Application
+### Run the Applications
 
+**Stroop Task (Original Experiment):**
 ```bash
-python main.py
+python apps/main.py
+```
+
+**Go/No-Go Task:**
+```bash
+python apps/main_go_nogo.py
+```
+
+**Baseline Recording:**
+```bash
+python apps/main_baseline.py
 ```
 
 ### Usage Flow
@@ -119,16 +130,46 @@ python main.py
 
 ```
 Cognitive-load/
-├── main.py                      # Application entry point
-├── signal_worker.py             # Worker thread for LSL acquisition
-├── experiment_logic.py           # Protocol state machine
-├── ui_main.py                   # PyQt5 graphical interface
-├── requirements.txt             # Project dependencies
-├── FLUJO_CARGA_COGNITIVA.md    # Detailed technical documentation
-├── README.md                    # This file
-├── .gitignore                   # Files ignored by Git
-└── data_*/                      # User data folders (not versioned)
-    └── eeg_data_*.csv           # CSV files with experimental data
+├── apps/                         # Main application entry points
+│   ├── main.py                   # Stroop task (original experiment)
+│   ├── main_go_nogo.py          # Go/No-Go task application
+│   └── main_baseline.py         # Baseline recording application
+│
+├── core/                         # Core modules (reusable)
+│   ├── signal_worker.py         # LSL acquisition and signal processing
+│   └── waaf_filter.py           # WAAF artifact removal (optional)
+│
+├── tasks/                        # Experimental task widgets
+│   ├── ui_main.py               # Stroop task UI
+│   ├── experiment_logic.py      # Stroop experiment logic
+│   ├── go_nogo_task.py          # Go/No-Go task widget
+│   └── baseline_task.py         # Baseline recording widget
+│
+├── analysis/                     # Data analysis scripts
+│   ├── analyze_cognitive_load.py
+│   ├── analyze_all_subjects.py
+│   ├── analyze_with_waaf.py
+│   ├── plot_channels_by_label.py
+│   └── detailed_comparison.py
+│
+├── debug/                        # Debug scripts
+│   ├── debug_edwin.py
+│   └── debug_edgar.py
+│
+├── docs/                         # Documentation
+│   ├── README_GO_NOGO.md
+│   ├── README_BASELINE.md
+│   └── FLUJO_CARGA_COGNITIVA.md
+│
+├── data/                         # Experimental data
+│   └── DATA/                    # Raw data folders
+│
+├── output/                       # Analysis results and plots
+│   └── analysis_output/
+│
+├── requirements.txt              # Project dependencies
+├── README.md                     # This file
+└── .gitignore                    # Files ignored by Git
 ```
 
 ## 📊 Data Format
@@ -168,8 +209,10 @@ The saved CSV files contain the following columns:
 
 ## 📚 Documentation
 
-For detailed technical information about the processing flow, see:
-- [FLUJO_CARGA_COGNITIVA.md](FLUJO_CARGA_COGNITIVA.md) - Complete system documentation
+For detailed technical information, see:
+- [FLUJO_CARGA_COGNITIVA.md](docs/FLUJO_CARGA_COGNITIVA.md) - Complete system documentation
+- [README_GO_NOGO.md](docs/README_GO_NOGO.md) - Go/No-Go task documentation
+- [README_BASELINE.md](docs/README_BASELINE.md) - Baseline recording documentation
 
 ## 🛠️ Technologies Used
 

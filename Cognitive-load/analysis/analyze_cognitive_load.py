@@ -300,13 +300,14 @@ def calculate_cognitive_load_ratio(fz_signal, pz_signal, sample_rate):
 
 def robust_preprocessing_pipeline(data_matrix, bad_channel_index=BAD_CHANNEL, sample_rate=SAMPLE_RATE):
     """
-    Pipeline de preprocesamiento de "Limpieza Agresiva" para eliminar ruido EMG severo.
+    Pipeline de preprocesamiento para eliminar ruido EMG severo.
     
-    Flujo exacto: Acquisition -> Bandpass -> CAR Selectivo -> WAAF -> Z-Score
+    Flujo exacto: Acquisition -> Bandpass -> CAR Selectivo -> Z-Score
+    (WAAF desactivado por defecto)
     
     Args:
         data_matrix: Array 2D con forma (n_samples, n_channels) - 8 canales
-        bad_channel_index: Índice del canal defectuoso a excluir (default: 4)
+        bad_channel_index: Índice del canal defectuoso a excluir (None si no hay)
         sample_rate: Frecuencia de muestreo (default: 250 Hz)
         
     Returns:
@@ -324,7 +325,7 @@ def robust_preprocessing_pipeline(data_matrix, bad_channel_index=BAD_CHANNEL, sa
     # ============================================================
     # Paso 1: Filtrado de Frecuencia (Temporal)
     # ============================================================
-    print("    [Paso 1/4] Filtrado temporal: Bandpass 0.5-30 Hz + Notch 60 Hz...")
+    print("    [Paso 1/3] Filtrado temporal: Bandpass 0.5-30 Hz + Notch 60 Hz...")
     
     # Bandpass: Butterworth orden 4, 0.5 Hz - 30 Hz
     nyquist = sample_rate / 2
@@ -353,11 +354,11 @@ def robust_preprocessing_pipeline(data_matrix, bad_channel_index=BAD_CHANNEL, sa
     # Paso 2: Common Average Reference (CAR) Selectivo
     # ============================================================
     if bad_channel_index is not None:
-        print(f"    [Paso 2/4] CAR Selectivo: Calculando promedio usando SOLO los 7 canales buenos (excluyendo canal {bad_channel_index})...")
+        print(f"    [Paso 2/3] CAR Selectivo: Calculando promedio usando SOLO los 7 canales buenos (excluyendo canal {bad_channel_index})...")
         # Identificar canales válidos (excluir el defectuoso)
         valid_channels = [i for i in range(n_channels) if i != bad_channel_index]
     else:
-        print(f"    [Paso 2/4] CAR: Calculando promedio usando todos los {n_channels} canales...")
+        print(f"    [Paso 2/3] CAR: Calculando promedio usando todos los {n_channels} canales...")
         # Todos los canales son válidos
         valid_channels = list(range(n_channels))
     
@@ -371,36 +372,10 @@ def robust_preprocessing_pipeline(data_matrix, bad_channel_index=BAD_CHANNEL, sa
     eeg_processed = eeg_processed - car_reference
     
     # ============================================================
-    # Paso 3: WAAF (Wavelet Artifact Removal)
+    # Paso 3: Z-Score Normalization
     # ============================================================
-    print("    [Paso 3/4] WAAF: Wavelet denoising (db4, nivel 4, soft thresholding, Universal Threshold)...")
-    
-    if HAS_WAVELETS:
-        for ch in range(n_channels):
-            if bad_channel_index is not None and ch == bad_channel_index:
-                # Para el canal defectuoso, aplicar denoising pero será rellenado después
-                eeg_processed[:, ch] = wavelet_denoise(
-                    eeg_processed[:, ch],
-                    wavelet='db4',
-                    mode='soft',
-                    threshold_mode='sure'
-                )
-            else:
-                # Aplicar WAAF a canales válidos para eliminar picos transitorios
-                eeg_processed[:, ch] = wavelet_denoise(
-                    eeg_processed[:, ch],
-                    wavelet='db4',
-                    mode='soft',
-                    threshold_mode='sure'
-                )
-    else:
-        print("    Advertencia: PyWavelets no disponible. Saltando WAAF.")
-        print("    Instalar con: pip install PyWavelets")
-    
-    # ============================================================
-    # Paso 4: Z-Score Normalization
-    # ============================================================
-    print("    [Paso 4/4] Z-Score Normalization: Estandarizando cada canal (media=0, std=1)...")
+    # NOTA: WAAF desactivado por defecto. Si se necesita, descomentar la sección anterior.
+    print("    [Paso 3/3] Z-Score Normalization: Estandarizando cada canal (media=0, std=1)...")
     
     for ch in range(n_channels):
         channel_data = eeg_processed[:, ch]
@@ -426,11 +401,11 @@ def robust_preprocessing_pipeline(data_matrix, bad_channel_index=BAD_CHANNEL, sa
 
 def preprocess_eeg_data(df):
     """
-    Aplica el pipeline completo de preprocesamiento de "Limpieza Agresiva" a los datos EEG.
+    Aplica el pipeline completo de preprocesamiento a los datos EEG.
     
     Pipeline:
     1. Carga todos los 8 canales en matriz
-    2. Aplica robust_preprocessing_pipeline (Bandpass -> CAR Selectivo -> WAAF -> Z-Score)
+    2. Aplica robust_preprocessing_pipeline (Bandpass -> CAR Selectivo -> Z-Score)
     3. Extrae canales Fz y Pz después del preprocesamiento completo
     
     Args:
@@ -454,7 +429,7 @@ def preprocess_eeg_data(df):
     )
     
     # 3. Extraer canales Fz y Pz después del preprocesamiento completo
-    # Estos canales ya están limpios (filtrados, CAR, WAAF, Z-Score)
+    # Estos canales ya están limpios (filtrados, CAR, Z-Score)
     fz_signal_clean = eeg_processed[:, FZ_CHANNEL]
     pz_signal_clean = eeg_processed[:, PZ_CHANNEL]
     
@@ -505,7 +480,7 @@ def analyze_phase_data(df, phase_name, window_samples=WINDOW_SAMPLES, step_sampl
         return [], [], []
     
     # Extraer canales LIMPIOS (Fz y Pz)
-    # Estos canales ya están filtrados, con CAR, WAAF y Z-Score aplicados
+    # Estos canales ya están filtrados, con CAR y Z-Score aplicados
     fz_clean = clean_matrix[:, FZ_CHANNEL]
     pz_clean = clean_matrix[:, PZ_CHANNEL]
     
@@ -591,15 +566,15 @@ def load_and_analyze_data(csv_path):
         print(f"Error: Faltan canales en el CSV: {missing_channels}")
         return {}, df
     
-    print(f"Pipeline de preprocesamiento: 'Limpieza Agresiva' para eliminar ruido EMG:")
+    print(f"Pipeline de preprocesamiento para eliminar ruido EMG:")
     print(f"  1. Filtrado temporal: Bandpass 0.5-30 Hz (Butterworth orden 4) + Notch 60 Hz")
     if BAD_CHANNEL is not None:
         print(f"  2. CAR Selectivo: Common Average Reference usando SOLO 7 canales buenos (excluyendo canal {BAD_CHANNEL})")
         print(f"  Nota: Canal {BAD_CHANNEL} se mantiene en el array pero rellenado con ceros")
     else:
         print(f"  2. CAR: Common Average Reference usando todos los {N_CHANNELS} canales")
-    print(f"  3. WAAF: Wavelet Artifact Removal (db4, nivel 4, soft thresholding, Universal Threshold)")
-    print(f"  4. Z-Score normalization: Estandarizacion por canal (media=0, std=1)")
+    print(f"  3. Z-Score normalization: Estandarizacion por canal (media=0, std=1)")
+    print(f"  NOTA: WAAF desactivado por defecto")
     print()
     
     # Filtrar fases de interés (excluir setup y baseline_completed)
@@ -999,7 +974,10 @@ def save_results_to_csv(results, output_dir='analysis_output'):
 
 def main():
     """Función principal."""
-    csv_path = 'data_mai/eeg_data_20251211_152323.csv'
+    import os
+    BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
+    csv_path = os.path.join(BASE_DIR, 'data', 'DATA', 'Data-Experimento-Rafa', 'data_mai', 'eeg_data_20251211_152323.csv')
+    output_dir = os.path.join(BASE_DIR, 'output', 'analysis_output')
     
     if not Path(csv_path).exists():
         print(f"Error: No se encontró el archivo {csv_path}")
@@ -1017,16 +995,16 @@ def main():
     
     # Visualizaciones
     print("Generando visualizaciones...")
-    create_visualizations(results, p_values=p_values)
+    create_visualizations(results, p_values=p_values, output_dir=output_dir)
     
     # Guardar resultados
     print("\nGuardando resultados...")
-    save_results_to_csv(results)
+    save_results_to_csv(results, output_dir=output_dir)
     
     print("\n" + "=" * 70)
     print("ANALISIS COMPLETADO")
     print("=" * 70)
-    print("\nLos resultados se han guardado en el directorio 'analysis_output/'")
+    print(f"\nLos resultados se han guardado en el directorio '{output_dir}'")
 
 
 if __name__ == '__main__':

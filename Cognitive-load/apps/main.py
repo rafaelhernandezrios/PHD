@@ -12,9 +12,13 @@ from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog
 from PyQt5.QtCore import QTimer
 
-from signal_worker import SignalWorker
-from experiment_logic import ExperimentLogic, ExperimentPhase
-from ui_main import MainWindow
+import sys
+import os
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
+
+from core.signal_worker import SignalWorker
+from tasks.experiment_logic import ExperimentLogic, ExperimentPhase
+from tasks.ui_main import MainWindow
 
 
 class EEGExperimentApp:

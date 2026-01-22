@@ -28,7 +28,7 @@ class StroopTask(QWidget):
         super().__init__()
         self.colors = {
             'RED': '#ff4444',
-            'BLUE': '#4444ff',
+            'BLUE': '#0080ff',
             'GREEN': '#44ff44',
             'YELLOW': '#ffff44'
         }
@@ -847,14 +847,14 @@ class MainWindow(QMainWindow):
             QTextEdit {
                 background-color: #0d1117;
                 color: #c9d1d9;
-                font-size: 28px;
-                line-height: 2.2;
+                font-size: 42px;
+                line-height: 1.8;
                 padding: 40px;
             }
         """)
         # Increase font size programmatically as well
         font = QFont()
-        font.setPointSize(28)
+        font.setPointSize(42)
         text_edit.setFont(font)
         self.central_layout.addWidget(text_edit)
         self.current_task_widget = text_edit
