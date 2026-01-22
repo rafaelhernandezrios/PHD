@@ -88,7 +88,7 @@ class BaselineApp(QMainWindow):
         """Connects all signals between components."""
         # SignalWorker signals
         self.signal_worker.data_ready.connect(self.on_data_ready)
-        self.signal_worker.raw_data_ready.connect(self.on_raw_data_ready)
+        self.signal_worker.raw_data_ready_logging.connect(self.on_raw_data_ready)  # Use logging signal for raw data
         self.signal_worker.connection_status.connect(self.on_connection_status)
         
         # Baseline task signals
@@ -127,40 +127,35 @@ class BaselineApp(QMainWindow):
             self.statusBar().showMessage(f"User set to: {self.current_user}", 3000)
     
     def on_data_ready(self, data, timestamp):
-        """Handles filtered data from SignalWorker."""
+        """Handles filtered data from SignalWorker. Logs ALL samples at 250 Hz."""
         if not self.is_logging:
             return
         
-        # Subsampling: log every 5th sample (~50 Hz instead of 250 Hz)
-        if not hasattr(self, '_filtered_log_counter'):
-            self._filtered_log_counter = 0
+        # Log ALL samples (no subsampling) - SignalWorker already emits all samples
+        record = {
+            'timestamp': timestamp,
+            'phase_label': self.current_phase_label,
+            'channel_0': data[0] if len(data) > 0 else np.nan,
+            'channel_1': data[1] if len(data) > 1 else np.nan,
+            'channel_2': data[2] if len(data) > 2 else np.nan,
+            'channel_3': data[3] if len(data) > 3 else np.nan,
+            'channel_4': data[4] if len(data) > 4 else np.nan,
+            'channel_5': data[5] if len(data) > 5 else np.nan,
+            'channel_6': data[6] if len(data) > 6 else np.nan,
+            'channel_7': data[7] if len(data) > 7 else np.nan,
+        }
+        self.data_log.append(record)
         
-        self._filtered_log_counter += 1
-        if self._filtered_log_counter % 5 == 0:
-            record = {
-                'timestamp': timestamp,
-                'phase_label': self.current_phase_label,
-                'channel_0': data[0] if len(data) > 0 else np.nan,
-                'channel_1': data[1] if len(data) > 1 else np.nan,
-                'channel_2': data[2] if len(data) > 2 else np.nan,
-                'channel_3': data[3] if len(data) > 3 else np.nan,
-                'channel_4': data[4] if len(data) > 4 else np.nan,
-                'channel_5': data[5] if len(data) > 5 else np.nan,
-                'channel_6': data[6] if len(data) > 6 else np.nan,
-                'channel_7': data[7] if len(data) > 7 else np.nan,
-            }
-            self.data_log.append(record)
-            
-            # Debug: print first few samples
-            if len(self.data_log) <= 3:
-                print(f"[DEBUG] Logged sample {len(self.data_log)}: phase={self.current_phase_label}, timestamp={timestamp}")
+        # Debug: print first few samples
+        if len(self.data_log) <= 3:
+            print(f"[DEBUG] Logged filtered sample {len(self.data_log)}: phase={self.current_phase_label}, timestamp={timestamp}")
     
     def on_raw_data_ready(self, data, timestamp):
-        """Handles raw data from SignalWorker."""
+        """Handles raw data from SignalWorker. Logs ALL samples at 250 Hz."""
         if not self.is_logging:
             return
         
-        # Log all raw data (full 250 Hz)
+        # Log ALL raw samples (no subsampling) - SignalWorker emits all samples via raw_data_ready_logging
         record = {
             'timestamp': timestamp,
             'phase_label': self.current_phase_label,
@@ -174,6 +169,10 @@ class BaselineApp(QMainWindow):
             'channel_7': data[7] if len(data) > 7 else np.nan,
         }
         self.raw_data_log.append(record)
+        
+        # Debug: print first few samples
+        if len(self.raw_data_log) <= 3:
+            print(f"[DEBUG] Logged raw sample {len(self.raw_data_log)}: phase={self.current_phase_label}, timestamp={timestamp}")
     
     def on_phase_changed(self, phase_name):
         """Handles phase changes from baseline task."""
@@ -201,10 +200,7 @@ class BaselineApp(QMainWindow):
         """Starts data logging."""
         self.is_logging = True
         self.current_phase_label = "baseline_start"
-        # Reset counters
-        if hasattr(self, '_filtered_log_counter'):
-            self._filtered_log_counter = 0
-        print(f"[DEBUG] Logging started. SignalWorker running: {self.signal_worker.isRunning()}")
+        print(f"[DEBUG] Logging started at 250 Hz (ALL samples). SignalWorker running: {self.signal_worker.isRunning()}")
         self.statusBar().showMessage("Logging started")
     
     def stop_logging(self):

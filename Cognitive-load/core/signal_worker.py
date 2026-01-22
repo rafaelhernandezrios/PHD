@@ -75,6 +75,7 @@ class SignalWorker(QThread):
     
     # PyQt signals for communication with UI
     data_ready = pyqtSignal(np.ndarray, float)  # processed data, timestamp (ALL samples for logging)
+    raw_data_ready_logging = pyqtSignal(np.ndarray, float)  # unfiltered data, timestamp (ALL samples for logging)
     plot_data_ready = pyqtSignal(np.ndarray, float)  # processed data, timestamp (SUBSAMPLED for plotting)
     raw_data_ready = pyqtSignal(np.ndarray, float)  # unfiltered data, timestamp (SUBSAMPLED for plotting)
     connection_status = pyqtSignal(bool, str)  # connected, message
@@ -270,6 +271,7 @@ class SignalWorker(QThread):
                     # LOGGING: Emit ALL samples for data logging
                     # ============================================================
                     self.data_ready.emit(filtered_sample, timestamp)
+                    self.raw_data_ready_logging.emit(sample_array, timestamp)  # Raw data for logging (ALL samples)
                     
                     # ============================================================
                     # PLOTTING: Emit only some samples to reduce UI load
