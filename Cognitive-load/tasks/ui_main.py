@@ -486,10 +486,11 @@ class MainWindow(QMainWindow):
         self.ratio_buffer = deque(maxlen=300)  # Smaller buffer for ratio
         self.ratio_timestamps = deque(maxlen=300)
         
-        # Plot update control
+        # Plot update control (optimized for performance)
         self.plot_update_counter = 0
-        self.plot_update_skip = 5  # Update every 5 received samples (reduced from 2)
+        self.plot_update_skip = 10  # Update every 10 received samples (increased to reduce load)
         self.last_update_time = {}  # To limit update frequency per channel
+        self.plot_update_throttle = 0.3  # Minimum time between plot updates (300ms)
         
         # Initialize list of plot widgets (will be filled in init_ui)
         self.raw_plot_widgets = []
@@ -697,10 +698,34 @@ class MainWindow(QMainWindow):
         pass
     
     @pyqtSlot(np.ndarray, float)
+    def update_filtered_plot(self, data, timestamp):
+        """
+        Updates the filtered signal plot (for UI display).
+        This receives subsampled data from SignalWorker for performance.
+        
+        Args:
+            data: Array with 8 values (one per channel) - filtered data
+            timestamp: Sample timestamp
+        """
+        # Add to buffers and update plots
+        self._update_channel_plots(data, timestamp)
+    
     def update_raw_plot(self, data, timestamp):
         """
-        Updates the raw signal plot.
-        With subsampling to avoid saturation.
+        Updates the raw signal plot (for UI display).
+        This receives subsampled data from SignalWorker for performance.
+        
+        Args:
+            data: Array with 8 values (one per channel) - raw data
+            timestamp: Sample timestamp
+        """
+        # For now, we use filtered data for channel plots
+        # Raw data can be used for separate raw plots if needed
+        pass
+    
+    def _update_channel_plots(self, data, timestamp):
+        """
+        Internal method to update channel plots.
         
         Args:
             data: Array with 8 values (one per channel)
@@ -710,7 +735,7 @@ class MainWindow(QMainWindow):
         if not hasattr(self, '_ui_debug_counter'):
             self._ui_debug_counter = 0
         if self._ui_debug_counter < 5:
-            print(f"\n[UI - update_raw_plot {self._ui_debug_counter}]")
+            print(f"\n[UI - update_filtered_plot {self._ui_debug_counter}]")
             print(f"  Tipo de data: {type(data)}")
             print(f"  Data shape: {data.shape if hasattr(data, 'shape') else 'N/A'}")
             print(f"  Data length: {len(data) if hasattr(data, '__len__') else 'N/A'}")
@@ -720,11 +745,6 @@ class MainWindow(QMainWindow):
                 print(f"    Canal {ch}: {data[ch]:.2f}")
             print(f"  Timestamp: {timestamp}")
             self._ui_debug_counter += 1
-        
-        # Subsampling: update every N samples (increased for better performance)
-        self.plot_update_counter += 1
-        if self.plot_update_counter % self.plot_update_skip != 0:
-            return
         
         # Add to buffers
         for i in range(min(8, len(data))):
@@ -747,16 +767,22 @@ class MainWindow(QMainWindow):
         if len(self.raw_curves) == 0:
             return
         
-        # Limit update frequency per channel (maximum every 200ms)
+        # Limit update frequency per channel (throttled for performance)
         current_time = time.time()
+        
+        # Global throttling: don't update plots too frequently
+        if hasattr(self, '_last_global_update'):
+            if current_time - self._last_global_update < self.plot_update_throttle:
+                return  # Skip this entire update cycle
+        self._last_global_update = current_time
         
         for i, curve in enumerate(self.raw_curves):
             if i >= len(self.raw_data_buffer) or len(self.raw_data_buffer[i]) == 0:
                 continue
             
-            # Throttling: update each channel maximum every 200ms
+            # Throttling: update each channel maximum every 300ms (increased)
             if i in self.last_update_time:
-                if current_time - self.last_update_time[i] < 0.2:
+                if current_time - self.last_update_time[i] < self.plot_update_throttle:
                     continue  # Skip this update for this channel
             
             try:

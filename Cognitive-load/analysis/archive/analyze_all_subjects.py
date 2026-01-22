@@ -212,12 +212,22 @@ def main():
     
     # Encontrar todos los archivos CSV
     csv_files = []
-    # Buscar en DATA/DATA-Experimento-Rafa y subdirectorios
+    
+    # Buscar en el directorio raíz primero (donde está DATA/)
+    base_path = Path(BASE_DIR)
+    if (base_path / 'DATA' / 'Data-Experimento-Rafa').exists():
+        print(f"Buscando en: {base_path / 'DATA' / 'Data-Experimento-Rafa'}")
+        for data_dir in (base_path / 'DATA' / 'Data-Experimento-Rafa').glob('data_*'):
+            csv_files.extend(data_dir.glob('eeg_data_*.csv'))
+    
+    # También buscar en data/DATA/ por si acaso
     data_path = Path(DATA_DIR)
     if (data_path / 'DATA' / 'Data-Experimento-Rafa').exists():
+        print(f"Buscando en: {data_path / 'DATA' / 'Data-Experimento-Rafa'}")
         for data_dir in (data_path / 'DATA' / 'Data-Experimento-Rafa').glob('data_*'):
             csv_files.extend(data_dir.glob('eeg_data_*.csv'))
-    # También buscar en el directorio raíz de data si hay carpetas data_*
+    
+    # También buscar en el directorio raíz de data si hay carpetas data_* directamente
     for data_dir in data_path.glob('data_*'):
         csv_files.extend(data_dir.glob('eeg_data_*.csv'))
     

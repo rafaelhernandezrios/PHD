@@ -74,8 +74,9 @@ class SignalWorker(QThread):
     """
     
     # PyQt signals for communication with UI
-    data_ready = pyqtSignal(np.ndarray, float)  # processed data, timestamp
-    raw_data_ready = pyqtSignal(np.ndarray, float)  # unfiltered data, timestamp
+    data_ready = pyqtSignal(np.ndarray, float)  # processed data, timestamp (ALL samples for logging)
+    plot_data_ready = pyqtSignal(np.ndarray, float)  # processed data, timestamp (SUBSAMPLED for plotting)
+    raw_data_ready = pyqtSignal(np.ndarray, float)  # unfiltered data, timestamp (SUBSAMPLED for plotting)
     connection_status = pyqtSignal(bool, str)  # connected, message
     
     def __init__(self, sample_rate=250, n_channels=8, buffer_duration=2.0):
@@ -105,11 +106,14 @@ class SignalWorker(QThread):
         self.fz_channel = 3
         self.pz_channel = 6
         
-        # Buffer to accumulate samples before emitting (reduces UI load)
+        # Buffer to accumulate samples before emitting for plotting (reduces UI load)
         self.plot_buffer = []
         self.plot_buffer_size = 20  # Emit every 20 samples (~80ms at 250Hz, increased for better performance)
         self.last_plot_time = 0
         self.plot_interval = 0.1  # Emit every 100ms maximum (increased from 40ms)
+        
+        # Counter for logging (emit ALL samples for logging)
+        self._log_sample_counter = 0
     
     def _setup_filters(self):
         """Configures digital filters for signal processing."""
@@ -262,7 +266,14 @@ class SignalWorker(QThread):
                     # Add to buffer
                     self.ring_buffer.append(filtered_sample, timestamp)
                     
-                    # Accumulate samples to emit in batches (reduces saturation)
+                    # ============================================================
+                    # LOGGING: Emit ALL samples for data logging
+                    # ============================================================
+                    self.data_ready.emit(filtered_sample, timestamp)
+                    
+                    # ============================================================
+                    # PLOTTING: Emit only some samples to reduce UI load
+                    # ============================================================
                     current_time = time.time()
                     self.plot_buffer.append((sample_array, filtered_sample, timestamp))
                     
@@ -270,10 +281,10 @@ class SignalWorker(QThread):
                     if (len(self.plot_buffer) >= self.plot_buffer_size or 
                         (current_time - self.last_plot_time) >= self.plot_interval):
                         if self.plot_buffer:
-                            # Emit the last sample from buffer
+                            # Emit the last sample from buffer for plotting
                             last_raw, last_filtered, last_ts = self.plot_buffer[-1]
                             self.raw_data_ready.emit(last_raw, last_ts)
-                            self.data_ready.emit(last_filtered, last_ts)
+                            self.plot_data_ready.emit(last_filtered, last_ts)
                             self.plot_buffer.clear()
                             self.last_plot_time = current_time
                 

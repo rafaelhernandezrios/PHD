@@ -36,6 +36,10 @@ class EEGExperimentApp:
         
         # Data for logging
         self.data_log = []
+        self._log_buffer = []  # Buffer for batch processing
+        self._log_buffer_size = 50  # Process in batches of 50 samples
+        self._log_counter = 0  # Initialize counter for subsampling (1 every 5 samples = 50 Hz)
+        self._subsampling_factor = 5  # Save every 5th sample (250 Hz -> 50 Hz)
         self.current_phase_name = "idle"
         self.is_logging = False
         self.current_user = None
@@ -70,16 +74,17 @@ class EEGExperimentApp:
         self.plot_timer.timeout.connect(self.update_plots)
         self.plot_timer.start(200)  # Update every 200ms (~5 FPS, reduced to avoid saturation)
         
-        # Timer to calculate ratio
+        # Timer to calculate ratio (less frequent to reduce CPU load)
         self.ratio_timer = QTimer()
         self.ratio_timer.timeout.connect(self.calculate_and_update_ratio)
-        self.ratio_timer.start(1000)  # Calculate ratio every 1 second (reduced from 500ms)
+        self.ratio_timer.start(2000)  # Calculate ratio every 2 seconds (reduced for performance)
     
     def _connect_signals(self):
         """Connects all signals between components."""
         
-        # SignalWorker -> UI
+        # SignalWorker -> UI (plotting - subsampled for performance)
         self.signal_worker.raw_data_ready.connect(self.window.update_raw_plot)
+        self.signal_worker.plot_data_ready.connect(self.window.update_filtered_plot)
         self.signal_worker.connection_status.connect(self.on_connection_status)
         
         # ExperimentLogic -> UI
@@ -158,6 +163,9 @@ class EEGExperimentApp:
         )
         self.window.start_baseline_btn.setEnabled(True)
         self.is_logging = True
+        # Reset log counter when starting new experiment
+        self._log_counter = 0
+        print(f"[LOGGING] Logging started. Subsampling factor: {self._subsampling_factor} (target: 50 Hz)")
     
     def on_start_baseline(self):
         """Starts the Baseline phase."""
@@ -188,6 +196,8 @@ class EEGExperimentApp:
     
     def on_phase_changed(self, phase, message):
         """Handles experiment phase changes."""
+        # IMPORTANTE: NO resetear el contador al cambiar de fase
+        # El contador debe persistir para mantener el subsampling consistente
         if phase == "baseline_eyes_closed":
             self.current_phase_name = "baseline_eyes_closed"
             self.window.show_instructions(
@@ -216,7 +226,7 @@ class EEGExperimentApp:
     def log_data_sample(self, data, timestamp):
         """
         Logs a data sample for later saving.
-        Subsampling to avoid memory saturation.
+        Uses subsampling and batch processing to avoid memory saturation.
         
         Args:
             data: Array with filtered data from 8 channels
@@ -227,44 +237,65 @@ class EEGExperimentApp:
         
         # Subsampling: save every 5 samples (~50 Hz instead of 250 Hz)
         # This significantly reduces memory usage
-        if not hasattr(self, '_log_counter'):
-            self._log_counter = 0
-        
         self._log_counter += 1
-        if self._log_counter % 5 != 0:
+        
+        # Skip if not time to log yet (early return for performance)
+        if self._log_counter % self._subsampling_factor != 0:
             return
         
-        # Phase mapping to more descriptive labels
-        phase_labels = {
-            'idle': 'idle',
-            'setup': 'setup',
-            'baseline_eyes_open': 'baseline_eyes_open',
-            'baseline_eyes_closed': 'baseline_eyes_closed',
-            'baseline_completed': 'baseline_completed',
-            'low_load': 'low_cognitive_load',
-            'low_load_completed': 'low_load_completed',
-            'high_load': 'high_cognitive_load',
-            'high_load_completed': 'high_load_completed',
-            'analysis': 'analysis',
-            'completed': 'completed'
-        }
+        # Debug: Print first few logged samples to verify subsampling
+        if not hasattr(self, '_log_debug_counter'):
+            self._log_debug_counter = 0
+        if self._log_debug_counter < 5:
+            print(f"[LOGGING] Sample {self._log_debug_counter}: counter={self._log_counter}, logged=True, timestamp={timestamp:.3f}")
+            self._log_debug_counter += 1
         
-        # Create record with all channels and metadata
-        record = {
-            'timestamp': timestamp,
-            'phase': self.current_phase_name,
-            'label': phase_labels.get(self.current_phase_name, self.current_phase_name),
-            'channel_0': data[0] if len(data) > 0 else np.nan,
-            'channel_1': data[1] if len(data) > 1 else np.nan,
-            'channel_2': data[2] if len(data) > 2 else np.nan,
-            'channel_3': data[3] if len(data) > 3 else np.nan,
-            'channel_4': data[4] if len(data) > 4 else np.nan,
-            'channel_5': data[5] if len(data) > 5 else np.nan,
-            'channel_6': data[6] if len(data) > 6 else np.nan,
-            'channel_7': data[7] if len(data) > 7 else np.nan,
-        }
+        # Phase mapping to more descriptive labels (cached to avoid dict lookup overhead)
+        if not hasattr(self, '_phase_labels'):
+            self._phase_labels = {
+                'idle': 'idle',
+                'setup': 'setup',
+                'baseline_eyes_open': 'baseline_eyes_open',
+                'baseline_eyes_closed': 'baseline_eyes_closed',
+                'baseline_completed': 'baseline_completed',
+                'low_load': 'low_cognitive_load',
+                'low_load_completed': 'low_load_completed',
+                'high_load': 'high_cognitive_load',
+                'high_load_completed': 'high_load_completed',
+                'analysis': 'analysis',
+                'completed': 'completed'
+            }
         
-        self.data_log.append(record)
+        # Add to buffer (more efficient than creating dict immediately)
+        self._log_buffer.append((data, timestamp, self.current_phase_name))
+        
+        # Process buffer in batches to reduce overhead
+        if len(self._log_buffer) >= self._log_buffer_size:
+            self._flush_log_buffer()
+    
+    def _flush_log_buffer(self):
+        """Flushes the log buffer to data_log (batch processing for efficiency)."""
+        if not self._log_buffer:
+            return
+        
+        # Process all items in buffer at once
+        for data, timestamp, phase_name in self._log_buffer:
+            record = {
+                'timestamp': timestamp,
+                'phase': phase_name,
+                'label': self._phase_labels.get(phase_name, phase_name),
+                'channel_0': data[0] if len(data) > 0 else np.nan,
+                'channel_1': data[1] if len(data) > 1 else np.nan,
+                'channel_2': data[2] if len(data) > 2 else np.nan,
+                'channel_3': data[3] if len(data) > 3 else np.nan,
+                'channel_4': data[4] if len(data) > 4 else np.nan,
+                'channel_5': data[5] if len(data) > 5 else np.nan,
+                'channel_6': data[6] if len(data) > 6 else np.nan,
+                'channel_7': data[7] if len(data) > 7 else np.nan,
+            }
+            self.data_log.append(record)
+        
+        self._log_buffer.clear()
     
     def calculate_and_update_ratio(self):
         """Calculates and updates the cognitive load ratio."""
@@ -283,6 +314,10 @@ class EEGExperimentApp:
     
     def on_save_data(self):
         """Saves logged data to a CSV file."""
+        # Flush any remaining data in buffer before saving
+        if hasattr(self, '_log_buffer') and self._log_buffer:
+            self._flush_log_buffer()
+        
         if not self.data_log:
             QMessageBox.warning(self.window, "No Data", "No data to save.")
             return
