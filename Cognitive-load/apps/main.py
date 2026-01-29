@@ -47,23 +47,28 @@ class EEGExperimentApp:
         
         # Text for low cognitive load phase
         self.low_load_text = """
-        Neurotechnology is an interdisciplinary field that combines neuroscience, 
-        engineering, and technology to develop interfaces that connect the human 
-        brain with computational systems. Brain-computer interfaces (BCI) enable 
-        direct communication between the brain and external devices, opening new 
-        possibilities for rehabilitation, prosthetic control, and enhancement of 
-        cognitive capabilities.
+        Bad Bunny, whose real name is Benito Antonio Martínez Ocasio, was born on 
+        March 10, 1994, in Vega Baja, Puerto Rico. He grew up in a working-class 
+        family and developed a passion for music at a young age. Before becoming 
+        a global superstar, he worked as a supermarket bagger and studied audiovisual 
+        communication at the University of Puerto Rico.
         
-        BCI systems use various modalities for acquiring neural signals, including 
-        electroencephalography (EEG), magnetoencephalography (MEG), and intracranial 
-        recordings. EEG is particularly attractive due to its non-invasive nature, 
-        low cost, and high temporal resolution, although it has limitations in 
-        spatial resolution.
+        His breakthrough came in 2016 when he uploaded his song "Diles" to SoundCloud. 
+        The track caught the attention of DJ Luian, who signed him to his label. 
+        Bad Bunny's unique style, which blends reggaeton, trap, and Latin pop, quickly 
+        gained popularity. His distinctive voice, creative lyrics, and bold fashion 
+        choices set him apart from other artists in the genre.
         
-        EEG signal processing requires advanced filtering techniques, spectral analysis, 
-        and pattern classification. Machine learning algorithms, especially deep neural 
-        networks, have proven effective for decoding motor intentions and cognitive 
-        states from EEG signals.
+        In 2018, he released his debut album "X 100pre" which included hits like 
+        "Mía" and "Solo de Mí". The album was a massive success, establishing him 
+        as one of the leading figures in Latin music. He continued to break records 
+        with subsequent albums like "YHLQMDLG" and "El Último Tour del Mundo", 
+        becoming the first Spanish-language artist to top the Billboard 200 chart.
+        
+        Beyond music, Bad Bunny has made a significant cultural impact. He challenges 
+        traditional gender norms through his fashion choices and public statements, 
+        advocating for LGBTQ+ rights and social justice. His influence extends beyond 
+        music, making him one of the most important cultural figures of his generation.
         """
         
         # Connect signals
