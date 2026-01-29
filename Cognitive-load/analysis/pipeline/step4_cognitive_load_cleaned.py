@@ -156,7 +156,7 @@ def calculate_bandpower(signal_data, freq_band, sample_rate):
     idx_band = np.logical_and(freqs >= freq_band[0], freqs <= freq_band[1])
     if np.sum(idx_band) == 0:
         return 0.0
-    bandpower = np.trapz(psd[idx_band], freqs[idx_band])
+    bandpower = np.trapezoid(psd[idx_band], freqs[idx_band])
     return bandpower
 
 def preprocess_signal(channel_data, sample_rate=250, use_default_sr=False):
@@ -282,11 +282,20 @@ def analyze_subject_cleaned(csv_path, output_dir):
         fz_artifacts, fz_n_artifacts = detect_artifacts_combined(fz_signal)
         pz_artifacts, pz_n_artifacts = detect_artifacts_combined(pz_signal)
         
+        # Calcular porcentajes de artefactos
+        fz_artifact_pct = 100 * fz_n_artifacts / len(fz_signal) if len(fz_signal) > 0 else 0
+        pz_artifact_pct = 100 * pz_n_artifacts / len(pz_signal) if len(pz_signal) > 0 else 0
+        
+        # Advertir si hay demasiados artefactos (>50% en cualquier canal)
+        if fz_artifact_pct > 50 or pz_artifact_pct > 50:
+            print(f"    ADVERTENCIA: Demasiados artefactos (Fz: {fz_artifact_pct:.1f}%, Pz: {pz_artifact_pct:.1f}%)")
+            print(f"    Los datos pueden ser poco confiables. Considerar excluir esta fase.")
+        
         fz_cleaned = remove_artifacts_interpolation(fz_signal, fz_artifacts)
         pz_cleaned = remove_artifacts_interpolation(pz_signal, pz_artifacts)
         
-        print(f"    Artefactos Fz: {fz_n_artifacts} ({100*fz_n_artifacts/len(fz_signal):.1f}%)")
-        print(f"    Artefactos Pz: {pz_n_artifacts} ({100*pz_n_artifacts/len(pz_signal):.1f}%)")
+        print(f"    Artefactos Fz: {fz_n_artifacts} ({fz_artifact_pct:.1f}%)")
+        print(f"    Artefactos Pz: {pz_n_artifacts} ({pz_artifact_pct:.1f}%)")
         
         # Calcular cognitive load ANTES de limpiar
         ratios_before, theta_before, alpha_before = calculate_cognitive_load_by_phase(
@@ -330,6 +339,109 @@ def analyze_subject_cleaned(csv_path, output_dir):
         print(f"    Ratio medio despues: {mean_ratio_after:.3f}")
     
     return results
+
+
+def normalize_by_baseline(all_results):
+    """
+    Normaliza los ratios de cada sujeto usando su baseline como referencia.
+    
+    Método: ratio_normalizado = ratio_fase / ratio_baseline
+    Esto hace que el baseline = 1.0 para todos los sujetos.
+    
+    Returns:
+        Lista de resultados con ratios normalizados agregados
+    """
+    normalized_results = []
+    
+    for result in all_results:
+        normalized_result = result.copy()
+        normalized_result['phases_normalized'] = {}
+        
+        # Obtener ratio de baseline (preferir baseline_eyes_closed, sino baseline_eyes_open)
+        baseline_ratio = None
+        if 'baseline_eyes_closed' in result['phases']:
+            baseline_ratio = result['phases']['baseline_eyes_closed']['mean_ratio_after']
+        elif 'baseline_eyes_open' in result['phases']:
+            baseline_ratio = result['phases']['baseline_eyes_open']['mean_ratio_after']
+        
+        if baseline_ratio is None or baseline_ratio == 0 or not np.isfinite(baseline_ratio):
+            # Si no hay baseline válido, usar promedio de ambos baselines
+            baseline_open = result['phases'].get('baseline_eyes_open', {}).get('mean_ratio_after', None)
+            baseline_closed = result['phases'].get('baseline_eyes_closed', {}).get('mean_ratio_after', None)
+            baselines = [b for b in [baseline_open, baseline_closed] if b is not None and np.isfinite(b) and b > 0]
+            if baselines:
+                baseline_ratio = np.mean(baselines)
+            else:
+                baseline_ratio = None
+        
+        # Normalizar cada fase
+        for phase, phase_data in result['phases'].items():
+            normalized_phase = phase_data.copy()
+            ratio_after = phase_data['mean_ratio_after']
+            
+            if baseline_ratio is not None and baseline_ratio > 0 and np.isfinite(ratio_after):
+                normalized_ratio = ratio_after / baseline_ratio
+                normalized_phase['normalized_ratio'] = float(normalized_ratio)
+                normalized_phase['baseline_reference'] = float(baseline_ratio)
+            else:
+                normalized_phase['normalized_ratio'] = np.nan
+                normalized_phase['baseline_reference'] = float(baseline_ratio) if baseline_ratio is not None else np.nan
+            
+            normalized_result['phases_normalized'][phase] = normalized_phase
+        
+        normalized_results.append(normalized_result)
+    
+    return normalized_results
+
+
+def calculate_relative_change_from_baseline(all_results):
+    """
+    Calcula el cambio relativo desde baseline: (ratio_fase - ratio_baseline) / ratio_baseline
+    
+    Returns:
+        Lista de resultados con cambios relativos agregados
+    """
+    relative_results = []
+    
+    for result in all_results:
+        relative_result = result.copy()
+        relative_result['phases_relative'] = {}
+        
+        # Obtener ratio de baseline
+        baseline_ratio = None
+        if 'baseline_eyes_closed' in result['phases']:
+            baseline_ratio = result['phases']['baseline_eyes_closed']['mean_ratio_after']
+        elif 'baseline_eyes_open' in result['phases']:
+            baseline_ratio = result['phases']['baseline_eyes_open']['mean_ratio_after']
+        
+        if baseline_ratio is None or baseline_ratio == 0 or not np.isfinite(baseline_ratio):
+            baseline_open = result['phases'].get('baseline_eyes_open', {}).get('mean_ratio_after', None)
+            baseline_closed = result['phases'].get('baseline_eyes_closed', {}).get('mean_ratio_after', None)
+            baselines = [b for b in [baseline_open, baseline_closed] if b is not None and np.isfinite(b) and b > 0]
+            if baselines:
+                baseline_ratio = np.mean(baselines)
+            else:
+                baseline_ratio = None
+        
+        # Calcular cambio relativo para cada fase
+        for phase, phase_data in result['phases'].items():
+            relative_phase = phase_data.copy()
+            ratio_after = phase_data['mean_ratio_after']
+            
+            if baseline_ratio is not None and baseline_ratio > 0 and np.isfinite(ratio_after):
+                relative_change = (ratio_after - baseline_ratio) / baseline_ratio
+                relative_phase['relative_change'] = float(relative_change)
+                relative_phase['baseline_reference'] = float(baseline_ratio)
+            else:
+                relative_phase['relative_change'] = np.nan
+                relative_phase['baseline_reference'] = float(baseline_ratio) if baseline_ratio is not None else np.nan
+            
+            relative_result['phases_relative'][phase] = relative_phase
+        
+        relative_results.append(relative_result)
+    
+    return relative_results
+
 
 def create_comparison_visualization(all_results, output_dir):
     """Crea visualización comparativa de todos los sujetos."""
@@ -393,7 +505,7 @@ def create_comparison_visualization(all_results, output_dir):
         width = 0.35
         
         bp1 = ax1.boxplot(before_data, positions=positions - width/2, widths=width, 
-                         patch_artist=True, labels=labels)
+                         patch_artist=True, tick_labels=labels)
         bp2 = ax1.boxplot(after_data, positions=positions + width/2, widths=width, 
                          patch_artist=True)
         
@@ -553,6 +665,165 @@ def create_comparison_visualization(all_results, output_dir):
     print(f"Grafico guardado: {output_path}")
     plt.close()
 
+
+def create_all_subjects_cleaned_chart(all_results, output_dir):
+    """
+    Crea graficas con TODOS los sujetos:
+    1. Ratios absolutos (sin normalizar)
+    2. Ratios normalizados por baseline (baseline = 1.0)
+    3. Cambio relativo desde baseline (%)
+    """
+    print(f"\n{'='*80}")
+    print("GENERANDO GRAFICAS: TODOS LOS SUJETOS")
+    print(f"{'='*80}")
+    
+    # Normalizar por baseline
+    normalized_results = normalize_by_baseline(all_results)
+    relative_results = calculate_relative_change_from_baseline(all_results)
+    
+    subjects = [r['subject'] for r in all_results]
+    phases = ['baseline_eyes_open', 'baseline_eyes_closed', 'low_cognitive_load', 'high_cognitive_load']
+    phase_labels = ['Baseline Open', 'Baseline Closed', 'Low Load', 'High Load']
+    
+    # ============================================================
+    # Grafica 1: Ratios absolutos (sin normalizar)
+    # ============================================================
+    data_matrix_abs = {pl: [] for pl in phase_labels}
+    
+    for result in all_results:
+        for phase, pl in zip(phases, phase_labels):
+            if phase in result['phases']:
+                val = result['phases'][phase]['mean_ratio_after']
+                data_matrix_abs[pl].append(val if np.isfinite(val) else np.nan)
+            else:
+                data_matrix_abs[pl].append(np.nan)
+    
+    x = np.arange(len(subjects))
+    width = 0.2
+    
+    fig1, ax1 = plt.subplots(figsize=(16, 8))
+    fig1.suptitle('Cognitive Load Ratio - Todos los Sujetos (Ratios Absolutos)', 
+                 fontsize=14, fontweight='bold', color='white')
+    
+    colors = ['#4fc3f7', '#81c784', '#ffb74d', '#e57373']
+    for i, (pl, color) in enumerate(zip(phase_labels, colors)):
+        offset = (i - 1.5) * width
+        vals = data_matrix_abs[pl]
+        vals_plot = [v if not np.isnan(v) else 0 for v in vals]
+        ax1.bar(x + offset, vals_plot, width, label=pl, color=color, alpha=0.85, edgecolor='white', linewidth=0.5)
+    
+    ax1.set_xlabel('Sujeto', fontsize=12, color='white')
+    ax1.set_ylabel('Cognitive Load Ratio (Theta/Alpha)', fontsize=12, color='white')
+    ax1.set_title('Ratios absolutos - Datos despues de limpieza de artefactos', fontsize=11, color='white')
+    ax1.set_xticks(x)
+    ax1.set_xticklabels(subjects, rotation=45, ha='right', color='white')
+    ax1.legend(facecolor='#21262d', edgecolor='#00ff88', labelcolor='white', fontsize=10)
+    ax1.grid(True, alpha=0.3, axis='y', color='gray')
+    ax1.set_facecolor('#0d1117')
+    ax1.tick_params(colors='white')
+    for spine in ax1.spines.values():
+        spine.set_color('white')
+    fig1.patch.set_facecolor('#0d1117')
+    
+    plt.tight_layout()
+    output_path1 = os.path.join(output_dir, 'cognitive_load_todos_sujetos_absolutos.png')
+    plt.savefig(output_path1, dpi=300, bbox_inches='tight', facecolor='#0d1117')
+    print(f"Grafico 1 guardado: {output_path1}")
+    plt.close()
+    
+    # ============================================================
+    # Grafica 2: Ratios normalizados por baseline (baseline = 1.0)
+    # ============================================================
+    data_matrix_norm = {pl: [] for pl in phase_labels}
+    
+    for result in normalized_results:
+        for phase, pl in zip(phases, phase_labels):
+            if phase in result['phases_normalized']:
+                val = result['phases_normalized'][phase].get('normalized_ratio', np.nan)
+                data_matrix_norm[pl].append(val if np.isfinite(val) else np.nan)
+            else:
+                data_matrix_norm[pl].append(np.nan)
+    
+    fig2, ax2 = plt.subplots(figsize=(16, 8))
+    fig2.suptitle('Cognitive Load Ratio - Normalizado por Baseline (Baseline = 1.0)', 
+                 fontsize=14, fontweight='bold', color='white')
+    
+    for i, (pl, color) in enumerate(zip(phase_labels, colors)):
+        offset = (i - 1.5) * width
+        vals = data_matrix_norm[pl]
+        vals_plot = [v if not np.isnan(v) else 0 for v in vals]
+        ax2.bar(x + offset, vals_plot, width, label=pl, color=color, alpha=0.85, edgecolor='white', linewidth=0.5)
+    
+    # Línea de referencia en y=1.0 (baseline)
+    ax2.axhline(y=1.0, color='yellow', linestyle='--', linewidth=2, alpha=0.7, label='Baseline (referencia)')
+    
+    ax2.set_xlabel('Sujeto', fontsize=12, color='white')
+    ax2.set_ylabel('Ratio Normalizado (Baseline = 1.0)', fontsize=12, color='white')
+    ax2.set_title('Ratios normalizados por baseline de cada sujeto', fontsize=11, color='white')
+    ax2.set_xticks(x)
+    ax2.set_xticklabels(subjects, rotation=45, ha='right', color='white')
+    ax2.legend(facecolor='#21262d', edgecolor='#00ff88', labelcolor='white', fontsize=10)
+    ax2.grid(True, alpha=0.3, axis='y', color='gray')
+    ax2.set_facecolor('#0d1117')
+    ax2.tick_params(colors='white')
+    for spine in ax2.spines.values():
+        spine.set_color('white')
+    fig2.patch.set_facecolor('#0d1117')
+    
+    plt.tight_layout()
+    output_path2 = os.path.join(output_dir, 'cognitive_load_todos_sujetos_normalizados.png')
+    plt.savefig(output_path2, dpi=300, bbox_inches='tight', facecolor='#0d1117')
+    print(f"Grafico 2 guardado: {output_path2}")
+    plt.close()
+    
+    # ============================================================
+    # Grafica 3: Cambio relativo desde baseline (%)
+    # ============================================================
+    data_matrix_rel = {pl: [] for pl in phase_labels}
+    
+    for result in relative_results:
+        for phase, pl in zip(phases, phase_labels):
+            if phase in result['phases_relative']:
+                val = result['phases_relative'][phase].get('relative_change', np.nan)
+                # Convertir a porcentaje
+                val_pct = val * 100 if np.isfinite(val) else np.nan
+                data_matrix_rel[pl].append(val_pct)
+            else:
+                data_matrix_rel[pl].append(np.nan)
+    
+    fig3, ax3 = plt.subplots(figsize=(16, 8))
+    fig3.suptitle('Cambio Relativo desde Baseline (%)', 
+                 fontsize=14, fontweight='bold', color='white')
+    
+    for i, (pl, color) in enumerate(zip(phase_labels, colors)):
+        offset = (i - 1.5) * width
+        vals = data_matrix_rel[pl]
+        vals_plot = [v if not np.isnan(v) else 0 for v in vals]
+        ax3.bar(x + offset, vals_plot, width, label=pl, color=color, alpha=0.85, edgecolor='white', linewidth=0.5)
+    
+    # Línea de referencia en y=0 (sin cambio)
+    ax3.axhline(y=0, color='yellow', linestyle='--', linewidth=2, alpha=0.7, label='Sin cambio')
+    
+    ax3.set_xlabel('Sujeto', fontsize=12, color='white')
+    ax3.set_ylabel('Cambio Relativo (%)', fontsize=12, color='white')
+    ax3.set_title('Cambio porcentual desde baseline: (ratio_fase - baseline) / baseline * 100', fontsize=11, color='white')
+    ax3.set_xticks(x)
+    ax3.set_xticklabels(subjects, rotation=45, ha='right', color='white')
+    ax3.legend(facecolor='#21262d', edgecolor='#00ff88', labelcolor='white', fontsize=10)
+    ax3.grid(True, alpha=0.3, axis='y', color='gray')
+    ax3.set_facecolor('#0d1117')
+    ax3.tick_params(colors='white')
+    for spine in ax3.spines.values():
+        spine.set_color('white')
+    fig3.patch.set_facecolor('#0d1117')
+    
+    plt.tight_layout()
+    output_path3 = os.path.join(output_dir, 'cognitive_load_todos_sujetos_cambio_relativo.png')
+    plt.savefig(output_path3, dpi=300, bbox_inches='tight', facecolor='#0d1117')
+    print(f"Grafico 3 guardado: {output_path3}")
+    plt.close()
+
+
 def create_final_report(all_results, output_dir):
     """Crea reporte final con ratios limpiados."""
     print(f"\n{'='*80}")
@@ -664,10 +935,22 @@ def main():
     
     print(f"\nEncontrados {len(csv_files)} archivos CSV")
     
+    # Filtrar solo sujetos 1, 2, 3, 4
+    SUBJECTS_TO_INCLUDE = ['1', '2', '3', '4']
+    print(f"\nFILTRO: Solo se analizaran los sujetos: {SUBJECTS_TO_INCLUDE}")
+    
     # Analizar cada sujeto
     all_results = []
     for csv_file in sorted(csv_files):
         try:
+            # Extraer nombre del sujeto del path
+            subject_name = Path(csv_file).parent.name.replace('data_', '')
+            
+            # Filtrar solo sujetos 1, 2, 3, 4
+            if subject_name not in SUBJECTS_TO_INCLUDE:
+                print(f"  Omitiendo sujeto '{subject_name}' (no esta en la lista de sujetos a incluir)")
+                continue
+            
             result = analyze_subject_cleaned(csv_file, OUTPUT_DIR)
             all_results.append(result)
         except Exception as e:
@@ -675,10 +958,40 @@ def main():
             import traceback
             traceback.print_exc()
     
-    # Crear visualización comparativa
+    print(f"\nTotal de sujetos analizados: {len(all_results)}")
+    
+    # Crear visualizaciones
     if all_results:
         create_comparison_visualization(all_results, OUTPUT_DIR)
+        create_all_subjects_cleaned_chart(all_results, OUTPUT_DIR)  # Graficas normalizadas y absolutas
         create_final_report(all_results, OUTPUT_DIR)
+        
+        # Guardar también resultados normalizados
+        normalized_results = normalize_by_baseline(all_results)
+        relative_results = calculate_relative_change_from_baseline(all_results)
+        
+        # Guardar CSV con normalizaciones
+        normalized_summary = []
+        for result in normalized_results:
+            subject = result['subject']
+            for phase in LABELS_OF_INTEREST:
+                if phase in result['phases_normalized']:
+                    phase_data = result['phases_normalized'][phase]
+                    normalized_summary.append({
+                        'subject': subject,
+                        'phase': phase,
+                        'ratio_absoluto': phase_data['mean_ratio_after'],
+                        'ratio_normalizado': phase_data.get('normalized_ratio', np.nan),
+                        'baseline_reference': phase_data.get('baseline_reference', np.nan),
+                        'fz_artifact_pct': phase_data['fz_artifact_pct'],
+                        'pz_artifact_pct': phase_data['pz_artifact_pct']
+                    })
+        
+        if normalized_summary:
+            df_norm = pd.DataFrame(normalized_summary)
+            norm_path = os.path.join(OUTPUT_DIR, 'cognitive_load_normalized_summary.csv')
+            df_norm.to_csv(norm_path, index=False)
+            print(f"\nResumen normalizado guardado: {norm_path}")
     
     print("\n" + "="*80)
     print("ANALISIS COMPLETADO")
