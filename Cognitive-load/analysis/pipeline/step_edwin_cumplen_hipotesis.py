@@ -1,10 +1,10 @@
 """
 Análisis y gráficas: sesiones que CUMPLEN la hipótesis (actividad > baseline)
-+ TODAS las sesiones de Rafa y Joss aunque no cumplan.
++ TODAS las sesiones de Joss aunque no cumplan. Rafa excluido.
 
-- Lee jeronimo_cognitive_load_summary.csv
-- Incluye: sesiones con al menos una fase normalized_ratio > 1, y todas las de Rafa y Joss
-- Genera gráficas para ese conjunto de sesiones
+- Lee edwin_cognitive_load_summary.csv
+- Incluye: sesiones con al menos una fase normalized_ratio > 1, y todas las de Joss (sin Rafa)
+- Genera gráficas para ese conjunto de sesiones (Edwin - Laberinto)
 """
 
 import pandas as pd
@@ -14,16 +14,15 @@ import matplotlib.pyplot as plt
 from pathlib import Path
 
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-INPUT_CSV = os.path.join(BASE_DIR, 'output', 'jeronimo_analysis', 'jeronimo_cognitive_load_summary.csv')
-OUTPUT_DIR = os.path.join(BASE_DIR, 'output', 'jeronimo_analysis')
+INPUT_CSV = os.path.join(BASE_DIR, 'output', 'edwin_analysis', 'edwin_cognitive_load_summary.csv')
+OUTPUT_DIR = os.path.join(BASE_DIR, 'output', 'edwin_analysis')
 Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
 
 
 def get_sessions_to_include(df_summary):
     """
     Sesiones a incluir: (1) las que cumplen hipótesis (al menos una fase > baseline),
-    (2) TODAS las sesiones de Rafa y Joss aunque no cumplan.
-    Returns: list of session names
+    (2) TODAS las sesiones de Joss aunque no cumplan. Rafa excluido.
     """
     df_with_norm = df_summary.dropna(subset=['normalized_ratio'])
     cumplen = []
@@ -32,14 +31,14 @@ def get_sessions_to_include(df_summary):
             lambda x: (x > 1).any()
         )
         cumplen = cumplen[cumplen].index.tolist()
-    # Todas las sesiones de Rafa y Joss (aunque no cumplan)
     all_sessions = df_summary['session'].unique()
-    rafa_joss = [s for s in all_sessions if s.startswith('Rafa-') or s.startswith('Joss-')]
-    return sorted(set(cumplen) | set(rafa_joss))
+    joss_sessions = [s for s in all_sessions if s.startswith('Joss-')]
+    included = set(cumplen) | set(joss_sessions)
+    included = {s for s in included if not s.startswith('Rafa-')}
+    return sorted(included)
 
 
 def filter_df(df_summary, sessions_to_include):
-    """Filtra el DataFrame a las sesiones a incluir."""
     return df_summary[df_summary['session'].isin(sessions_to_include)].copy()
 
 
@@ -82,9 +81,9 @@ def plot_by_session(df, output_dir):
     for idx in range(len(sessions), n_rows * n_cols):
         row, col = idx // n_cols, idx % n_cols
         axes[row, col].set_visible(False)
-    plt.suptitle('Cognitive load por tarea (Jeronimo)', fontsize=12, fontweight='bold')
+    plt.suptitle('Cognitive load por tarea (Edwin - Laberinto)', fontsize=12, fontweight='bold')
     plt.tight_layout()
-    out_path = os.path.join(output_dir, 'jeronimo_cumplen_by_session.png')
+    out_path = os.path.join(output_dir, 'edwin_cumplen_by_session.png')
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"Grafico guardado: {out_path}")
@@ -112,35 +111,37 @@ def plot_normalized_cumplen(df, output_dir):
     ax.set_xticks(x)
     ax.set_xticklabels(phases_all, rotation=45, ha='right')
     ax.set_ylabel('Ratio normalizado (Baseline = 1)')
-    ax.set_title('Cognitive load por tarea (Jeronimo)')
+    ax.set_title('Cognitive load por tarea (Edwin - Laberinto)')
     ax.legend(bbox_to_anchor=(1.02, 1), loc='upper left', fontsize=8)
     ax.grid(True, alpha=0.3, axis='y')
     ax.set_facecolor('#fafafa')
     plt.tight_layout()
-    out_path = os.path.join(output_dir, 'jeronimo_cumplen_normalized.png')
+    out_path = os.path.join(output_dir, 'edwin_cumplen_normalized.png')
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"Grafico guardado: {out_path}")
 
 
 def plot_by_subject(df, output_dir):
-    """Gráfica: agrupada por sujeto (Dani, Edwin, Eli, Jeronimo, Joss, Rafa), barras por sesión/fase."""
+    """Gráfica: agrupada por sujeto (sin Rafa)."""
     df_n = df.dropna(subset=['normalized_ratio'])
     if len(df_n) == 0:
         return
-    # Extraer sujeto: primera parte del session (Dani-CanineQuest -> Dani)
     df_n = df_n.copy()
     df_n['subject'] = df_n['session'].str.split('-').str[0]
-    subjects = ['Dani', 'Edwin', 'Eli', 'Jeronimo', 'Joss', 'Rafa']
-    fig, axes = plt.subplots(2, 3, figsize=(14, 10))
-    axes = axes.flatten()
+    subjects = sorted(df_n['subject'].unique())
+    if not subjects:
+        return
+    n_cols = 3
+    n_rows = (len(subjects) + n_cols - 1) // n_cols
+    fig, axes = plt.subplots(n_rows, n_cols, figsize=(4 * n_cols, 3.5 * n_rows))
+    axes = np.atleast_2d(axes).flatten()
     for idx, subject in enumerate(subjects):
         ax = axes[idx]
         data = df_n[df_n['subject'] == subject]
         if len(data) == 0:
             ax.set_visible(False)
             continue
-        # Por sesión y fase: valor normalizado
         sessions_subj = sorted(data['session'].unique())
         phases_all = sorted(data['phase'].unique(), key=lambda x: (0 if x == 'pre' else 1, x))
         x_labels = []
@@ -164,9 +165,9 @@ def plot_by_subject(df, output_dir):
         ax.set_facecolor('#fafafa')
     for idx in range(len(subjects), len(axes)):
         axes[idx].set_visible(False)
-    plt.suptitle('Cognitive load por tarea vs baseline por sujeto (Jeronimo)', fontsize=12, fontweight='bold')
+    plt.suptitle('Cognitive load por tarea vs baseline por sujeto (Edwin - Laberinto, sin Rafa)', fontsize=12, fontweight='bold')
     plt.tight_layout()
-    out_path = os.path.join(output_dir, 'jeronimo_cumplen_by_subject.png')
+    out_path = os.path.join(output_dir, 'edwin_cumplen_by_subject.png')
     plt.savefig(out_path, dpi=150, bbox_inches='tight')
     plt.close()
     print(f"Grafico guardado: {out_path}")
@@ -174,19 +175,19 @@ def plot_by_subject(df, output_dir):
 
 def main():
     print("="*80)
-    print("ANALISIS: CUMPLEN HIPOTESIS + TODAS SESIONES RAFA Y JOSS")
+    print("ANALISIS: CUMPLEN HIPOTESIS + TODAS SESIONES JOSS (EDWIN - LABERINTO, RAFA EXCLUIDO)")
     print("="*80)
     print(f"Entrada: {INPUT_CSV}")
     print(f"Salida: {OUTPUT_DIR}")
     print()
 
     if not os.path.isfile(INPUT_CSV):
-        print(f"ERROR: No existe {INPUT_CSV}. Ejecuta antes step_jeronimo_cognitive_load.py")
+        print(f"ERROR: No existe {INPUT_CSV}. Ejecuta antes step_edwin_cognitive_load.py")
         return
 
     df = pd.read_csv(INPUT_CSV)
     sessions_to_include = get_sessions_to_include(df)
-    print(f"Sesiones incluidas (cumplen + todas Rafa/Joss): {len(sessions_to_include)}")
+    print(f"Sesiones incluidas (cumplen + todas Joss, sin Rafa): {len(sessions_to_include)}")
     for s in sessions_to_include:
         print(f"  - {s}")
 
@@ -195,7 +196,7 @@ def main():
         print("No hay sesiones para incluir. Nada que graficar.")
         return
 
-    csv_out = os.path.join(OUTPUT_DIR, 'jeronimo_cumplen_hipotesis_summary.csv')
+    csv_out = os.path.join(OUTPUT_DIR, 'edwin_cumplen_hipotesis_summary.csv')
     df_out.to_csv(csv_out, index=False)
     print(f"\nResumen guardado: {csv_out}")
 

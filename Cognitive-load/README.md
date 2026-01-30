@@ -145,12 +145,23 @@ Cognitive-load/
 │   ├── go_nogo_task.py          # Go/No-Go task widget
 │   └── baseline_task.py         # Baseline recording widget
 │
-├── analysis/                     # Data analysis scripts
-│   ├── analyze_cognitive_load.py
-│   ├── analyze_all_subjects.py
-│   ├── analyze_with_waaf.py
-│   ├── plot_channels_by_label.py
-│   └── detailed_comparison.py
+├── analysis/                     # Data analysis
+│   ├── pipeline/                # Main analysis pipelines (use these)
+│   │   ├── step1_explore_data.py
+│   │   ├── step2_analyze_individual_subjects.py
+│   │   ├── step3_detect_artifacts.py
+│   │   ├── step4_cognitive_load_cleaned.py    # Rafa: cognitive load + hypothesis
+│   │   ├── step5_analysis_cumplen_incluibles.py  # Rafa: only includible + cumplen
+│   │   ├── step_jeronimo_segment_by_events.py # Jeronimo: segment by Event
+│   │   ├── step_jeronimo_cognitive_load.py    # Jeronimo: load vs baseline
+│   │   ├── step_jeronimo_cumplen_hipotesis.py # Jeronimo: cumplen + Rafa/Joss
+│   │   ├── step_edwin_segment_by_events.py    # Edwin: segment Laberinto
+│   │   ├── step_edwin_cognitive_load.py       # Edwin: load vs baseline (Rafa)
+│   │   ├── step_edwin_cumplen_hipotesis.py    # Edwin: cumplen + Joss (Rafa excluded)
+│   │   └── README.md
+│   ├── utils/                    # Diagnostic utilities
+│   ├── archive/                  # Legacy scripts (reference only)
+│   └── DOCUMENTACION_DATOS.md
 │
 ├── debug/                        # Debug scripts
 │   ├── debug_edwin.py
@@ -162,14 +173,83 @@ Cognitive-load/
 │   └── FLUJO_CARGA_COGNITIVA.md
 │
 ├── data/                         # Experimental data
-│   └── DATA/                    # Raw data folders
+│   ├── Data-Experimento-Rafa/   # Go/No-Go, baseline eyes open/closed
+│   ├── Data-Experimento-Jeronimo/  # CanineQuest (events, baselines in data_*)
+│   └── Data-Experimento-Edwin/    # Laberinto (AURA_RAW, no baseline folders)
 │
-├── output/                       # Analysis results and plots
-│   └── analysis_output/
+├── output/                       # Analysis results
+│   ├── analysis_output/         # Rafa pipeline (step4, step5)
+│   ├── jeronimo_segmented/      # Jeronimo segmented CSVs
+│   ├── jeronimo_analysis/       # Jeronimo cognitive load + plots
+│   ├── edwin_segmented/         # Edwin segmented CSVs
+│   └── edwin_analysis/          # Edwin cognitive load + plots
 │
-├── requirements.txt              # Project dependencies
+├── requirements.txt
 ├── README.md                     # This file
-└── .gitignore                    # Files ignored by Git
+└── .gitignore
+```
+
+## 📈 Analysis Pipelines
+
+Post-processing pipelines for cognitive load (Theta/Alpha ratio) and hypothesis testing. Run from the project root.
+
+### Pipeline Rafa (Data-Experimento-Rafa)
+
+Data: baseline (eyes open/closed), low load, high load. Hypothesis: **High Load > Low Load**.
+
+| Step | Script | Description |
+|------|--------|-------------|
+| 1 | `step1_explore_data.py` | Explore CSVs, sample counts per phase |
+| 2 | `step2_analyze_individual_subjects.py` | Per-subject signal check (Fz, Pz) |
+| 3 | `step3_detect_artifacts.py` | Artifact detection and suppression |
+| 4 | `step4_cognitive_load_cleaned.py` | Cognitive load (cleaned), hypothesis check, **exclusion criteria** (artifact % > 50% or &lt; 2 windows in low/high) |
+| 5 | `step5_analysis_cumplen_incluibles.py` | Analysis and plots **only for includible subjects that meet hypothesis** |
+
+Output: `output/analysis_output/` (CSVs, comparison plots, cumplen incluibles).
+
+### Pipeline Jeronimo (Data-Experimento-Jeronimo)
+
+Data: CanineQuest variants (keyboard, gamepad, haptico). No explicit phase labels; **Event** column marks segment start/end. Folders starting with `data` = baseline.
+
+| Step | Script | Description |
+|------|--------|-------------|
+| 1 | `step_jeronimo_segment_by_events.py` | Segment AURA_RAW by Event → `pre`, `segment_4`, …; baselines from `data_*` folders |
+| 2 | `step_jeronimo_cognitive_load.py` | Theta/Alpha per phase, **normalized to baseline** (baselines from Jeronimo or Rafa summary for Eli/Jeronimo) |
+| 3 | `step_jeronimo_cumplen_hipotesis.py` | Include sessions with **any phase > baseline** + **all Rafa and Joss** sessions; generate plots |
+
+Output: `output/jeronimo_segmented/`, `output/jeronimo_analysis/`.
+
+### Pipeline Edwin (Data-Experimento-Edwin)
+
+Data: **Laberinto** only (AURA_RAW). No baseline folders; baselines from **Rafa** experiment summary.
+
+| Step | Script | Description |
+|------|--------|-------------|
+| 1 | `step_edwin_segment_by_events.py` | Segment AURA_RAW by Event → `pre`, `segment_*` |
+| 2 | `step_edwin_cognitive_load.py` | Theta/Alpha per phase, normalized to **Rafa baseline** (Dani→Daniel, Eli→eliza, etc.) |
+| 3 | `step_edwin_cumplen_hipotesis.py` | Include sessions with **any phase > baseline** + **all Joss**; **Rafa excluded**; generate plots |
+
+Output: `output/edwin_segmented/`, `output/edwin_analysis/`.
+
+### Quick run (examples)
+
+```bash
+# Rafa (full pipeline)
+python analysis/pipeline/step1_explore_data.py
+python analysis/pipeline/step2_analyze_individual_subjects.py
+python analysis/pipeline/step3_detect_artifacts.py
+python analysis/pipeline/step4_cognitive_load_cleaned.py
+python analysis/pipeline/step5_analysis_cumplen_incluibles.py
+
+# Jeronimo
+python analysis/pipeline/step_jeronimo_segment_by_events.py
+python analysis/pipeline/step_jeronimo_cognitive_load.py
+python analysis/pipeline/step_jeronimo_cumplen_hipotesis.py
+
+# Edwin
+python analysis/pipeline/step_edwin_segment_by_events.py
+python analysis/pipeline/step_edwin_cognitive_load.py
+python analysis/pipeline/step_edwin_cumplen_hipotesis.py
 ```
 
 ## 📊 Data Format
@@ -213,6 +293,7 @@ For detailed technical information, see:
 - [FLUJO_CARGA_COGNITIVA.md](docs/FLUJO_CARGA_COGNITIVA.md) - Complete system documentation
 - [README_GO_NOGO.md](docs/README_GO_NOGO.md) - Go/No-Go task documentation
 - [README_BASELINE.md](docs/README_BASELINE.md) - Baseline recording documentation
+- [analysis/pipeline/README.md](analysis/pipeline/README.md) - Rafa pipeline (step1–step4) details
 
 ## 🛠️ Technologies Used
 
@@ -250,5 +331,5 @@ For questions or support, please open an issue in the repository.
 
 ---
 
-**Version:** 1.0  
-**Last update:** December 2024
+**Version:** 1.1  
+**Last update:** January 2026
