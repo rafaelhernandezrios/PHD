@@ -48,6 +48,44 @@ Z_SCORE_THRESHOLD = 3.0
 IQR_MULTIPLIER = 3.0
 AMPLITUDE_THRESHOLD = 200  # uV
 
+# Criterios de exclusión para "sujetos incluibles" en hipótesis
+ARTIFACT_PCT_THRESHOLD = 50.0   # Excluir si fz o pz artifact % > este valor en low/high
+MIN_WINDOWS_AFTER = 2           # Excluir si n_windows_after < este valor en low o high
+
+def get_included_subjects(df_summary):
+    """
+    Determina qué sujetos son incluibles para la verificación de hipótesis.
+    Excluye si en low o high: artifact % > ARTIFACT_PCT_THRESHOLD o n_windows_after < MIN_WINDOWS_AFTER.
+    Returns:
+        included: list of subject names
+        excluded: dict subject -> reason string
+    """
+    included = []
+    excluded = {}
+    for subject in df_summary['subject'].unique():
+        subject_data = df_summary[df_summary['subject'] == subject]
+        low_data = subject_data[subject_data['phase'] == 'low_cognitive_load']
+        high_data = subject_data[subject_data['phase'] == 'high_cognitive_load']
+        if len(low_data) == 0 or len(high_data) == 0:
+            excluded[subject] = "falta fase low o high"
+            continue
+        low_row = low_data.iloc[0]
+        high_row = high_data.iloc[0]
+        reasons = []
+        if low_row['fz_artifact_pct'] > ARTIFACT_PCT_THRESHOLD or low_row['pz_artifact_pct'] > ARTIFACT_PCT_THRESHOLD:
+            reasons.append(f"low artifacts Fz={low_row['fz_artifact_pct']:.1f}% Pz={low_row['pz_artifact_pct']:.1f}%")
+        if high_row['fz_artifact_pct'] > ARTIFACT_PCT_THRESHOLD or high_row['pz_artifact_pct'] > ARTIFACT_PCT_THRESHOLD:
+            reasons.append(f"high artifacts Fz={high_row['fz_artifact_pct']:.1f}% Pz={high_row['pz_artifact_pct']:.1f}%")
+        if low_row['n_windows_after'] < MIN_WINDOWS_AFTER:
+            reasons.append(f"low ventanas={int(low_row['n_windows_after'])}")
+        if high_row['n_windows_after'] < MIN_WINDOWS_AFTER:
+            reasons.append(f"high ventanas={int(high_row['n_windows_after'])}")
+        if reasons:
+            excluded[subject] = "; ".join(reasons)
+        else:
+            included.append(subject)
+    return included, excluded
+
 def apply_bandpass_filter(signal_data, low_freq=1.0, high_freq=40.0, sample_rate=250):
     """Aplica filtro bandpass."""
     if len(signal_data) < 3:
@@ -617,12 +655,28 @@ def create_comparison_visualization(all_results, output_dir):
     ax4 = plt.subplot(2, 2, 4)
     ax4.axis('off')
     
+    # Construir df para criterios de exclusión (low/high con artifact% y n_windows)
+    inclusion_rows = []
+    for result in all_results:
+        for phase in ['low_cognitive_load', 'high_cognitive_load']:
+            if phase in result['phases']:
+                p = result['phases'][phase]
+                inclusion_rows.append({
+                    'subject': result['subject'], 'phase': phase,
+                    'fz_artifact_pct': p['fz_artifact_pct'], 'pz_artifact_pct': p['pz_artifact_pct'],
+                    'n_windows_after': p['n_windows_after'], 'mean_ratio_after': p['mean_ratio_after']
+                })
+    df_inclusion = pd.DataFrame(inclusion_rows) if inclusion_rows else pd.DataFrame()
+    included_list, excluded_dict = (get_included_subjects(df_inclusion) if len(df_inclusion) > 0
+                                    else (list(df_comp['subject'].unique()), {}))
+    
     # Crear tabla resumen
     summary_text = "RESUMEN DE HIPOTESIS\n" + "="*50 + "\n\n"
     summary_text += "Hipotesis: High Load > Low Load\n\n"
     
     subjects_meeting_hypothesis_before = 0
     subjects_meeting_hypothesis_after = 0
+    subjects_meeting_included = 0
     
     for subject in subjects:
         subject_data = df_comp[df_comp['subject'] == subject]
@@ -642,6 +696,8 @@ def create_comparison_visualization(all_results, output_dir):
                 subjects_meeting_hypothesis_before += 1
             if meets_after:
                 subjects_meeting_hypothesis_after += 1
+            if subject in included_list and meets_after:
+                subjects_meeting_included += 1
             
             status_before = "[OK]" if meets_before else "[X]"
             status_after = "[OK]" if meets_after else "[X]"
@@ -651,6 +707,9 @@ def create_comparison_visualization(all_results, output_dir):
     summary_text += f"\nTotal cumpliendo hipotesis:\n"
     summary_text += f"  Antes: {subjects_meeting_hypothesis_before}/{len(subjects)}\n"
     summary_text += f"  Despues: {subjects_meeting_hypothesis_after}/{len(subjects)}\n"
+    summary_text += f"  Solo incluibles: {subjects_meeting_included}/{len(included_list)}\n"
+    if excluded_dict:
+        summary_text += f"  Excluidos: {len(excluded_dict)}\n"
     
     ax4.text(0.05, 0.95, summary_text, transform=ax4.transAxes,
             fontsize=10, verticalalignment='top', family='monospace',
@@ -889,10 +948,15 @@ def create_final_report(all_results, output_dir):
             
             print(f"{subject:<12} {str_open:<18} {str_closed:<18} {str_low:<15} {str_high:<15}")
         
-        # Verificar hipótesis
+        # Criterios de exclusión: sujetos incluibles para hipótesis
+        included_subjects, excluded_subjects = get_included_subjects(df_summary)
+        total_subjects = len(df_summary['subject'].unique())
+        
+        # Verificar hipótesis (todos, y luego solo incluibles)
         print("\nVERIFICACION DE HIPOTESIS (High Load > Low Load):")
         print("-"*60)
-        subjects_meeting = 0
+        subjects_meeting_all = 0
+        subjects_meeting_included = 0
         for subject in df_summary['subject'].unique():
             subject_data = df_summary[df_summary['subject'] == subject]
             low_data = subject_data[subject_data['phase'] == 'low_cognitive_load']
@@ -903,11 +967,21 @@ def create_final_report(all_results, output_dir):
                 high_ratio = high_data.iloc[0]['mean_ratio_after']
                 meets = high_ratio > low_ratio
                 status = "[OK]" if meets else "[X]"
-                print(f"{subject:<12} {status} Low: {low_ratio:.3f}, High: {high_ratio:.3f}")
+                excl_note = " (excl.)" if subject in excluded_subjects else ""
+                print(f"{subject:<12} {status} Low: {low_ratio:.3f}, High: {high_ratio:.3f}{excl_note}")
                 if meets:
-                    subjects_meeting += 1
+                    subjects_meeting_all += 1
+                if subject in included_subjects and meets:
+                    subjects_meeting_included += 1
         
-        print(f"\nTotal cumpliendo hipotesis: {subjects_meeting}/{len(df_summary['subject'].unique())}")
+        print(f"\nTotal cumpliendo hipotesis (todos): {subjects_meeting_all}/{total_subjects}")
+        print(f"Criterios exclusion: artifact%>{ARTIFACT_PCT_THRESHOLD:.0f}% o n_windows_after<{MIN_WINDOWS_AFTER} en low/high")
+        print(f"Sujetos incluibles: {len(included_subjects)} | Excluidos: {len(excluded_subjects)}")
+        if excluded_subjects:
+            print("Excluidos (motivo):")
+            for subj, reason in sorted(excluded_subjects.items()):
+                print(f"  - {subj}: {reason}")
+        print(f"Total cumpliendo hipotesis (solo incluibles): {subjects_meeting_included}/{len(included_subjects)}")
 
 def main():
     """Función principal."""
@@ -934,22 +1008,14 @@ def main():
         return
     
     print(f"\nEncontrados {len(csv_files)} archivos CSV")
+    print(f"\nSe analizaran TODOS los sujetos encontrados.")
     
-    # Filtrar solo sujetos 1, 2, 3, 4
-    SUBJECTS_TO_INCLUDE = ['1', '2', '3', '4']
-    print(f"\nFILTRO: Solo se analizaran los sujetos: {SUBJECTS_TO_INCLUDE}")
-    
-    # Analizar cada sujeto
+    # Analizar cada sujeto (todos los que tengan CSV en data_*)
     all_results = []
     for csv_file in sorted(csv_files):
         try:
             # Extraer nombre del sujeto del path
             subject_name = Path(csv_file).parent.name.replace('data_', '')
-            
-            # Filtrar solo sujetos 1, 2, 3, 4
-            if subject_name not in SUBJECTS_TO_INCLUDE:
-                print(f"  Omitiendo sujeto '{subject_name}' (no esta en la lista de sujetos a incluir)")
-                continue
             
             result = analyze_subject_cleaned(csv_file, OUTPUT_DIR)
             all_results.append(result)
