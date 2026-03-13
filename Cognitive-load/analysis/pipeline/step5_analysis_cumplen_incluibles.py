@@ -15,17 +15,22 @@ from pathlib import Path
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 OUTPUT_DIR = os.path.join(BASE_DIR, 'output', 'analysis_output')
 Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+# Mismo modo que step4: True = Fz/Pz, False = regiones F/P
+USE_FZ_PZ = True
+OUTPUT_SUFFIX = "_fz_pz" if USE_FZ_PZ else "_region"
 
-# Criterios de exclusión (igual que step4)
+# Criterios de exclusión (artifact% y ventanas). Incluimos también sesiones de 2 ventanas si cumplen.
 ARTIFACT_PCT_THRESHOLD = 50.0
 MIN_WINDOWS_AFTER = 2
+# Si > 0, solo sesiones con fases largas; si 0, incluir también las de 2 ventanas que cumplan
+MIN_PHASE_SAMPLES = 0   # 0 = juntar fases largas + 2 ventanas que cumplan; 8000 = solo fases largas
 
-CLEANED_SUMMARY_PATH = os.path.join(OUTPUT_DIR, 'cognitive_load_cleaned_summary.csv')
-NORMALIZED_SUMMARY_PATH = os.path.join(OUTPUT_DIR, 'cognitive_load_normalized_summary.csv')
+CLEANED_SUMMARY_PATH = os.path.join(OUTPUT_DIR, 'cognitive_load_cleaned_summary' + OUTPUT_SUFFIX + '.csv')
+NORMALIZED_SUMMARY_PATH = os.path.join(OUTPUT_DIR, 'cognitive_load_normalized_summary' + OUTPUT_SUFFIX + '.csv')
 
 
 def get_included_subjects(df_summary):
-    """Sujetos incluibles: artifact%<=50 y n_windows_after>=2 en low y high."""
+    """Sujetos incluibles: fase larga (n_samples>=MIN_PHASE_SAMPLES), artifact%<=50, n_windows_after>=2."""
     included = []
     excluded = {}
     for subject in df_summary['subject'].unique():
@@ -38,6 +43,8 @@ def get_included_subjects(df_summary):
         low_row = low_data.iloc[0]
         high_row = high_data.iloc[0]
         reasons = []
+        if MIN_PHASE_SAMPLES > 0 and (low_row['n_samples'] < MIN_PHASE_SAMPLES or high_row['n_samples'] < MIN_PHASE_SAMPLES):
+            reasons.append("fase corta")
         if low_row['fz_artifact_pct'] > ARTIFACT_PCT_THRESHOLD or low_row['pz_artifact_pct'] > ARTIFACT_PCT_THRESHOLD:
             reasons.append("low artifacts")
         if high_row['fz_artifact_pct'] > ARTIFACT_PCT_THRESHOLD or high_row['pz_artifact_pct'] > ARTIFACT_PCT_THRESHOLD:
@@ -134,23 +141,66 @@ def plot_absolutes(df_cleaned, subjects, output_dir):
     x = np.arange(len(subjects))
     width = 0.35
     fig, ax = plt.subplots(figsize=(14, 7))
-    ax.bar(x - width/2, data_low, width, label='Low Load', color='#81c784', alpha=0.9, edgecolor='white')
-    ax.bar(x + width/2, data_high, width, label='High Load', color='#e57373', alpha=0.9, edgecolor='white')
-    ax.set_xlabel('Sujeto', fontsize=12, color='white')
-    ax.set_ylabel('Cognitive Load Ratio (Theta/Alpha)', fontsize=12, color='white')
-    ax.set_title('Solo sujetos incluibles que cumplen hipotesis (High > Low)', fontsize=14, fontweight='bold', color='white')
+    ax.bar(x - width/2, data_low, width, label='Low Load', color='#81c784', alpha=0.9, edgecolor='#333')
+    ax.bar(x + width/2, data_high, width, label='High Load', color='#e57373', alpha=0.9, edgecolor='#333')
+    ax.set_xlabel('Subject', fontsize=12, color='black')
+    ax.set_ylabel('Cognitive Load Ratio (Theta/Alpha)', fontsize=12, color='black')
+    ax.set_title('Includable sessions satisfying High > Low (controlled paradigm)', fontsize=14, fontweight='bold', color='black')
     ax.set_xticks(x)
-    ax.set_xticklabels(subjects, rotation=45, ha='right', color='white')
-    ax.legend(facecolor='#21262d', edgecolor='#00ff88', labelcolor='white', fontsize=10)
+    ax.set_xticklabels(subjects, rotation=45, ha='right', color='black')
+    ax.legend(facecolor='white', edgecolor='#333', labelcolor='black', fontsize=10)
     ax.grid(True, alpha=0.3, axis='y', color='gray')
-    ax.set_facecolor('#0d1117')
-    ax.tick_params(colors='white')
+    ax.set_facecolor('white')
+    ax.tick_params(colors='black')
     for spine in ax.spines.values():
-        spine.set_color('white')
-    fig.patch.set_facecolor('#0d1117')
+        spine.set_color('black')
+    fig.patch.set_facecolor('white')
     plt.tight_layout()
-    out_path = os.path.join(output_dir, 'cumplen_incluibles_ratios_absolutos.png')
-    plt.savefig(out_path, dpi=300, bbox_inches='tight', facecolor='#0d1117')
+    out_path = os.path.join(output_dir, 'cumplen_incluibles_ratios_absolutos' + OUTPUT_SUFFIX + '.png')
+    plt.savefig(out_path, dpi=300, bbox_inches='tight', facecolor='white')
+    plt.close()
+    print(f"Grafico guardado: {out_path}")
+
+
+def plot_paired_slope(df_cleaned, subjects, output_dir):
+    """Paired slope (spaghetti) plot: one line per session from Low to High, shows paired design and consistent direction."""
+    data_low = []
+    data_high = []
+    for s in subjects:
+        low_row = df_cleaned[(df_cleaned['subject'] == s) & (df_cleaned['phase'] == 'low_cognitive_load')]
+        high_row = df_cleaned[(df_cleaned['subject'] == s) & (df_cleaned['phase'] == 'high_cognitive_load')]
+        data_low.append(low_row.iloc[0]['mean_ratio_after'] if len(low_row) else np.nan)
+        data_high.append(high_row.iloc[0]['mean_ratio_after'] if len(high_row) else np.nan)
+
+    data_low = np.array(data_low)
+    data_high = np.array(data_high)
+    n = len(subjects)
+
+    x_pos = np.array([0, 1])  # Low Load = 0, High Load = 1
+    fig, ax = plt.subplots(figsize=(6, 5))
+    colors = plt.cm.tab10(np.linspace(0, 1, max(n, 10)))[:n]
+
+    for i in range(n):
+        label = f'S{i+1}' if n <= 10 else subjects[i]
+        ax.plot(x_pos, [data_low[i], data_high[i]], color=colors[i], linewidth=2, alpha=0.9, zorder=2, label=label)
+        ax.scatter(0, data_low[i], color=colors[i], s=50, zorder=3, edgecolors='#333', linewidths=1)
+        ax.scatter(1, data_high[i], color=colors[i], s=50, zorder=3, edgecolors='#333', linewidths=1)
+
+    ax.legend(loc='upper right', fontsize=9, facecolor='white', edgecolor='#333')
+    ax.set_xticks([0, 1])
+    ax.set_xticklabels(['Low Load', 'High Load'], fontsize=11)
+    ax.set_ylabel('Cognitive Load Ratio (Theta/Alpha)', fontsize=12, color='black')
+    ax.set_title('Paired change: Low → High (controlled paradigm)', fontsize=13, fontweight='bold', color='black')
+    ax.set_facecolor('white')
+    ax.tick_params(colors='black')
+    ax.grid(True, alpha=0.3, axis='y', color='gray')
+    for spine in ax.spines.values():
+        spine.set_color('black')
+    ax.set_ylim(bottom=0)
+    fig.patch.set_facecolor('white')
+    plt.tight_layout()
+    out_path = os.path.join(output_dir, 'cumplen_incluibles_paired_slope' + OUTPUT_SUFFIX + '.png')
+    plt.savefig(out_path, dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
     print(f"Grafico guardado: {out_path}")
 
@@ -173,23 +223,23 @@ def plot_normalized(df_norm, subjects, output_dir):
     for i, (pl, color) in enumerate(zip(phase_labels, colors)):
         offset = (i - 1.5) * width
         vals = [v if not np.isnan(v) else 0 for v in data[pl]]
-        ax.bar(x + offset, vals, width, label=pl, color=color, alpha=0.85, edgecolor='white')
-    ax.axhline(y=1.0, color='yellow', linestyle='--', linewidth=1.5, alpha=0.7, label='Baseline=1')
-    ax.set_xlabel('Sujeto', fontsize=12, color='white')
-    ax.set_ylabel('Ratio normalizado (Baseline = 1.0)', fontsize=12, color='white')
-    ax.set_title('Solo cumplen incluibles - Ratios normalizados por baseline', fontsize=14, fontweight='bold', color='white')
+        ax.bar(x + offset, vals, width, label=pl, color=color, alpha=0.85, edgecolor='#333')
+    ax.axhline(y=1.0, color='gray', linestyle='--', linewidth=1.5, alpha=0.7, label='Baseline=1')
+    ax.set_xlabel('Subject', fontsize=12, color='black')
+    ax.set_ylabel('Normalized ratio (Baseline = 1.0)', fontsize=12, color='black')
+    ax.set_title('Includable sessions - Normalized ratios by baseline', fontsize=14, fontweight='bold', color='black')
     ax.set_xticks(x)
-    ax.set_xticklabels(subjects, rotation=45, ha='right', color='white')
-    ax.legend(facecolor='#21262d', edgecolor='#00ff88', labelcolor='white', fontsize=9)
+    ax.set_xticklabels(subjects, rotation=45, ha='right', color='black')
+    ax.legend(facecolor='white', edgecolor='#333', labelcolor='black', fontsize=9)
     ax.grid(True, alpha=0.3, axis='y', color='gray')
-    ax.set_facecolor('#0d1117')
-    ax.tick_params(colors='white')
+    ax.set_facecolor('white')
+    ax.tick_params(colors='black')
     for spine in ax.spines.values():
-        spine.set_color('white')
-    fig.patch.set_facecolor('#0d1117')
+        spine.set_color('black')
+    fig.patch.set_facecolor('white')
     plt.tight_layout()
-    out_path = os.path.join(output_dir, 'cumplen_incluibles_ratios_normalizados.png')
-    plt.savefig(out_path, dpi=300, bbox_inches='tight', facecolor='#0d1117')
+    out_path = os.path.join(output_dir, 'cumplen_incluibles_ratios_normalizados' + OUTPUT_SUFFIX + '.png')
+    plt.savefig(out_path, dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
     print(f"Grafico guardado: {out_path}")
 
@@ -224,24 +274,24 @@ def plot_relative_change(df_cleaned, subjects, output_dir):
     x = np.arange(len(subjects))
     width = 0.35
     fig, ax = plt.subplots(figsize=(14, 7))
-    ax.bar(x - width/2, data_low_pct, width, label='Low Load', color='#81c784', alpha=0.9, edgecolor='white')
-    ax.bar(x + width/2, data_high_pct, width, label='High Load', color='#e57373', alpha=0.9, edgecolor='white')
-    ax.axhline(y=0, color='yellow', linestyle='--', linewidth=1.5, alpha=0.7)
-    ax.set_xlabel('Sujeto', fontsize=12, color='white')
-    ax.set_ylabel('Cambio relativo desde baseline (%)', fontsize=12, color='white')
-    ax.set_title('Solo cumplen incluibles - Cambio relativo desde baseline', fontsize=14, fontweight='bold', color='white')
+    ax.bar(x - width/2, data_low_pct, width, label='Low Load', color='#81c784', alpha=0.9, edgecolor='#333')
+    ax.bar(x + width/2, data_high_pct, width, label='High Load', color='#e57373', alpha=0.9, edgecolor='#333')
+    ax.axhline(y=0, color='gray', linestyle='--', linewidth=1.5, alpha=0.7)
+    ax.set_xlabel('Subject', fontsize=12, color='black')
+    ax.set_ylabel('Relative change from baseline (%)', fontsize=12, color='black')
+    ax.set_title('Includable sessions - Relative change from baseline', fontsize=14, fontweight='bold', color='black')
     ax.set_xticks(x)
-    ax.set_xticklabels(subjects, rotation=45, ha='right', color='white')
-    ax.legend(facecolor='#21262d', edgecolor='#00ff88', labelcolor='white', fontsize=10)
+    ax.set_xticklabels(subjects, rotation=45, ha='right', color='black')
+    ax.legend(facecolor='white', edgecolor='#333', labelcolor='black', fontsize=10)
     ax.grid(True, alpha=0.3, axis='y', color='gray')
-    ax.set_facecolor('#0d1117')
-    ax.tick_params(colors='white')
+    ax.set_facecolor('white')
+    ax.tick_params(colors='black')
     for spine in ax.spines.values():
-        spine.set_color('white')
-    fig.patch.set_facecolor('#0d1117')
+        spine.set_color('black')
+    fig.patch.set_facecolor('white')
     plt.tight_layout()
-    out_path = os.path.join(output_dir, 'cumplen_incluibles_cambio_relativo.png')
-    plt.savefig(out_path, dpi=300, bbox_inches='tight', facecolor='#0d1117')
+    out_path = os.path.join(output_dir, 'cumplen_incluibles_cambio_relativo' + OUTPUT_SUFFIX + '.png')
+    plt.savefig(out_path, dpi=300, bbox_inches='tight', facecolor='white')
     plt.close()
     print(f"Grafico guardado: {out_path}")
 
@@ -274,12 +324,12 @@ def save_cumplen_summary_csv(df_cleaned, df_norm, subjects, stats, output_dir):
             'pz_artifact_pct_high': high_row['pz_artifact_pct'],
         })
     df_out = pd.DataFrame(rows)
-    out_path = os.path.join(output_dir, 'cumplen_incluibles_summary.csv')
+    out_path = os.path.join(output_dir, 'cumplen_incluibles_summary' + OUTPUT_SUFFIX + '.csv')
     df_out.to_csv(out_path, index=False)
     print(f"CSV guardado: {out_path}")
 
     if stats:
-        stats_path = os.path.join(output_dir, 'cumplen_incluibles_estadisticas.txt')
+        stats_path = os.path.join(output_dir, 'cumplen_incluibles_estadisticas' + OUTPUT_SUFFIX + '.txt')
         with open(stats_path, 'w', encoding='utf-8') as f:
             f.write("ESTADISTICAS AGREGADAS (solo cumplen incluibles)\n")
             f.write("="*50 + "\n")
@@ -297,7 +347,10 @@ def main():
     print("="*80)
     print(f"Lectura desde: {CLEANED_SUMMARY_PATH}")
     print(f"Salida: {OUTPUT_DIR}")
-    print(f"Criterios: artifact%<={ARTIFACT_PCT_THRESHOLD:.0f}%, n_windows>={MIN_WINDOWS_AFTER}")
+    if MIN_PHASE_SAMPLES > 0:
+        print(f"Criterios: n_samples>={MIN_PHASE_SAMPLES} (fase larga), artifact%<={ARTIFACT_PCT_THRESHOLD:.0f}%, n_windows>={MIN_WINDOWS_AFTER}")
+    else:
+        print(f"Criterios: todas las fases (incl. 2 ventanas), artifact%<={ARTIFACT_PCT_THRESHOLD:.0f}%, n_windows>={MIN_WINDOWS_AFTER}")
 
     df_cleaned_f, df_norm_f, cumplen_list, included_list, excluded_dict = load_and_filter()
 
@@ -318,6 +371,7 @@ def main():
         print(f"  Cohen's d (paired): {stats['cohen_d']:.4f}")
 
     plot_absolutes(df_cleaned_f, cumplen_list, OUTPUT_DIR)
+    plot_paired_slope(df_cleaned_f, cumplen_list, OUTPUT_DIR)
     plot_relative_change(df_cleaned_f, cumplen_list, OUTPUT_DIR)
     if df_norm_f is not None:
         plot_normalized(df_norm_f, cumplen_list, OUTPUT_DIR)

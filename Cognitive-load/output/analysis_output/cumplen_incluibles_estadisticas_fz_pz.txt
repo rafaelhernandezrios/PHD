@@ -1,0 +1,7 @@
+ESTADISTICAS AGREGADAS (solo cumplen incluibles)
+==================================================
+N = 6
+Low  Load:  mean = 1.3681  std = 1.7996
+High Load:  mean = 4.6545  std = 4.9891
+Diferencia (High - Low): mean = 3.2864
+Cohen's d (paired): 0.7505

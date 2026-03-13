@@ -20,14 +20,25 @@ BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__fil
 DATA_DIR = os.path.join(BASE_DIR, 'data', 'Data-Experimento-Rafa')
 OUTPUT_DIR = os.path.join(BASE_DIR, 'output', 'analysis_output')
 Path(OUTPUT_DIR).mkdir(parents=True, exist_ok=True)
+# True = solo Fz y Pz (canales 3 y 6). False = regiones F y P (media de canales).
+USE_FZ_PZ = True
+# Sufijo según modo: _fz_pz o _region (no sobrescribir entre sí)
+OUTPUT_SUFFIX = "_fz_pz" if USE_FZ_PZ else "_region"
 
 # Parámetros
 SAMPLE_RATE = 250  # Hz
 THETA_BAND = (4.0, 7.0)  # Hz
 ALPHA_BAND = (8.0, 12.0)  # Hz
-FZ_CHANNEL = 3  # Canal Fz (frontal)
-PZ_CHANNEL = 6  # Canal Pz (parietal)
 WINDOW_SAMPLES = 250  # Ventana de 1 segundo a 250 Hz
+
+# Solo Fz/Pz (cuando USE_FZ_PZ = True)
+FZ_CHANNEL = 3   # Fz
+PZ_CHANNEL = 6   # Pz
+
+# Canales por región (cuando USE_FZ_PZ = False): zona F = frontal, zona P = parietal
+F_CHANNELS = [0, 1, 2, 3, 4]   # Fp1, Fp2, F3, Fz, F4
+P_CHANNELS = [5, 6, 7]          # P3, Pz, P4
+BAD_CHANNELS = []  # Canales malos a excluir del CAR/región; [] si no hay
 
 # Mapeo de canales
 CHANNEL_NAMES = {
@@ -51,11 +62,14 @@ AMPLITUDE_THRESHOLD = 200  # uV
 # Criterios de exclusión para "sujetos incluibles" en hipótesis
 ARTIFACT_PCT_THRESHOLD = 50.0   # Excluir si fz o pz artifact % > este valor en low/high
 MIN_WINDOWS_AFTER = 2           # Excluir si n_windows_after < este valor en low o high
+# Solo analizar sesiones con fases largas (~36 s). 36 s a 250 Hz = 9000 muestras; 8000 = ~32 s
+MIN_PHASE_SAMPLES = 8000        # Excluir si low o high tienen menos muestras (fase corta)
 
 def get_included_subjects(df_summary):
     """
     Determina qué sujetos son incluibles para la verificación de hipótesis.
-    Excluye si en low o high: artifact % > ARTIFACT_PCT_THRESHOLD o n_windows_after < MIN_WINDOWS_AFTER.
+    Excluye si: fase corta (n_samples < MIN_PHASE_SAMPLES), artifact % > umbral,
+    o n_windows_after < MIN_WINDOWS_AFTER en low o high.
     Returns:
         included: list of subject names
         excluded: dict subject -> reason string
@@ -72,6 +86,8 @@ def get_included_subjects(df_summary):
         low_row = low_data.iloc[0]
         high_row = high_data.iloc[0]
         reasons = []
+        if low_row['n_samples'] < MIN_PHASE_SAMPLES or high_row['n_samples'] < MIN_PHASE_SAMPLES:
+            reasons.append(f"fase corta (low={int(low_row['n_samples'])}, high={int(high_row['n_samples'])})")
         if low_row['fz_artifact_pct'] > ARTIFACT_PCT_THRESHOLD or low_row['pz_artifact_pct'] > ARTIFACT_PCT_THRESHOLD:
             reasons.append(f"low artifacts Fz={low_row['fz_artifact_pct']:.1f}% Pz={low_row['pz_artifact_pct']:.1f}%")
         if high_row['fz_artifact_pct'] > ARTIFACT_PCT_THRESHOLD or high_row['pz_artifact_pct'] > ARTIFACT_PCT_THRESHOLD:
@@ -115,11 +131,14 @@ def apply_notch_filter(signal_data, notch_freq=60.0, sample_rate=250, Q=30.0):
     filtered = signal.filtfilt(b, a, signal_data)
     return filtered
 
-def apply_car(eeg_matrix, bad_channel_idx=None):
-    """Aplica Common Average Reference (CAR)."""
+def apply_car(eeg_matrix, bad_channel_idx=None, bad_channel_indices=None):
+    """Aplica Common Average Reference (CAR). Excluye canales defectuosos del promedio."""
     n_samples, n_channels = eeg_matrix.shape
+    exclude = list(bad_channel_indices) if bad_channel_indices else []
     if bad_channel_idx is not None:
-        valid_channels = [i for i in range(n_channels) if i != bad_channel_idx]
+        exclude.append(bad_channel_idx)
+    if exclude:
+        valid_channels = [i for i in range(n_channels) if i not in exclude]
     else:
         valid_channels = list(range(n_channels))
     if len(valid_channels) == 0:
@@ -127,6 +146,14 @@ def apply_car(eeg_matrix, bad_channel_idx=None):
     car_reference = np.mean(eeg_matrix[:, valid_channels], axis=1, keepdims=True)
     eeg_car = eeg_matrix - car_reference
     return eeg_car
+
+
+def get_region_signal(eeg_car, channel_indices, exclude_indices):
+    """Devuelve la señal regional como media de los canales indicados, excluyendo los malos."""
+    use = [i for i in channel_indices if i not in exclude_indices]
+    if not use:
+        return None
+    return np.mean(eeg_car[:, use], axis=1)
 
 def detect_artifacts_combined(signal_data, z_threshold=Z_SCORE_THRESHOLD, 
                               iqr_multiplier=IQR_MULTIPLIER, 
@@ -309,12 +336,18 @@ def analyze_subject_cleaned(csv_path, output_dir):
                 use_default_sr=use_default_for_filtering
             )
         
-        # Aplicar CAR
-        eeg_car = apply_car(eeg_filtered, bad_channel_idx=None)
+        # Aplicar CAR (excluyendo canales malos si BAD_CHANNELS está definido)
+        eeg_car = apply_car(eeg_filtered, bad_channel_indices=BAD_CHANNELS if not USE_FZ_PZ else None)
         
-        # Extraer Fz y Pz
-        fz_signal = eeg_car[:, FZ_CHANNEL]
-        pz_signal = eeg_car[:, PZ_CHANNEL]
+        if USE_FZ_PZ:
+            fz_signal = eeg_car[:, FZ_CHANNEL].copy()
+            pz_signal = eeg_car[:, PZ_CHANNEL].copy()
+        else:
+            fz_signal = get_region_signal(eeg_car, F_CHANNELS, BAD_CHANNELS)
+            pz_signal = get_region_signal(eeg_car, P_CHANNELS, BAD_CHANNELS)
+            if fz_signal is None or pz_signal is None:
+                print(f"    OMITIDO: Región F o P sin canales válidos (BAD_CHANNELS={BAD_CHANNELS})")
+                continue
         
         # Detectar y limpiar artefactos
         fz_artifacts, fz_n_artifacts = detect_artifacts_combined(fz_signal)
@@ -663,6 +696,7 @@ def create_comparison_visualization(all_results, output_dir):
                 p = result['phases'][phase]
                 inclusion_rows.append({
                     'subject': result['subject'], 'phase': phase,
+                    'n_samples': p['n_samples'],
                     'fz_artifact_pct': p['fz_artifact_pct'], 'pz_artifact_pct': p['pz_artifact_pct'],
                     'n_windows_after': p['n_windows_after'], 'mean_ratio_after': p['mean_ratio_after']
                 })
@@ -719,7 +753,7 @@ def create_comparison_visualization(all_results, output_dir):
     plt.tight_layout()
     
     # Guardar figura
-    output_path = os.path.join(output_dir, 'cognitive_load_comparison_cleaned.png')
+    output_path = os.path.join(output_dir, 'cognitive_load_comparison_cleaned' + OUTPUT_SUFFIX + '.png')
     plt.savefig(output_path, dpi=300, bbox_inches='tight', facecolor='#0d1117')
     print(f"Grafico guardado: {output_path}")
     plt.close()
@@ -785,7 +819,7 @@ def create_all_subjects_cleaned_chart(all_results, output_dir):
     fig1.patch.set_facecolor('#0d1117')
     
     plt.tight_layout()
-    output_path1 = os.path.join(output_dir, 'cognitive_load_todos_sujetos_absolutos.png')
+    output_path1 = os.path.join(output_dir, 'cognitive_load_todos_sujetos_absolutos' + OUTPUT_SUFFIX + '.png')
     plt.savefig(output_path1, dpi=300, bbox_inches='tight', facecolor='#0d1117')
     print(f"Grafico 1 guardado: {output_path1}")
     plt.close()
@@ -830,7 +864,7 @@ def create_all_subjects_cleaned_chart(all_results, output_dir):
     fig2.patch.set_facecolor('#0d1117')
     
     plt.tight_layout()
-    output_path2 = os.path.join(output_dir, 'cognitive_load_todos_sujetos_normalizados.png')
+    output_path2 = os.path.join(output_dir, 'cognitive_load_todos_sujetos_normalizados' + OUTPUT_SUFFIX + '.png')
     plt.savefig(output_path2, dpi=300, bbox_inches='tight', facecolor='#0d1117')
     print(f"Grafico 2 guardado: {output_path2}")
     plt.close()
@@ -877,7 +911,7 @@ def create_all_subjects_cleaned_chart(all_results, output_dir):
     fig3.patch.set_facecolor('#0d1117')
     
     plt.tight_layout()
-    output_path3 = os.path.join(output_dir, 'cognitive_load_todos_sujetos_cambio_relativo.png')
+    output_path3 = os.path.join(output_dir, 'cognitive_load_todos_sujetos_cambio_relativo' + OUTPUT_SUFFIX + '.png')
     plt.savefig(output_path3, dpi=300, bbox_inches='tight', facecolor='#0d1117')
     print(f"Grafico 3 guardado: {output_path3}")
     plt.close()
@@ -916,7 +950,7 @@ def create_final_report(all_results, output_dir):
     
     if summary_data:
         df_summary = pd.DataFrame(summary_data)
-        summary_path = os.path.join(output_dir, 'cognitive_load_cleaned_summary.csv')
+        summary_path = os.path.join(output_dir, 'cognitive_load_cleaned_summary' + OUTPUT_SUFFIX + '.csv')
         df_summary.to_csv(summary_path, index=False)
         print(f"Reporte guardado: {summary_path}")
         
@@ -975,7 +1009,7 @@ def create_final_report(all_results, output_dir):
                     subjects_meeting_included += 1
         
         print(f"\nTotal cumpliendo hipotesis (todos): {subjects_meeting_all}/{total_subjects}")
-        print(f"Criterios exclusion: artifact%>{ARTIFACT_PCT_THRESHOLD:.0f}% o n_windows_after<{MIN_WINDOWS_AFTER} en low/high")
+        print(f"Criterios exclusion: n_samples<{MIN_PHASE_SAMPLES} (fase corta), artifact%>{ARTIFACT_PCT_THRESHOLD:.0f}%, n_windows_after<{MIN_WINDOWS_AFTER}")
         print(f"Sujetos incluibles: {len(included_subjects)} | Excluidos: {len(excluded_subjects)}")
         if excluded_subjects:
             print("Excluidos (motivo):")
@@ -991,6 +1025,16 @@ def main():
     print("\nAplicando limpieza de artefactos y recalculando ratios...")
     print(f"Directorio de datos: {DATA_DIR}")
     print(f"Directorio de salida: {OUTPUT_DIR}")
+    if USE_FZ_PZ:
+        print(f"Indice: Theta = {CHANNEL_NAMES[FZ_CHANNEL]} (canal {FZ_CHANNEL}), Alpha = {CHANNEL_NAMES[PZ_CHANNEL]} (canal {PZ_CHANNEL})")
+    else:
+        f_names = [CHANNEL_NAMES[i] for i in F_CHANNELS if i not in BAD_CHANNELS]
+        p_names = [CHANNEL_NAMES[i] for i in P_CHANNELS if i not in BAD_CHANNELS]
+        print(f"Theta: region F = {f_names}  |  Alpha: region P = {p_names}")
+        if BAD_CHANNELS:
+            print(f"Canales excluidos (malos): {[CHANNEL_NAMES[i] for i in BAD_CHANNELS]}")
+    print(f"Salida: sufijo '{OUTPUT_SUFFIX}'")
+    print(f"Solo sesiones con fases largas: n_samples >= {MIN_PHASE_SAMPLES} (~{MIN_PHASE_SAMPLES/250:.0f} s por fase)")
     
     # Buscar archivos CSV
     csv_files = []
@@ -1055,7 +1099,7 @@ def main():
         
         if normalized_summary:
             df_norm = pd.DataFrame(normalized_summary)
-            norm_path = os.path.join(OUTPUT_DIR, 'cognitive_load_normalized_summary.csv')
+            norm_path = os.path.join(OUTPUT_DIR, 'cognitive_load_normalized_summary' + OUTPUT_SUFFIX + '.csv')
             df_norm.to_csv(norm_path, index=False)
             print(f"\nResumen normalizado guardado: {norm_path}")
     
