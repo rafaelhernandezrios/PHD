@@ -62,6 +62,11 @@ PHD/
 │   ├── csvsaverRAW.py              # Guardado de datos raw
 │   └── runall.py                   # Script para ejecutar múltiples procesos
 │
+├── AI-Cognitive/           # Pipelines de clasificación y análisis offline
+│   ├── raw_data/           # Datos EEG crudos organizados por tarea
+│   ├── csv/                # Features y muestras EEG agregadas (local-only, archivos muy grandes ignorados por Git)
+│   └── scripts/            # Scripts para limpiar, extraer ventanas y entrenar clasificadores
+│
 └── README.md               # Este archivo
 ```
 
@@ -284,11 +289,13 @@ The saved CSV files contain the following columns:
 - Cada módulo tiene su propio `requirements.txt` para independencia de dependencias
 - El código está optimizado para tiempo real con buffers circulares y submuestreo inteligente
 - La documentación técnica detallada está en formato Markdown dentro de cada módulo
+- Algunos archivos EEG agregados (por ejemplo, CSV con **todas** las muestras y tamaño > 100 MB) se mantienen solo de forma local y se excluyen explícitamente con `.gitignore` para cumplir con las restricciones de GitHub.
 
 - Experimental data is saved in `data_*` folders that should not be versioned
 - Each module has its own `requirements.txt` for dependency independence
 - Code is optimized for real-time with circular buffers and intelligent subsampling
 - Detailed technical documentation is in Markdown format within each module
+- Some aggregated EEG files (e.g., CSV files with **all** samples and size > 100 MB) are kept locally only and are explicitly excluded via `.gitignore` to comply with GitHub file size limits.
 
 ---
 
@@ -331,6 +338,6 @@ This project is under the MIT license. See the `LICENSE` file for more details.
 
 ---
 
-**Versión / Version:** 1.0  
-**Última actualización / Last update:** Diciembre 2025 / December 2025
+**Versión / Version:** 1.1  
+**Última actualización / Last update:** Marzo 2026 / March 2026
 **Autor / Author:** Rafael (PhD Candidate)
