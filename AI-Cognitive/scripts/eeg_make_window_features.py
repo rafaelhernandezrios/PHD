@@ -27,7 +27,14 @@ NOTCH_QUALITY = 30.0  # Q = f0/bw, higher = narrower notch
 def load_eeg_samples(csv_path: Path) -> pd.DataFrame:
     df = pd.read_csv(csv_path)
 
-    required_cols = {"file_name", "condition_4", "load_3", "task_type", "subject_id"}
+    required_cols = {
+        "file_name",
+        "condition_4",
+        "load_3",
+        "load_2",
+        "task_type",
+        "subject_id",
+    }
     if not required_cols.issubset(df.columns):
         raise ValueError(f"CSV must contain columns: {required_cols}")
 
@@ -176,7 +183,14 @@ def build_window_features(df: pd.DataFrame) -> pd.DataFrame:
     all_features: list[dict] = []
 
     # group by file/subject/condition to preserve temporal structure
-    group_cols = ["file_name", "subject_id", "task_type", "condition_4", "load_3"]
+    group_cols = [
+        "file_name",
+        "subject_id",
+        "task_type",
+        "condition_4",
+        "load_3",
+        "load_2",
+    ]
 
     for _, g in df.groupby(group_cols, sort=False):
         g = g.reset_index(drop=True)
@@ -197,6 +211,7 @@ def build_window_features(df: pd.DataFrame) -> pd.DataFrame:
             feats["task_type"] = g.loc[0, "task_type"]
             feats["condition_4"] = g.loc[0, "condition_4"]
             feats["load_3"] = g.loc[0, "load_3"]
+            feats["load_2"] = g.loc[0, "load_2"]
             feats["window_start_idx"] = int(start)
             feats["window_end_idx"] = int(end)
 

@@ -49,17 +49,16 @@ def parse_line(line: str) -> Tuple[List[float], str]:
     return numeric_values, timestamp
 
 
-def map_condition(stem_prefix: str) -> Tuple[str, str]:
+def map_condition(stem_prefix: str) -> Tuple[str, str, str]:
     """
-    Map filename prefix (natural, lowlevel, midlevel, highlevel)
-    to (condition_4, load_3).
+    Map filename prefix to (condition_4, load_3, load_2).
 
-    condition_4: normal / low / mid / high  (as in the paper)
-    load_3:     normal / low / high (coarse mapping for your project)
+    load_2 (binario, análisis alta vs normal):
+      - normal = natural (línea base, sin tarea de carga explícita)
+      - alta   = lowlevel, midlevel, highlevel (cualquier bloque con tarea cognitiva)
     """
     prefix = stem_prefix.lower()
 
-    # 4-level label from the paper
     if prefix == "natural":
         condition_4 = "normal"
     elif prefix == "lowlevel":
@@ -69,21 +68,17 @@ def map_condition(stem_prefix: str) -> Tuple[str, str]:
     elif prefix == "highlevel":
         condition_4 = "high"
     else:
-        return "unknown", "unknown"
+        return "unknown", "unknown", "unknown"
 
-    # 3-level mapping: low / normal / high (carga cognitiva)
-    # - lowlevel  -> low   (carga baja)
-    # - natural   -> normal (línea base)
-    # - midlevel + highlevel -> high (carga media/alta)
-    # Así "low" es más separable (lowlevel vs natural) que antes (midlevel en medio).
-    if condition_4 == "low":   # lowlevel
+    if condition_4 == "low":
         load_3 = "low"
-    elif condition_4 == "normal":  # natural
+    elif condition_4 == "normal":
         load_3 = "normal"
-    else:  # mid + high -> high
+    else:
         load_3 = "high"
 
-    return condition_4, load_3
+    load_2 = "normal" if condition_4 == "normal" else "alta"
+    return condition_4, load_3, load_2
 
 
 def collect_rows() -> Tuple[list[list], int]:
@@ -92,8 +87,7 @@ def collect_rows() -> Tuple[list[list], int]:
     and collect rows with metadata.
 
     Returns (rows, max_num_values) where:
-    - rows is a list of [v0..vK-1, timestamp, subject_id, task_type,
-                         condition_4, load_3, file_name]
+    - rows: ... timestamp, subject_id, task_type, condition_4, load_3, load_2, file_name
     - max_num_values is the maximum length K seen across all lines.
     """
     rows: list[list] = []
@@ -115,7 +109,7 @@ def collect_rows() -> Tuple[list[list], int]:
             else:
                 prefix, idx_str = stem, "0"
 
-            condition_4, load_3 = map_condition(prefix)
+            condition_4, load_3, load_2 = map_condition(prefix)
 
             # simple subject id from suffix number (1..15)
             try:
@@ -134,7 +128,15 @@ def collect_rows() -> Tuple[list[list], int]:
 
                     row = (
                         values
-                        + [timestamp, subject_id, task_type, condition_4, load_3, file_name]
+                        + [
+                            timestamp,
+                            subject_id,
+                            task_type,
+                            condition_4,
+                            load_3,
+                            load_2,
+                            file_name,
+                        ]
                     )
                     rows.append(row)
 
@@ -155,6 +157,7 @@ def build_header(num_value_cols: int) -> list[str]:
         "task_type",
         "condition_4",
         "load_3",
+        "load_2",
         "file_name",
     ]
     return value_cols + meta_cols
@@ -170,7 +173,7 @@ def main() -> None:
     header = build_header(max_num_values)
 
     # pad rows with fewer numeric values so all have the same length
-    expected_len = max_num_values + 6  # timestamp + 5 metadata columns
+    expected_len = max_num_values + 7  # timestamp + 6 metadata columns
     for r in rows:
         if len(r) < expected_len:
             # pad numeric part with zeros until v0..v{N-1} length is max_num_values

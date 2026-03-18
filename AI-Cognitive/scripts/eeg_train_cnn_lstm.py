@@ -7,7 +7,7 @@ import torch
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
 from torch import nn
-from torch.utils.data import DataLoader, Dataset
+from torch.utils.data import DataLoader, Dataset, WeightedRandomSampler
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -35,7 +35,14 @@ class EEGWindowDataset(Dataset):
             raise ValueError("No numeric value columns starting with 'v' were found.")
 
         self.windows: list[Tuple[int, int, str]] = []
-        group_cols = ["file_name", "subject_id", "task_type", "condition_4", "load_3"]
+        group_cols = [
+            "file_name",
+            "subject_id",
+            "task_type",
+            "condition_4",
+            "load_3",
+            "load_2",
+        ]
 
         for _, g in df.groupby(group_cols, sort=False):
             g = g.reset_index(drop=True)
@@ -117,11 +124,22 @@ def load_eeg_samples() -> pd.DataFrame:
     if not csv.exists():
         raise FileNotFoundError(f"{csv} not found. Run 'eeg_convert_raw_to_clean.py' first.")
     df = pd.read_csv(csv)
-    required = {"file_name", "condition_4", "load_3", "task_type", "subject_id"}
+    required = {
+        "file_name",
+        "condition_4",
+        "load_3",
+        "load_2",
+        "task_type",
+        "subject_id",
+    }
     if not required.issubset(df.columns):
-        raise ValueError(f"CSV must contain columns: {required}")
+        raise ValueError(
+            f"CSV must contain columns: {required}. "
+            "Run eeg_convert_raw_to_clean.py (with load_2)."
+        )
     df = df[df["condition_4"] != "unknown"].copy()
     df = df[df["load_3"] != "unknown"].copy()
+    df = df[df["load_2"].isin(["normal", "alta"])].copy()
     df = df.reset_index(drop=True)
     return df
 
@@ -144,7 +162,7 @@ def split_files_for_target(df: pd.DataFrame, target_col: str, test_size: float =
 
 
 def train_cnn_lstm(
-    target_col: str = "load_3",
+    target_col: str = "load_2",
     batch_size: int = 32,
     epochs: int = 10,
     lr: float = 1e-3,
@@ -162,6 +180,30 @@ def train_cnn_lstm(
     n_channels = len(train_ds.value_cols)
     n_classes = len(classes)
 
+    # Conteos por clase en train (ventanas)
+    counts = np.zeros(n_classes, dtype=np.int64)
+    for _, _, lab in train_ds.windows:
+        counts[label_to_idx[lab]] += 1
+    print(f"Train windows per class: {dict(zip(classes, counts.tolist()))}")
+
+    # Pesos de pérdida ~ inversos a frecuencia (sin boost extra que rompa el balance).
+    inv = 1.0 / (counts.astype(np.float64) + 1e-6)
+    if target_col == "load_3" and "low" in label_to_idx:
+        inv[label_to_idx["low"]] *= 2.0
+    inv = inv / inv.sum() * n_classes
+    class_weights = torch.tensor(inv, dtype=torch.float32)
+
+    # Sampler: misma probabilidad por clase en cada draw (1/n_c por ventana de clase c).
+    sw_list = []
+    for _, _, lab in train_ds.windows:
+        sw_list.append(1.0 / counts[label_to_idx[lab]])
+    sample_weights = np.array(sw_list, dtype=np.float64)
+    sampler = WeightedRandomSampler(
+        weights=torch.from_numpy(sample_weights),
+        num_samples=len(train_ds),
+        replacement=True,
+    )
+
     # Selección de dispositivo: CUDA > MPS (Apple Silicon) > CPU
     if torch.cuda.is_available():
         device = torch.device("cuda")
@@ -175,15 +217,24 @@ def train_cnn_lstm(
     print(f"Using device for CNN+LSTM: {device} ({device_name})")
     model = CnnLstmNet(n_channels=n_channels, n_classes=n_classes).to(device)
 
-    criterion = nn.CrossEntropyLoss()
+    criterion = nn.CrossEntropyLoss(weight=class_weights.to(device))
     optimizer = torch.optim.Adam(model.parameters(), lr=lr)
 
-    train_loader = DataLoader(train_ds, batch_size=batch_size, shuffle=True, num_workers=0)
+    train_loader = DataLoader(
+        train_ds,
+        batch_size=batch_size,
+        sampler=sampler,
+        shuffle=False,
+        num_workers=0,
+    )
     test_loader = DataLoader(test_ds, batch_size=batch_size, shuffle=False, num_workers=0)
 
     print("\n=== CNN+LSTM training ===")
-    print(f"Training CNN+LSTM on {len(train_ds)} windows, testing on {len(test_ds)} windows")
-    print(f"Classes: {classes}")
+    print(
+        f"Training CNN+LSTM on {len(train_ds)} windows, testing on {len(test_ds)} windows "
+        f"(balanced batches + class-weighted loss, {epochs} epochs)"
+    )
+    print(f"Classes (order): {classes}")
 
     for epoch in range(1, epochs + 1):
         print(f"\n[Epoch {epoch}/{epochs}] starting...")
@@ -219,14 +270,18 @@ def train_cnn_lstm(
 
     print("\n=== CNN+LSTM (PyTorch) on windows ===")
     print("Classification report:")
-    print(classification_report(y_true_labels, y_pred_labels))
+    print(
+        classification_report(
+            y_true_labels, y_pred_labels, labels=classes, zero_division=0
+        )
+    )
     print("Confusion matrix:")
     print(confusion_matrix(y_true_labels, y_pred_labels, labels=classes))
 
 
 def main() -> None:
-    # Default: 10 epochs for a first comparison (adjust as needed)
-    train_cnn_lstm(target_col="load_3", epochs=10)
+    # Binario: normal (línea base) vs alta (tarea con carga)
+    train_cnn_lstm(target_col="load_2", epochs=10)
 
 
 if __name__ == "__main__":

@@ -15,6 +15,10 @@ from sklearn.svm import SVC
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
+# load_2 (normal vs alta): peso extra para "normal" → sube recall de normal
+# (más alto = más recall normal, a costa de más falsos "normal" en alta)
+LOAD2_NORMAL_CLASS_WEIGHT = 3.5
+
 
 def load_window_features() -> pd.DataFrame:
     csv_path = PROJECT_ROOT / "csv" / "eeg_window_features.csv"
@@ -25,13 +29,21 @@ def load_window_features() -> pd.DataFrame:
 
     df = pd.read_csv(csv_path)
 
-    required_cols = {"file_name", "subject_id", "task_type", "condition_4", "load_3"}
+    required_cols = {
+        "file_name",
+        "subject_id",
+        "task_type",
+        "condition_4",
+        "load_3",
+        "load_2",
+    }
     if not required_cols.issubset(df.columns):
         raise ValueError(f"CSV must contain columns: {required_cols}")
 
     # Drop unknown labels if any
     df = df[df["condition_4"] != "unknown"].copy()
     df = df[df["load_3"] != "unknown"].copy()
+    df = df[df["load_2"].isin(["normal", "alta"])].copy()
 
     return df.reset_index(drop=True)
 
@@ -89,6 +101,7 @@ def build_feature_matrix(
         "task_type",
         "condition_4",
         "load_3",
+        "load_2",
         "window_start_idx",
         "window_end_idx",
     }
@@ -145,15 +158,31 @@ def train_and_evaluate(
         f"features: {len(feature_cols)} (scaled)"
     )
 
-    # For load_3 (low/normal/high), boost "low" so the model doesn't collapse it to 0 recall
-    if target_col == "load_3":
+    hgb_load2_class_weight = None
+    if target_col == "load_2":
+        class_weight = {
+            "alta": 1.0,
+            "normal": float(LOAD2_NORMAL_CLASS_WEIGHT),
+        }
+        print(
+            f"  load_2: class_weight alta=1.0, normal={LOAD2_NORMAL_CLASS_WEIGHT} "
+            f"(mejorar recall de normal)"
+        )
+        # HistGB internamente usa índices float 0.0, 1.0 (no int 0,1) → claves deben ser float
+        uniq = sorted(np.unique(np.concatenate([np.asarray(y_train), np.asarray(y_test)])))
+        hgb_load2_class_weight = {
+            float(i): (
+                float(LOAD2_NORMAL_CLASS_WEIGHT) if lab == "normal" else 1.0
+            )
+            for i, lab in enumerate(uniq)
+        }
+        print(f"  HistGB pesos por índice {list(enumerate(uniq))}: {hgb_load2_class_weight}")
+    elif target_col == "load_3":
         classes = sorted(set(y_train))
         n_samples = np.array([(y_train == c).sum() for c in classes])
-        # weight inversely to count, but give "low" extra boost (2.5x) so it's not ignored
         weights = 1.0 / (n_samples + 1e-6)
         if "low" in classes:
-            low_idx = classes.index("low")
-            weights[low_idx] *= 2.5
+            weights[classes.index("low")] *= 2.5
         class_weight = dict(zip(classes, weights / weights.sum() * len(classes)))
     else:
         class_weight = "balanced"
@@ -166,26 +195,23 @@ def train_and_evaluate(
             n_jobs=-1,
             class_weight=class_weight,
         ),
-        # Gradient boosting de árboles como baseline adicional
         "HistGradientBoosting": HistGradientBoostingClassifier(
             max_depth=None,
             learning_rate=0.1,
             max_iter=300,
             random_state=42,
-            class_weight="balanced",
+            class_weight=hgb_load2_class_weight
+            if target_col == "load_2"
+            else "balanced",
         ),
-        # SVM RBF sobre features ya escaladas
         "SVM_RBF": SVC(
             kernel="rbf",
             C=5.0,
             gamma="scale",
             class_weight=class_weight,
         ),
-        # Regresión logística multinomial
         "LogisticRegression": LogisticRegression(
-            multi_class="multinomial",
             max_iter=200,
-            # n_jobs=1 to avoid spawning many workers (sandbox limitation)
             n_jobs=1,
             class_weight=class_weight,
         ),
@@ -225,8 +251,8 @@ def train_and_evaluate(
 def main() -> None:
     df = load_window_features()
 
-    # Train only for 3 classes: low, normal, high (load_3)
-    train_and_evaluate(df, target_col="load_3")
+    # Binario: normal vs alta (load_2)
+    train_and_evaluate(df, target_col="load_2")
 
 
 if __name__ == "__main__":

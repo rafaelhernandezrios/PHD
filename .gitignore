@@ -1,2 +1,6 @@
 AI-Cognitive/csv/eeg_all_samples.csv
 
+# Nunca subir entornos virtuales (torch, etc. superan el límite de GitHub)
+AI-Cognitive/venv/
+venv/
+.venv/
