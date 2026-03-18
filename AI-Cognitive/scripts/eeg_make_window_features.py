@@ -3,7 +3,8 @@ from typing import Dict, List, Optional, Tuple
 
 import numpy as np
 import pandas as pd
-from scipy.signal import welch
+from scipy.signal import butter, detrend, filtfilt, iirnotch, sosfiltfilt, welch
+from scipy.stats import entropy
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -12,8 +13,15 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 FS = 250.0
 
 # window parameters in samples
-WINDOW_SIZE = int(2 * FS)  # 2-second windows
-STEP_SIZE = int(1 * FS)  # 1-second step (50% overlap)
+WINDOW_SIZE = int(4 * FS)  # 4-second windows
+STEP_SIZE = int(2 * FS)  # 2-second step (50% overlap)
+
+# preprocessing: band-pass and notch (applied per channel before bandpower)
+BANDPASS_LOW_HZ = 1.0
+BANDPASS_HIGH_HZ = 40.0
+BANDPASS_ORDER = 4
+NOTCH_FREQS_HZ = (50.0, 60.0)  # notch 50 Hz and 60 Hz (zero-phase)
+NOTCH_QUALITY = 30.0  # Q = f0/bw, higher = narrower notch
 
 
 def load_eeg_samples(csv_path: Path) -> pd.DataFrame:
@@ -28,6 +36,44 @@ def load_eeg_samples(csv_path: Path) -> pd.DataFrame:
     df = df.reset_index(drop=True)
 
     return df
+
+
+def _bandpass_filter(x: np.ndarray, low_hz: float, high_hz: float, fs: float, order: int) -> np.ndarray:
+    """Zero-phase band-pass Butterworth (sos design for stability)."""
+    nyq = fs / 2.0
+    low = max(low_hz / nyq, 1e-6)
+    high = min(high_hz / nyq, 1.0 - 1e-6)
+    if low >= high:
+        return x
+    sos = butter(order, [low, high], btype="band", output="sos")
+    return sosfiltfilt(sos, x.astype(np.float64), axis=0)
+
+
+def _notch_filter(x: np.ndarray, f0_hz: float, fs: float, Q: float) -> np.ndarray:
+    """Zero-phase notch at f0_hz (e.g. 50 or 60 Hz)."""
+    w0 = f0_hz / (fs / 2.0)
+    if w0 >= 1.0 or w0 <= 0.0:
+        return x
+    b, a = iirnotch(w0, Q)
+    return filtfilt(b, a, x.astype(np.float64), axis=0)
+
+
+def preprocess_for_bandpower(x: np.ndarray, fs: float = FS) -> np.ndarray:
+    """
+    Apply band-pass (1–40 Hz), detrend, then notch 50 Hz and 60 Hz.
+    Used per channel before Welch bandpower.
+    """
+    x = np.asarray(x, dtype=np.float64)
+    if x.size == 0:
+        return x
+    # 1) Band-pass
+    x = _bandpass_filter(x, BANDPASS_LOW_HZ, BANDPASS_HIGH_HZ, fs, BANDPASS_ORDER)
+    # 2) Detrend (remove DC and linear drift in window)
+    x = detrend(x, type="linear", axis=0)
+    # 3) Notch 50 Hz and 60 Hz
+    for f0 in NOTCH_FREQS_HZ:
+        x = _notch_filter(x, f0, fs, NOTCH_QUALITY)
+    return x
 
 
 def bandpower(
@@ -50,7 +96,8 @@ def bandpower(
     freqs, psd = welch(data, sf, nperseg=nperseg)
 
     idx_band = np.logical_and(freqs >= low, freqs <= high)
-    return np.trapz(psd[idx_band], freqs[idx_band])
+    trapz_fn = getattr(np, "trapezoid", np.trapz)  # trapezoid since NumPy 1.22
+    return float(trapz_fn(psd[idx_band], freqs[idx_band]))
 
 
 def compute_features_for_window(
@@ -65,14 +112,6 @@ def compute_features_for_window(
     features: dict = {}
 
     # time-domain features per channel
-    for i, col in enumerate(value_cols):
-        x = segment[:, i]
-        features[f"{col}_mean"] = float(np.mean(x))
-        features[f"{col}_std"] = float(np.std(x))
-        features[f"{col}_min"] = float(np.min(x))
-        features[f"{col}_max"] = float(np.max(x))
-
-    # frequency-domain features per channel: band powers + simple ratios
     bands: Dict[str, Tuple[float, float]] = {
         "delta": (1.0, 4.0),
         "theta": (4.0, 8.0),
@@ -82,18 +121,43 @@ def compute_features_for_window(
     }
 
     for i, col in enumerate(value_cols):
-        x = segment[:, i]
-        bp = {
-            name: bandpower(x, FS, band)
-            for name, band in bands.items()
-        }
+        x_raw = segment[:, i]
+        # Preprocess before bandpower: band-pass 1–40 Hz, detrend, notch 50/60 Hz
+        x = preprocess_for_bandpower(x_raw, FS)
+
+        # --- time-domain features on preprocessed signal ---
+        features[f"{col}_mean"] = float(np.mean(x))
+        features[f"{col}_std"] = float(np.std(x))
+        features[f"{col}_min"] = float(np.min(x))
+        features[f"{col}_max"] = float(np.max(x))
+        # richer time-domain features
+        features[f"{col}_rms"] = float(np.sqrt(np.mean(x ** 2)))
+        features[f"{col}_abs_mean"] = float(np.mean(np.abs(x)))
+
+        # --- frequency-domain: band powers + richer features ---
+        bp = {name: bandpower(x, FS, band) for name, band in bands.items()}
 
         for name, power in bp.items():
             features[f"{col}_bp_{name}"] = float(power)
 
+        total_power = float(sum(bp.values()) + 1e-12)
+        features[f"{col}_bp_total"] = total_power
+
+        # relative band powers
+        for name, power in bp.items():
+            features[f"{col}_rel_bp_{name}"] = float(power / total_power)
+
+        # simple band ratios
         alpha_p = bp["alpha"] if bp["alpha"] > 0 else 1e-9
         features[f"{col}_theta_alpha_ratio"] = float(bp["theta"] / alpha_p)
         features[f"{col}_beta_alpha_ratio"] = float(bp["beta"] / alpha_p)
+
+        # spectral entropy over 1–40 Hz
+        freqs, psd = welch(x, FS, nperseg=min(len(x), int(4 * FS)))
+        idx = np.logical_and(freqs >= 1.0, freqs <= 40.0)
+        psd_band = psd[idx]
+        psd_norm = psd_band / (psd_band.sum() + 1e-12)
+        features[f"{col}_spec_entropy"] = float(entropy(psd_norm))
 
     return features
 

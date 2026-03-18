@@ -3,9 +3,14 @@ from typing import List, Tuple
 
 import numpy as np
 import pandas as pd
+from imblearn.over_sampling import SMOTE
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
+from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, confusion_matrix
 from sklearn.model_selection import train_test_split
+from sklearn.neural_network import MLPClassifier
+from sklearn.preprocessing import StandardScaler
+from sklearn.svm import SVC
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
@@ -94,8 +99,11 @@ def build_feature_matrix(
         if c not in non_feature_cols and pd.api.types.is_numeric_dtype(df[c])
     ]
 
-    X = df[feature_cols].to_numpy()
+    X = df[feature_cols].to_numpy().astype(np.float64)
+    # Replace inf/nan before clipping to avoid invalid values
     X = np.nan_to_num(X, nan=0.0, posinf=0.0, neginf=0.0)
+    # Clip extreme values (e.g. overflow in band-power ratios) so scaling is stable
+    X = np.clip(X, -1e10, 1e10)
 
     return X, y, feature_cols
 
@@ -111,12 +119,44 @@ def train_and_evaluate(
     X_train, y_train, feature_cols = build_feature_matrix(df_train, target_col)
     X_test, y_test, _ = build_feature_matrix(df_test, target_col)
 
+    # Scale features: fit on train only, then transform both (avoids data leakage)
+    scaler = StandardScaler()
+    X_train = scaler.fit_transform(X_train)
+    X_test = scaler.transform(X_test)
+
+    # SMOTE: oversample minority classes on training set only (no test leakage)
+    unique, counts = np.unique(y_train, return_counts=True)
+    min_count = int(counts.min())
+    if min_count >= 2:
+        k_neighbors = min(5, min_count - 1)
+        smote = SMOTE(
+            sampling_strategy="not majority",
+            k_neighbors=k_neighbors,
+            random_state=42,
+        )
+        X_train, y_train = smote.fit_resample(X_train, y_train)
+    else:
+        print("  (SMOTE skipped: at least one class has < 2 samples in train)")
+
     print(
         f"Train files: {df_train['file_name'].nunique()}, "
         f"test files: {df_test['file_name'].nunique()} -> "
-        f"train windows: {len(X_train)}, test windows: {len(X_test)}, "
-        f"features: {len(feature_cols)}"
+        f"train windows: {len(X_train)} (after SMOTE), test windows: {len(X_test)}, "
+        f"features: {len(feature_cols)} (scaled)"
     )
+
+    # For load_3 (low/normal/high), boost "low" so the model doesn't collapse it to 0 recall
+    if target_col == "load_3":
+        classes = sorted(set(y_train))
+        n_samples = np.array([(y_train == c).sum() for c in classes])
+        # weight inversely to count, but give "low" extra boost (2.5x) so it's not ignored
+        weights = 1.0 / (n_samples + 1e-6)
+        if "low" in classes:
+            low_idx = classes.index("low")
+            weights[low_idx] *= 2.5
+        class_weight = dict(zip(classes, weights / weights.sum() * len(classes)))
+    else:
+        class_weight = "balanced"
 
     models = {
         "RandomForest": RandomForestClassifier(
@@ -124,14 +164,37 @@ def train_and_evaluate(
             max_depth=None,
             random_state=42,
             n_jobs=-1,
-            class_weight="balanced",
+            class_weight=class_weight,
         ),
+        # Gradient boosting de árboles como baseline adicional
         "HistGradientBoosting": HistGradientBoostingClassifier(
             max_depth=None,
             learning_rate=0.1,
             max_iter=300,
             random_state=42,
             class_weight="balanced",
+        ),
+        # SVM RBF sobre features ya escaladas
+        "SVM_RBF": SVC(
+            kernel="rbf",
+            C=5.0,
+            gamma="scale",
+            class_weight=class_weight,
+        ),
+        # Regresión logística multinomial
+        "LogisticRegression": LogisticRegression(
+            multi_class="multinomial",
+            max_iter=200,
+            # n_jobs=1 to avoid spawning many workers (sandbox limitation)
+            n_jobs=1,
+            class_weight=class_weight,
+        ),
+        # Pequeña red neuronal fully-connected
+        "MLP": MLPClassifier(
+            hidden_layer_sizes=(128, 64),
+            activation="relu",
+            max_iter=200,
+            random_state=42,
         ),
     }
 
@@ -162,10 +225,7 @@ def train_and_evaluate(
 def main() -> None:
     df = load_window_features()
 
-    # 1) Train for original 4-level stress condition
-    train_and_evaluate(df, target_col="condition_4")
-
-    # 2) Train for 3-level coarse load (your project)
+    # Train only for 3 classes: low, normal, high (load_3)
     train_and_evaluate(df, target_col="load_3")
 
 

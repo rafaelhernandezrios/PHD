@@ -71,20 +71,19 @@ def map_condition(stem_prefix: str) -> Tuple[str, str]:
     else:
         return "unknown", "unknown"
 
-    # 3-level coarse mapping for your project:
-    # - natural (normal) and lowlevel -> normal
-    # - midlevel                        -> low
-    # - highlevel                       -> high
-    if condition_4 in {"normal", "low"}:
-        load_3 = "normal"
-    elif condition_4 == "mid":
+    # 3-level mapping: low / normal / high (carga cognitiva)
+    # - lowlevel  -> low   (carga baja)
+    # - natural   -> normal (línea base)
+    # - midlevel + highlevel -> high (carga media/alta)
+    # Así "low" es más separable (lowlevel vs natural) que antes (midlevel en medio).
+    if condition_4 == "low":   # lowlevel
         load_3 = "low"
-    else:  # "high"
+    elif condition_4 == "normal":  # natural
+        load_3 = "normal"
+    else:  # mid + high -> high
         load_3 = "high"
 
     return condition_4, load_3
-
-    return "unknown", "unknown"
 
 
 def collect_rows() -> Tuple[list[list], int]:
