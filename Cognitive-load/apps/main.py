@@ -8,7 +8,9 @@ import sys
 import pandas as pd
 import numpy as np
 import os
+import json
 from datetime import datetime
+import time
 from PyQt5.QtWidgets import QApplication, QMessageBox, QInputDialog
 from PyQt5.QtCore import QTimer
 
@@ -19,6 +21,54 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..'))
 from core.signal_worker import SignalWorker
 from tasks.experiment_logic import ExperimentLogic, ExperimentPhase
 from tasks.ui_main import MainWindow
+
+DEBUG_LOG_PATH = "/Users/rafael/Documents/Doctorado/PHD/.cursor/debug-805260.log"
+DEBUG_SESSION_ID = "805260"
+
+# #region debug_mode_logging (per-session NDJSON for this debug run)
+DEBUG_MODE_LOG_PATH = "/Users/rafael/Documents/Doctorado/PHD/.cursor/debug-f8feef.log"
+DEBUG_MODE_SESSION_ID = "f8feef"
+
+
+def _dm_log(run_id, hypothesis_id, location, message, data=None):
+    """
+    Writes a single NDJSON debug entry for the current debug session.
+    Keep payload values JSON-serializable (numbers/strings/bools/lists/dicts).
+    """
+    try:
+        payload = {
+            "sessionId": DEBUG_MODE_SESSION_ID,
+            "runId": run_id,
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(datetime.now().timestamp() * 1000),
+        }
+        with open(DEBUG_MODE_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=True) + "\n")
+    except Exception:
+        # Debug logging must never crash the app.
+        pass
+
+# #endregion
+
+
+def _debug_log(run_id, hypothesis_id, location, message, data):
+    try:
+        payload = {
+            "sessionId": DEBUG_SESSION_ID,
+            "runId": run_id,
+            "hypothesisId": hypothesis_id,
+            "location": location,
+            "message": message,
+            "data": data,
+            "timestamp": int(datetime.now().timestamp() * 1000),
+        }
+        with open(DEBUG_LOG_PATH, "a", encoding="utf-8") as f:
+            f.write(json.dumps(payload, ensure_ascii=True) + "\n")
+    except Exception:
+        pass
 
 
 class EEGExperimentApp:
@@ -117,6 +167,15 @@ class EEGExperimentApp:
             if self.signal_worker.inlet:
                 self.signal_worker.start()
                 self.window.start_setup_btn.setEnabled(True)
+                # #region debug_ui_connect_started
+                _dm_log(
+                    "pre_ui_mac",
+                    "H_THREAD_START",
+                    "apps/main.py:on_connect_clicked",
+                    "worker_start_invoked",
+                    {"isRunning_after_start": bool(self.signal_worker.isRunning()), "has_inlet": True},
+                )
+                # #endregion
         else:
             self.signal_worker.stop()
             self.signal_worker.wait()
@@ -125,9 +184,27 @@ class EEGExperimentApp:
             self.window.start_baseline_btn.setEnabled(False)
             self.window.start_low_load_btn.setEnabled(False)
             self.window.start_high_load_btn.setEnabled(False)
+            # #region debug_ui_connect_stopped
+            _dm_log(
+                "pre_ui_mac",
+                "H_THREAD_START",
+                "apps/main.py:on_connect_clicked",
+                "worker_stop_invoked",
+                {"isRunning_after_wait": bool(self.signal_worker.isRunning())},
+            )
+            # #endregion
     
     def on_connection_status(self, connected, message):
         """Handles connection status changes."""
+        # #region debug_ui_connection_status
+        _dm_log(
+            "pre_ui_mac",
+            "H_CONN_STATUS",
+            "apps/main.py:on_connection_status",
+            "connection_status_update",
+            {"connected": bool(connected), "message": str(message) if message else ""},
+        )
+        # #endregion
         if connected:
             self.window.connect_btn.setText("Disconnect")
             self.window.connect_btn.setEnabled(True)
@@ -171,6 +248,28 @@ class EEGExperimentApp:
         # Reset log counter when starting new experiment
         self._log_counter = 0
         print(f"[LOGGING] Logging started. Subsampling factor: {self._subsampling_factor} (target: 50 Hz)")
+        # #region debug_ui_setup_started
+        _dm_log(
+            "pre_ui_mac",
+            "H_LOGGING_LIFECYCLE",
+            "apps/main.py:on_start_setup",
+            "logging_enabled_setup",
+            {"subsampling_factor": int(self._subsampling_factor), "is_logging": bool(self.is_logging)},
+        )
+        # #endregion
+        # #region agent log
+        _debug_log(
+            "pre-fix",
+            "H1",
+            "apps/main.py:on_start_setup",
+            "logging_started",
+            {
+                "subsampling_factor": self._subsampling_factor,
+                "is_logging": self.is_logging,
+                "phase": self.current_phase_name,
+            },
+        )
+        # #endregion
     
     def on_start_baseline(self):
         """Starts the Baseline phase."""
@@ -238,6 +337,15 @@ class EEGExperimentApp:
             timestamp: Sample timestamp
         """
         if not self.is_logging:
+            # #region agent log
+            _debug_log(
+                "pre-fix",
+                "H2",
+                "apps/main.py:log_data_sample",
+                "sample_skipped_logging_disabled",
+                {"timestamp": float(timestamp), "phase": self.current_phase_name},
+            )
+            # #endregion
             return
         
         # Subsampling: save every 5 samples (~50 Hz instead of 250 Hz)
@@ -246,6 +354,20 @@ class EEGExperimentApp:
         
         # Skip if not time to log yet (early return for performance)
         if self._log_counter % self._subsampling_factor != 0:
+            if self._log_counter <= 30:
+                # #region agent log
+                _debug_log(
+                    "pre-fix",
+                    "H1",
+                    "apps/main.py:log_data_sample",
+                    "sample_dropped_by_subsampling",
+                    {
+                        "log_counter": self._log_counter,
+                        "subsampling_factor": self._subsampling_factor,
+                        "timestamp": float(timestamp),
+                    },
+                )
+                # #endregion
             return
         
         # Debug: Print first few logged samples to verify subsampling
@@ -273,6 +395,40 @@ class EEGExperimentApp:
         
         # Add to buffer (more efficient than creating dict immediately)
         self._log_buffer.append((data, timestamp, self.current_phase_name))
+        # #region debug_ui_log_data_kept_first
+        if not hasattr(self, "_dm_log_data_kept_count"):
+            self._dm_log_data_kept_count = 0
+        if self._dm_log_data_kept_count < 2:
+            try:
+                sample_len = int(len(data)) if data is not None else -1
+                first_val = float(data[0]) if sample_len > 0 else None
+            except Exception:
+                sample_len = -1
+                first_val = None
+            _dm_log(
+                "pre_ui_mac",
+                "H_LOGGING_PAYLOAD",
+                "apps/main.py:log_data_sample",
+                "sample_kept_for_logging",
+                {"log_counter": int(self._log_counter), "sample_len": sample_len, "first_val": first_val},
+            )
+            self._dm_log_data_kept_count += 1
+        # #endregion
+        if self._log_counter <= 30:
+            # #region agent log
+            _debug_log(
+                "pre-fix",
+                "H1",
+                "apps/main.py:log_data_sample",
+                "sample_kept_for_csv",
+                {
+                    "log_counter": self._log_counter,
+                    "buffer_size": len(self._log_buffer),
+                    "data_log_size": len(self.data_log),
+                    "timestamp": float(timestamp),
+                },
+            )
+            # #endregion
         
         # Process buffer in batches to reduce overhead
         if len(self._log_buffer) >= self._log_buffer_size:
@@ -300,16 +456,48 @@ class EEGExperimentApp:
             }
             self.data_log.append(record)
         
+        # #region agent log
+        _debug_log(
+            "pre-fix",
+            "H3",
+            "apps/main.py:_flush_log_buffer",
+            "buffer_flushed_to_data_log",
+            {"flushed_count": len(self._log_buffer), "data_log_size_after": len(self.data_log)},
+        )
+        # #endregion
+        # #region debug_ui_flush_log_buffer
+        _dm_log(
+            "pre_ui_mac",
+            "H_SAVE_FLUSH",
+            "apps/main.py:_flush_log_buffer",
+            "flush_completed",
+            {
+                "flushed_count": int(len(self._log_buffer)),
+                "data_log_size_after": int(len(self.data_log)),
+            },
+        )
+        # #endregion
         self._log_buffer.clear()
     
     def calculate_and_update_ratio(self):
         """Calculates and updates the cognitive load ratio."""
         if not self.signal_worker.isRunning():
             return
+        t0 = time.time()
         result = self.signal_worker.get_cognitive_load_ratio()
+        dt_ms = int((time.time() - t0) * 1000)
         if result is not None:
             ratio, theta_power, alpha_power = result
             self.window.update_ratio_plot(ratio, theta_power, alpha_power)
+        # #region debug_ui_ratio_update
+        _dm_log(
+            "pre_ui_mac",
+            "H_RATIO_UPDATE",
+            "apps/main.py:calculate_and_update_ratio",
+            "ratio_computation_done",
+            {"result_is_none": result is None, "duration_ms": dt_ms},
+        )
+        # #endregion
     
     def update_plots(self):
         """Updates the plots (called by timer)."""
@@ -343,12 +531,35 @@ class EEGExperimentApp:
             # Save in user folder
             filepath = os.path.join(self.user_folder, filename)
             df.to_csv(filepath, index=False)
+            # #region agent log
+            _debug_log(
+                "pre-fix",
+                "H3",
+                "apps/main.py:on_save_data",
+                "csv_saved",
+                {
+                    "filepath": filepath,
+                    "rows_saved": int(len(df)),
+                    "columns_saved": int(len(df.columns)),
+                    "buffer_pending_after_save": int(len(self._log_buffer)),
+                },
+            )
+            # #endregion
             
             QMessageBox.information(
                 self.window, 
                 "Data Saved", 
                 f"Data has been saved successfully to:\n{filepath}"
             )
+            # #region debug_ui_save_completed
+            _dm_log(
+                "pre_ui_mac",
+                "H_SAVE_DATA",
+                "apps/main.py:on_save_data",
+                "save_completed",
+                {"rows_saved": int(len(df)), "columns_saved": int(len(df.columns))},
+            )
+            # #endregion
             
         except Exception as e:
             QMessageBox.critical(
@@ -356,6 +567,15 @@ class EEGExperimentApp:
                 "Save Error", 
                 f"Error saving data:\n{str(e)}"
             )
+            # #region debug_ui_save_failed
+            _dm_log(
+                "pre_ui_mac",
+                "H_SAVE_DATA",
+                "apps/main.py:on_save_data",
+                "save_failed",
+                {"error": str(e), "data_log_len": int(len(self.data_log)) if hasattr(self, "data_log") else None},
+            )
+            # #endregion
     
     def run(self):
         """Runs the application."""
