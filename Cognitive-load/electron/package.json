@@ -1,0 +1,16 @@
+{
+  "name": "neurolab-eeg",
+  "version": "0.1.0",
+  "description": "EEG Cognitive Load Experiment — Electron UI",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "NODE_ENV=development electron ."
+  },
+  "dependencies": {
+    "python-shell": "^5.0.0"
+  },
+  "devDependencies": {
+    "electron": "^30.0.0"
+  }
+}
