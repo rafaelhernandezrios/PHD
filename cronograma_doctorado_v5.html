@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Cronograma doctoral</title>
+<style>:root{--color-border-tertiary:#cbd5e1;--color-text-primary:#111827;--color-background-secondary:#e8ecf2;--color-background-tertiary:#d8dee8;--color-text-secondary:#4b5563;--color-border-secondary:#94a3af;--cronograma-surface:#fff;--cronograma-grid:#e2e8f0;--cronograma-row-alt:#f8fafc;--cronograma-row:#fff}body{font-family:system-ui,-apple-system,sans-serif;padding:16px;background:#f1f5f9}</style>
+<style id="cronogramaDoctoradoStyles">
+:root{--cronograma-hdr-year-row-h:30px}
+/* Tema propio del cronograma: evita texto ilegible cuando el host (p. ej. preview oscuro) redefine --color-* */
+#cronogramaDoctoradoWrap{
+  --color-text-primary:#111827;
+  --color-text-secondary:#4b5563;
+  --color-background-secondary:#e8ecf2;
+  --color-background-tertiary:#d8dee8;
+  --color-border-secondary:#94a3b8;
+  --color-border-tertiary:#cbd5e1;
+  --cronograma-surface:#ffffff;
+  --cronograma-grid:#e2e8f0;
+  --cronograma-row-alt:#f8fafc;
+  --cronograma-row:#ffffff;
+  color:var(--color-text-primary);
+  -webkit-font-smoothing:antialiased;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+.wrap{padding:12px 0}
+/* Contenedor de scroll: cabeceras + columna Actividad quedan fijas al mover la vista */
+.cronograma-table-view{
+  overflow:auto;
+  max-height:min(82vh,900px);
+  -webkit-overflow-scrolling:touch;
+  border:1px solid var(--color-border-tertiary);
+  border-radius:8px;
+  background:var(--cronograma-surface);
+  box-shadow:0 1px 3px rgba(0,0,0,.06);
+}
+table{border-collapse:collapse;width:100%;min-width:1150px;font-size:10.5px}
+th,td{border:1px solid var(--cronograma-grid);padding:3px 5px;text-align:center;vertical-align:middle;line-height:1.3}
+.row-label{
+  text-align:left;font-weight:600;padding:6px 10px;font-size:10.5px;color:var(--color-text-primary);
+  min-width:230px;max-width:min(280px,36vw);white-space:normal;word-break:break-word;hyphens:auto;
+  position:sticky;left:0;z-index:3;
+  box-shadow:4px 0 10px -4px rgba(0,0,0,.14);
+}
+tbody tr:nth-child(even) td.row-label{background:var(--cronograma-row)}
+tbody tr:nth-child(odd) td.row-label{background:var(--cronograma-row-alt)}
+.row-label span[style*="color"]{color:var(--color-text-secondary)!important}
+.hdr-year{background:var(--color-background-secondary);font-weight:500;font-size:11px;color:var(--color-text-primary)}
+.hdr-sem{background:var(--color-background-tertiary);font-size:9px;color:var(--color-text-secondary);font-weight:400;padding:3px 2px}
+/* Cabecera: fila de años + fila de semestres pegadas al scroll vertical */
+thead tr:first-child th.hdr-year:not(:first-child){
+  position:sticky;top:0;z-index:4;
+  box-shadow:0 2px 0 rgba(0,0,0,.06);
+}
+thead tr:nth-child(2) th.hdr-sem{
+  position:sticky;z-index:4;
+  top:var(--cronograma-hdr-year-row-h);
+  box-shadow:0 2px 4px -2px rgba(0,0,0,.08);
+}
+/* Celda "Actividad" (rowspan=2): fija en esquina */
+thead tr:first-child th.hdr-year:first-child{
+  position:sticky;left:0;top:0;z-index:6;
+  vertical-align:middle;
+  box-shadow:4px 0 10px -4px rgba(0,0,0,.14),0 2px 0 rgba(0,0,0,.06);
+  background:var(--color-background-secondary);
+}
+/* Filas de etapa: bloque claramente distinto del resto de la tabla */
+tbody{counter-reset:cronograma-etapa}
+tbody tr:has(> td.cat-hdr){counter-increment:cronograma-etapa}
+td.cat-hdr{
+  position:relative;
+  text-align:left;
+  padding:11px 14px 11px 48px!important;
+  font-size:11px;
+  font-weight:700;
+  letter-spacing:.02em;
+  line-height:1.35;
+  color:#0f172a!important;
+  border-left:none!important;
+  border-right:none!important;
+  background:linear-gradient(105deg,var(--etapa-bg-soft,#f1f5f9) 0%,#fff 38%,#f8fafc 100%)!important;
+  box-shadow:
+    inset 5px 0 0 0 var(--etapa-accent,#64748b),
+    0 2px 0 rgba(15,23,42,.06),
+    inset 0 1px 0 rgba(255,255,255,.9);
+}
+td.cat-hdr::before{
+  content:counter(cronograma-etapa);
+  position:absolute;
+  left:12px;
+  top:50%;
+  transform:translateY(-50%);
+  width:26px;
+  height:26px;
+  border-radius:8px;
+  background:var(--etapa-accent,#64748b);
+  color:#fff;
+  font-size:11px;
+  font-weight:800;
+  line-height:26px;
+  text-align:center;
+  box-shadow:0 2px 6px rgba(15,23,42,.25),inset 0 1px 0 rgba(255,255,255,.25);
+  font-variant-numeric:tabular-nums;
+}
+/* Acento distinto por etapa (alineado con los bloques de color del cronograma) */
+tbody tr[data-etapa="inv"] td.cat-hdr{--etapa-accent:#5352B7;--etapa-bg-soft:rgba(83,82,183,.12)}
+tbody tr[data-etapa="eeg"] td.cat-hdr{--etapa-accent:#0f6e56;--etapa-bg-soft:rgba(15,110,86,.12)}
+tbody tr[data-etapa="sys"] td.cat-hdr{--etapa-accent:#3b6d11;--etapa-bg-soft:rgba(59,109,17,.12)}
+tbody tr[data-etapa="mov"] td.cat-hdr{--etapa-accent:#185fa5;--etapa-bg-soft:rgba(24,95,165,.12)}
+tbody tr[data-etapa="cong"] td.cat-hdr{--etapa-accent:#993c1d;--etapa-bg-soft:rgba(153,60,29,.1)}
+tbody tr[data-etapa="pub"] td.cat-hdr{--etapa-accent:#854f0b;--etapa-bg-soft:rgba(133,79,11,.1)}
+tbody tr[data-etapa="tes"] td.cat-hdr{--etapa-accent:#4338ca;--etapa-bg-soft:rgba(67,56,202,.1)}
+tbody tr[data-etapa="tra"] td.cat-hdr{--etapa-accent:#5f5e5a;--etapa-bg-soft:rgba(95,94,90,.12)}
+tbody tr[data-etapa="fin"] td.cat-hdr{--etapa-accent:#c02626;--etapa-bg-soft:rgba(192,38,38,.1)}
+td.cat-hdr[colspan]{border-top:1px solid #e2e8f0;border-bottom:1px solid #e2e8f0}
+/* Celdas vacías del timeline: gris muy claro (no negro del tema) */
+#cronogramaDoctoradoWrap td.empty{background:#f1f5f9!important}
+.c1{background:#5352B7;color:#EEEDFE}
+.c1b{background:#AFA9EC;color:#26215C}
+.c2{background:#0F6E56;color:#E1F5EE}
+.c3{background:#854F0B;color:#FAEEDA}
+.c3b{background:#FAC775;color:#412402}
+.c4{background:#993C1D;color:#FAECE7}
+.c5{background:#185FA5;color:#E6F1FB}
+.c5b{background:#B5D4F4;color:#0C447C}
+.c6{background:#3B6D11;color:#EAF3DE}
+.c7{background:#5F5E5A;color:#F1EFE8}
+.ms{background:#E24B4A;color:#fff;font-weight:500}
+.beca-on{background:#2C2C2A;color:#D3D1C7;font-size:9px}
+.beca-end{background:#A32D2D;color:#fff;font-size:9px;font-weight:500}
+.now{outline:2px solid #E24B4A;outline-offset:-2px}
+.legend{display:flex;flex-wrap:wrap;gap:9px;margin-top:14px;font-size:10px;color:var(--color-text-secondary)}
+.leg-item{display:flex;align-items:center;gap:5px}
+.leg-dot{width:12px;height:12px;border-radius:3px;flex-shrink:0}
+.note{font-size:9.5px;color:var(--color-text-secondary);margin-top:10px;line-height:1.8;border-top:1px solid var(--color-border-tertiary);padding-top:8px}
+.ptitle{font-size:13px;font-weight:500;color:var(--color-text-primary);margin-bottom:4px}
+.psub{font-size:10px;color:var(--color-text-secondary);margin-bottom:10px}
+.cronograma-view-hint{font-size:9.5px;color:var(--color-text-secondary);margin:8px 0 0;line-height:1.4;max-width:62ch}
+.done{opacity:0.6;position:relative}
+.tag-now{font-size:8px;background:#E24B4A;color:#fff;border-radius:2px;padding:1px 3px;vertical-align:middle;margin-left:2px}
+.edit-toolbar{display:flex;flex-wrap:wrap;align-items:center;gap:10px 14px;margin-bottom:12px;padding:10px 12px;background:var(--color-background-secondary);border:1px solid var(--color-border-tertiary);border-radius:6px;font-size:11px;color:var(--color-text-primary)}
+.edit-toolbar label{display:flex;align-items:center;gap:6px;cursor:pointer;font-weight:500}
+.edit-hint{flex:1;min-width:200px;color:var(--color-text-secondary);line-height:1.45}
+.edit-toolbar button{font:inherit;padding:5px 10px;border-radius:4px;border:1px solid var(--color-border-secondary);background:var(--color-background-tertiary);cursor:pointer;color:var(--color-text-primary)}
+.edit-toolbar button:hover{background:var(--color-background-secondary)}
+.edit-mode .row-label,.edit-mode .cat-hdr,.edit-mode thead th{outline:1px dashed rgba(128,128,128,.45);outline-offset:2px}
+.edit-mode tbody td:nth-child(n+2):not(.cat-hdr){cursor:pointer;outline:1px dashed rgba(128,128,128,.25);outline-offset:-1px}
+.edit-mode tbody td:nth-child(n+2):not(.cat-hdr):hover{outline-color:#E24B4A}
+</style>
+</head>
+<body>
+<div class="wrap" id="cronogramaDoctoradoWrap">
+<div class="edit-toolbar" id="cronogramaEditToolbar">
+  <label><input type="checkbox" id="cronogramaEditMode" autocomplete="off"> Modo edición</label>
+  <span class="edit-hint" id="cronogramaEditHint" style="opacity: 0.85;">Activa el modo para editar textos (títulos, actividades, notas, leyenda) y para marcar duración: clic en celda vacía = añade ● con el color de la fila; Alt+clic en vacía = color alternativo (p. ej. revisión en publicaciones); clic si la celda solo tiene ● = vacía; Mayús+clic = vaciar celda; el resto del texto se edita al escribir. Si necesitas <code>done</code> / <code>now</code>, añádelos en el HTML o en las herramientas de desarrollo.</span>
+  <button type="button" id="cronogramaDownloadHtml" title="Guarda una copia del bloque actual">Descargar HTML</button>
+</div>
+<p class="ptitle" spellcheck="false">Cronograma Doctoral — UAEH / Estancia permanente Japón &nbsp;·&nbsp; Sep 2025 – Sep 2028</p>
+<p class="psub" spellcheck="false">Actividad física en UAEH durante estancias cortas (1–2 sem, S1) y largas (≥1 mes, S2 ago–dic) &nbsp;·&nbsp; ⬛ = completado &nbsp;·&nbsp; borde rojo = semestre actual</p>
+<div class="cronograma-table-view" role="region" aria-label="Cronograma: actividades (columna fija) y periodos por semestre">
+<table>
+<colgroup>
+  <col style="width:230px">
+  <col style="width:60px"><!-- 2025 S2 sep-dic -->
+  <col style="width:60px"><!-- 2026 S1 ene-jul -->
+  <col style="width:60px"><!-- 2026 S2 ago-dic -->
+  <col style="width:60px"><!-- 2027 S1 ene-jul -->
+  <col style="width:60px"><!-- 2027 S2 ago-dic -->
+  <col style="width:60px"><!-- 2028 S1 ene-jun -->
+  <col style="width:60px"><!-- 2028 jul-ago -->
+  <col style="width:60px"><!-- 2028 sep -->
+</colgroup>
+<thead>
+  <tr>
+    <th class="hdr-year" rowspan="2" style="text-align:left;padding-left:8px" spellcheck="false">Actividad</th>
+    <th class="hdr-year" spellcheck="false">2025</th>
+    <th class="hdr-year" colspan="2" spellcheck="false">2026</th>
+    <th class="hdr-year" colspan="2" spellcheck="false">2027</th>
+    <th class="hdr-year" colspan="3" spellcheck="false">2028</th>
+  </tr>
+  <tr>
+    <th class="hdr-sem" spellcheck="false">Sep–Dic<br>✓</th>
+    <th class="hdr-sem now" spellcheck="false">Ene–Jul<br>← actual</th>
+    <th class="hdr-sem" spellcheck="false">Ago–Dic</th>
+    <th class="hdr-sem" spellcheck="false">Ene–Jul</th>
+    <th class="hdr-sem" spellcheck="false">Ago–Dic</th>
+    <th class="hdr-sem" spellcheck="false">Ene–Jun</th>
+    <th class="hdr-sem" spellcheck="false">Jul–Ago<br>⚑ cierre</th>
+    <th class="hdr-sem" spellcheck="false">Sep<br>★ grado</th>
+  </tr>
+</thead>
+<tbody>
+
+<!-- BECA -->
+<tr data-palette="beca-on" data-palette-end="beca-end">
+  <td class="row-label" style="color:var(--color-text-secondary);font-weight:400;font-size:9.5px" spellcheck="false">Beca CONAHCyT (sep 2025 – ago 2028)</td>
+  <td class="beca-on done" spellcheck="false">inicio</td>
+  <td class="beca-on now" spellcheck="false">●</td>
+  <td class="beca-on" spellcheck="false">●</td>
+  <td class="beca-on" spellcheck="false">●</td>
+  <td class="beca-on" spellcheck="false">●</td>
+  <td class="beca-on" spellcheck="false">●</td>
+  <td class="beca-end" spellcheck="false">⚑ ago</td>
+  <td class="empty"></td>
+</tr>
+
+<!-- INVESTIGACIÓN -->
+<tr data-etapa="inv"><td class="cat-hdr" colspan="9" spellcheck="false">Investigación — marco teórico y estado del arte</td></tr>
+<tr data-palette="c1b">
+  <td class="row-label" spellcheck="false">Revisión del estado del arte<br><span style="font-weight:400;font-size:9px;color:var(--color-text-secondary)">(continua todo el doctorado)</span></td>
+  <td class="cell c1b done" spellcheck="false">●</td>
+  <td class="cell c1b now" spellcheck="false">●</td>
+  <td class="cell c1b" spellcheck="false">●</td>
+  <td class="cell c1b" spellcheck="false">●</td>
+  <td class="cell c1b" spellcheck="false">●</td>
+  <td class="cell c1b" spellcheck="false">●</td>
+  <td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c1">
+  <td class="row-label" spellcheck="false">Planteamiento formal: hipótesis y objetivos</td>
+  <td class="cell c1 done" spellcheck="false">●</td>
+  <td class="cell c1 now" spellcheck="false">●</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+</tr>
+
+<!-- EEG -->
+<tr data-etapa="eeg"><td class="cat-hdr" colspan="9" spellcheck="false">Desarrollo experimental — EEG y carga cognitiva</td></tr>
+<tr data-palette="c2">
+  <td class="row-label" spellcheck="false">Diseño protocolo EEG / selección hardware</td>
+  <td class="cell c2 done" spellcheck="false">●</td>
+  <td class="cell c2 now" spellcheck="false">●</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c2">
+  <td class="row-label" spellcheck="false">Experimentos EEG — adquisición y procesamiento</td>
+  <td class="empty"></td>
+  <td class="cell c2 now" spellcheck="false">●</td>
+  <td class="cell c2" spellcheck="false">●</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c2">
+  <td class="row-label" spellcheck="false">Clasificación carga cognitiva (SVM / ML)<br><span style="font-weight:400;font-size:9px;color:var(--color-text-secondary)">→ Cognitive Load Index (CLI)</span></td>
+  <td class="empty"></td>
+  <td class="cell c2 now" spellcheck="false">●</td>
+  <td class="cell c2" spellcheck="false">●</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c2">
+  <td class="row-label" spellcheck="false">Validación experimental CLI con usuarios</td>
+  <td class="empty"></td>
+  <td class="empty"></td>
+  <td class="cell c2" spellcheck="false">●</td>
+  <td class="cell c2" spellcheck="false">●</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+</tr>
+
+<!-- SISTEMA -->
+<tr data-etapa="sys"><td class="cat-hdr" colspan="9" spellcheck="false">Desarrollo del sistema integrado EEG–IA–RV–Háptico</td></tr>
+<tr data-palette="c6">
+  <td class="row-label" spellcheck="false">Diseño entorno RV quirúrgico (Unity)</td>
+  <td class="empty"></td><td class="empty"></td>
+  <td class="cell c6" spellcheck="false">●</td>
+  <td class="cell c6" spellcheck="false">●</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c6">
+  <td class="row-label" spellcheck="false">Selección y adquisición de dispositivos hápticos<br><span style="font-weight:400;font-size:9px;color:var(--color-text-secondary)">Evaluación de hardware (Phantom, HaptX, etc.)</span></td>
+  <td class="empty"></td><td class="empty"></td>
+  <td class="cell c6" spellcheck="false">●</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c6">
+  <td class="row-label" spellcheck="false">Integración háptica en entorno RV quirúrgico<br><span style="font-weight:400;font-size:9px;color:var(--color-text-secondary)">Feedback de fuerza / textura adaptado al CLI</span></td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c6" spellcheck="false">●</td>
+  <td class="cell c6" spellcheck="false">●</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c6">
+  <td class="row-label" spellcheck="false">Módulo control adaptativo (integración EEG–RV–Háptico)</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c6" spellcheck="false">●</td>
+  <td class="cell c6" spellcheck="false">●</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c6">
+  <td class="row-label" spellcheck="false">Validación feedback háptico con usuarios<br><span style="font-weight:400;font-size:9px;color:var(--color-text-secondary)">Métricas CLI con y sin retroalimentación háptica</span></td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c6" spellcheck="false">●</td>
+  <td class="cell c6" spellcheck="false">●</td>
+  <td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c6">
+  <td class="row-label" spellcheck="false">Validación sistema completo con usuarios sanos</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c6" spellcheck="false">●</td>
+  <td class="cell c6" spellcheck="false">●</td>
+  <td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c6">
+  <td class="row-label" spellcheck="false">Análisis estadístico de resultados</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c6" spellcheck="false">●</td>
+  <td class="empty"></td><td class="empty"></td>
+</tr>
+
+<!-- ESTANCIAS -->
+<tr data-etapa="mov"><td class="cat-hdr" colspan="9" spellcheck="false">Movilidad — Estancia permanente Japón / actividad física UAEH</td></tr>
+<tr data-palette="c5">
+  <td class="row-label" style="font-size:9.5px" spellcheck="false">Estancia larga ≥1 mes en UAEH (S2 ago–dic)<br><span style="font-weight:400;font-size:9px;color:var(--color-text-secondary)">Actividad física institucional</span></td>
+  <td class="empty"></td>
+  <td class="empty"></td>
+  <td class="cell c5" spellcheck="false">1 mes<br><span style="font-size:8.5px">UAEH</span></td>
+  <td class="empty"></td>
+  <td class="cell c5" spellcheck="false">1 mes<br><span style="font-size:8.5px">UAEH</span></td>
+  <td class="empty"></td>
+  <td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c5b">
+  <td class="row-label" style="font-size:9.5px" spellcheck="false">Visita corta 1–2 sem en UAEH (S1 ene–jul)<br><span style="font-weight:400;font-size:9px;color:var(--color-text-secondary)">Actividad física institucional</span></td>
+  <td class="cell c5b done" spellcheck="false">1–2 sem<br><span style="font-size:8.5px">UAEH ✓</span></td>
+  <td class="cell c5b now" spellcheck="false">1–2 sem<br><span style="font-size:8.5px">UAEH</span></td>
+  <td class="empty"></td>
+  <td class="cell c5b" spellcheck="false">1–2 sem<br><span style="font-size:8.5px">UAEH</span></td>
+  <td class="empty"></td>
+  <td class="cell c5b" spellcheck="false">1–2 sem<br><span style="font-size:8.5px">UAEH</span></td>
+  <td class="empty"></td><td class="empty"></td>
+</tr>
+
+<!-- CONGRESOS -->
+<tr data-etapa="cong"><td class="cat-hdr" colspan="9" spellcheck="false">Congresos internacionales (5)</td></tr>
+<tr data-palette="c4">
+  <td class="row-label" spellcheck="false">C1 — Japón (ya aplicado) · avance EEG / CLI</td>
+  <td class="empty"></td><td class="empty"></td>
+  <td class="cell c4" spellcheck="false">★ C1<br><span style="font-size:8.5px">Japón</span></td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c4">
+  <td class="row-label" spellcheck="false">C2 — Revisión sistemática neuroergonomía / CLI<br><span style="font-weight:400;font-size:9px;color:var(--color-text-secondary)">(puede coincidir con P2)</span></td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c4" spellcheck="false">★ C2</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c4">
+  <td class="row-label" spellcheck="false">C3 — Sistema EEG–IA–RV–Háptico integrado</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c4" spellcheck="false">★ C3</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c4">
+  <td class="row-label" spellcheck="false">C4 — Validación sistema / resultados parciales</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c4" spellcheck="false">★ C4</td>
+  <td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c4">
+  <td class="row-label" spellcheck="false">C5 — Resultados finales / cierre doctorado</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c4" spellcheck="false">★ C5</td>
+  <td class="empty"></td><td class="empty"></td>
+</tr>
+
+<!-- PUBLICACIONES -->
+<tr data-etapa="pub"><td class="cat-hdr" colspan="9" spellcheck="false">Publicaciones con factor de impacto (3)</td></tr>
+<tr data-palette="c3" data-palette-alt="c3b">
+  <td class="row-label" spellcheck="false">P1 — Wiley · Validación CLI con experimentos EEG</td>
+  <td class="empty"></td>
+  <td class="cell c3 now" spellcheck="false">prep</td>
+  <td class="cell c3" spellcheck="false">▶ submit</td>
+  <td class="cell c3b" spellcheck="false">revisión / aceptación</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c3" data-palette-alt="c3b">
+  <td class="row-label" spellcheck="false">P2 — Indexada · Revisión sistemática neuroergonomía quirúrgica</td>
+  <td class="empty"></td><td class="empty"></td>
+  <td class="cell c3" spellcheck="false">prep</td>
+  <td class="cell c3" spellcheck="false">▶ submit</td>
+  <td class="cell c3b" spellcheck="false">revisión / aceptación</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c3" data-palette-alt="c3b">
+  <td class="row-label" spellcheck="false">P3 — Indexada · Sistema EEG–IA–RV–Háptico: validación completa</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c3" spellcheck="false">prep</td>
+  <td class="cell c3" spellcheck="false">▶ submit</td>
+  <td class="cell c3b" spellcheck="false">revisión</td><td class="empty"></td>
+</tr>
+
+<!-- REDACCIÓN -->
+<tr data-etapa="tes"><td class="cat-hdr" colspan="9" spellcheck="false">Redacción de tesis doctoral</td></tr>
+<tr data-palette="c1b">
+  <td class="row-label" spellcheck="false">Escritura continua (capítulos progresivos)</td>
+  <td class="cell c1b">●</td><td class="cell c1b">●</td><td class="cell c1b">●</td><td class="cell c1b">●</td>
+  <td class="cell c1b" spellcheck="false">●</td>
+  <td class="cell c1" spellcheck="false">●</td>
+  <td class="cell c1" spellcheck="false">●</td><td class="empty"></td>
+</tr>
+<tr data-palette="c1">
+  <td class="row-label" spellcheck="false">Revisión comité / ajustes / autorización impresión</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c1" spellcheck="false">●</td><td class="empty"></td>
+</tr>
+
+<!-- TRÁMITES -->
+<tr data-etapa="tra"><td class="cat-hdr" colspan="9" spellcheck="false">Trámites institucionales UAEH (procedimiento de titulación)</td></tr>
+<tr data-palette="c7">
+  <td class="row-label" spellcheck="false">Revisión semestral con comité académico</td>
+  <td class="cell c7 done" style="font-size:9px" spellcheck="false">rev ✓</td>
+  <td class="cell c7 now" style="font-size:9px" spellcheck="false">rev</td>
+  <td class="cell c7" style="font-size:9px" spellcheck="false">rev</td>
+  <td class="cell c7" style="font-size:9px" spellcheck="false">rev</td>
+  <td class="cell c7" style="font-size:9px" spellcheck="false">rev</td>
+  <td class="cell c7" style="font-size:9px" spellcheck="false">rev</td>
+  <td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c7">
+  <td class="row-label" spellcheck="false">Certificado total posgrado</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c7" spellcheck="false">●</td>
+  <td class="empty"></td><td class="empty"></td>
+</tr>
+<tr data-palette="c7">
+  <td class="row-label" spellcheck="false">Registro titulación + 1er pago + foto CEDAI + expediente</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c7" spellcheck="false">●</td><td class="empty"></td>
+</tr>
+<tr data-palette="c7">
+  <td class="row-label" spellcheck="false">Donación bib. / lab. / examen recepcional / 2do pago</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c7" spellcheck="false">●</td><td class="empty"></td>
+</tr>
+<tr data-palette="c7">
+  <td class="row-label" spellcheck="false">Entrega grado — notificación Área Titulación (≤4 meses)</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="cell c7" spellcheck="false">●</td>
+</tr>
+
+<!-- CIERRE -->
+<tr data-etapa="fin"><td class="cat-hdr" colspan="9" spellcheck="false">Hitos de cierre</td></tr>
+<tr data-palette="beca-end">
+  <td class="row-label" style="font-weight:500" spellcheck="false">Cierre beca CONAHCyT</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="beca-end" spellcheck="false">⚑ ago 2028</td>
+  <td class="empty"></td>
+</tr>
+<tr data-palette="ms">
+  <td class="row-label" style="font-weight:500" spellcheck="false">A15 — Examen de grado (defensa doctoral)</td>
+  <td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td><td class="empty"></td>
+  <td class="ms" spellcheck="false">★ sep 2028</td>
+</tr>
+
+</tbody>
+</table>
+</div>
+<p class="cronograma-view-hint">Vista: desplázate dentro del recuadro; la columna <b>Actividad</b> y la cabecera (años / semestres) permanecen fijas para alinear cada fila con el periodo.</p>
+
+<div class="legend">
+  <div class="leg-item"><div class="leg-dot" style="background:#AFA9EC"></div><span spellcheck="false">Estado del arte (continuo)</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#5352B7"></div><span spellcheck="false">Investigación / redacción</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#0F6E56"></div><span spellcheck="false">Desarrollo experimental / sistema</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#3B6D11"></div><span spellcheck="false">Validación</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#185FA5"></div><span spellcheck="false">Estancia larga UAEH ≥1 mes (S2)</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#B5D4F4"></div><span spellcheck="false">Visita corta UAEH 1–2 sem (S1)</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#854F0B"></div><span spellcheck="false">Publicaciones (prep / submit)</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#FAC775"></div><span spellcheck="false">Publicaciones (revisión / aceptación)</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#993C1D"></div><span spellcheck="false">Congresos internacionales</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#5F5E5A"></div><span spellcheck="false">Trámites UAEH</span></div>
+  <div class="leg-item"><div class="leg-dot" style="background:#E24B4A"></div><span spellcheck="false">Examen de grado</span></div>
+</div>
+
+<p class="note" spellcheck="false">
+<b>Beca CONAHCyT:</b> sep 2025 – ago 2028 &nbsp;|&nbsp;
+<b>Base permanente:</b> Japón, con actividad física en UAEH durante estancias &nbsp;|&nbsp;
+<b>Estancias UAEH:</b> visita corta 1–2 sem cada S1 (ene–jul) · estancia larga ≥1 mes cada S2 (ago–dic) · sep–dic 2025 ya realizada ✓ &nbsp;|&nbsp;
+<b>P1 Wiley:</b> validación CLI con experimentos EEG (submit ago–dic 2026) &nbsp;|&nbsp;
+<b>P2:</b> revisión sistemática neuroergonomía quirúrgica — puede presentarse también como C2 (ene–jul 2027) &nbsp;|&nbsp;
+<b>P3:</b> sistema EEG–IA–RV–Háptico con validación completa (submit ene–jun 2028) &nbsp;|&nbsp;
+<b>Dispositivos hápticos:</b> selección ago–dic 2026, integración y validación ene–dic 2027 &nbsp;|&nbsp;
+<b>Trámites UAEH:</b> iniciar certificado total en ene–jun 2028 para no llegar al límite de los 2 años
+</p>
+</div>
+<script id="cronogramaDoctoradoScript">
+
+(function () {
+  var wrap = document.getElementById('cronogramaDoctoradoWrap');
+  if (!wrap) return;
+
+  var chk = document.getElementById('cronogramaEditMode');
+  var btn = document.getElementById('cronogramaDownloadHtml');
+  var hint = document.getElementById('cronogramaEditHint');
+  if (!chk || !btn) return;
+
+  var textSelectors = ['.ptitle', '.psub', '.note', 'thead th', 'tbody .row-label', 'tbody .cat-hdr', '.leg-item span'];
+
+  function normText(el) {
+    return (el.textContent || '').replace(/\s+/g, '').trim();
+  }
+
+  function isTimelineCell(td) {
+    if (!td || td.tagName !== 'TD') return false;
+    var tr = td.parentElement;
+    if (!tr || tr.tagName !== 'TR') return false;
+    var first = tr.querySelector(':scope > td');
+    if (first && first.classList.contains('cat-hdr')) return false;
+    var cells = tr.querySelectorAll(':scope > td');
+    var idx = Array.prototype.indexOf.call(cells, td);
+    return idx >= 1;
+  }
+
+  function fillCell(td, tr, useAlt) {
+    var cells = tr.querySelectorAll(':scope > td');
+    var idx = Array.prototype.indexOf.call(cells, td);
+    var pal = tr.getAttribute('data-palette') || 'c1';
+    if (tr.getAttribute('data-palette') === 'beca-on' && tr.getAttribute('data-palette-end')) {
+      if (idx === 7) pal = 'beca-end';
+      else if (idx >= 1 && idx <= 6) pal = 'beca-on';
+      else if (idx === 8) pal = 'beca-on';
+    } else if (tr.getAttribute('data-palette') === 'beca-end' && !tr.getAttribute('data-palette-end')) {
+      pal = 'beca-end';
+    } else if (useAlt && tr.getAttribute('data-palette-alt')) {
+      pal = tr.getAttribute('data-palette-alt');
+    }
+    var noCell = pal === 'beca-on' || pal === 'beca-end' || pal === 'ms';
+    td.className = noCell ? pal : 'cell ' + pal;
+    td.innerHTML = '\u25cf';
+  }
+
+  function clearCell(td) {
+    td.className = 'empty';
+    td.innerHTML = '';
+    td.removeAttribute('contenteditable');
+  }
+
+  function setTextEditable(on) {
+    textSelectors.forEach(function (sel) {
+      wrap.querySelectorAll(sel).forEach(function (el) {
+        el.contentEditable = on ? 'true' : 'false';
+        el.spellcheck = false;
+      });
+    });
+  }
+
+  function setTimelineEditable(on) {
+    wrap.querySelectorAll('tbody tr td').forEach(function (td) {
+      if (!isTimelineCell(td) || td.classList.contains('cat-hdr')) return;
+      if (!on) {
+        td.contentEditable = 'false';
+        return;
+      }
+      if (td.classList.contains('empty') && normText(td) === '') {
+        td.contentEditable = 'false';
+      } else {
+        td.contentEditable = 'true';
+        td.spellcheck = false;
+      }
+    });
+  }
+
+  function refreshTimelineContentEditable() {
+    if (!chk.checked) return;
+    wrap.querySelectorAll('tbody tr td').forEach(function (td) {
+      if (!isTimelineCell(td) || td.classList.contains('cat-hdr')) return;
+      if (td.classList.contains('empty') && normText(td) === '') {
+        td.contentEditable = 'false';
+      } else {
+        td.contentEditable = 'true';
+        td.spellcheck = false;
+      }
+    });
+  }
+
+  wrap.addEventListener('input', function (e) {
+    if (chk.checked && e.target && e.target.tagName === 'TD' && isTimelineCell(e.target)) refreshTimelineContentEditable();
+  }, true);
+
+  wrap.addEventListener('click', function (e) {
+    if (!chk.checked) return;
+    var td = e.target.closest('tbody td');
+    if (!td || !isTimelineCell(td)) return;
+    if (td.classList.contains('cat-hdr')) return;
+
+    if (e.shiftKey) {
+      e.preventDefault();
+      clearCell(td);
+      return;
+    }
+
+    var t = normText(td);
+    var tr = td.closest('tr');
+    if (!tr || tr.querySelector('.cat-hdr')) return;
+
+    if (td.classList.contains('empty') || t === '') {
+      e.preventDefault();
+      fillCell(td, tr, e.altKey);
+      td.contentEditable = 'true';
+      return;
+    }
+    if (t === '\u25cf' || t === '\u2022') {
+      e.preventDefault();
+      clearCell(td);
+      return;
+    }
+  }, true);
+
+  chk.addEventListener('change', function () {
+    wrap.classList.toggle('edit-mode', chk.checked);
+    setTextEditable(chk.checked);
+    setTimelineEditable(chk.checked);
+    if (hint) hint.style.opacity = chk.checked ? '1' : '0.85';
+  });
+
+  btn.addEventListener('click', function () {
+    var clone = wrap.cloneNode(true);
+    var c = clone.querySelector('#cronogramaEditMode');
+    if (c) c.checked = false;
+    clone.classList.remove('edit-mode');
+    clone.querySelectorAll('[contenteditable]').forEach(function (n) {
+      n.removeAttribute('contenteditable');
+    });
+    var scriptEl = document.getElementById('cronogramaDoctoradoScript');
+    var styleEl = document.getElementById('cronogramaDoctoradoStyles');
+    var scriptAppend = scriptEl && scriptEl.textContent
+      ? '\n<script id="cronogramaDoctoradoScript">\n' + scriptEl.textContent + '\n<\/script>\n'
+      : '';
+    var styleAppend = styleEl ? styleEl.outerHTML + '\n' : '';
+    var rootVars = '<style>:root{--color-border-tertiary:#cbd5e1;--color-text-primary:#111827;--color-background-secondary:#e8ecf2;--color-background-tertiary:#d8dee8;--color-text-secondary:#4b5563;--color-border-secondary:#94a3af;--cronograma-surface:#fff;--cronograma-grid:#e2e8f0;--cronograma-row-alt:#f8fafc;--cronograma-row:#fff}body{font-family:system-ui,-apple-system,sans-serif;padding:16px;background:#f1f5f9}</style>\n';
+    var html = '<!DOCTYPE html>\n<html lang="es">\n<head>\n<meta charset="utf-8">\n<meta name="viewport" content="width=device-width, initial-scale=1">\n<title>Cronograma doctoral</title>\n' + rootVars + styleAppend + '</head>\n<body>\n' + clone.outerHTML + scriptAppend + '</body>\n</html>';
+    var blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'cronograma_doctorado_editado.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  });
+})();
+
+</script>
+</body>
+</html>
