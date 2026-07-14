@@ -1,0 +1,82 @@
+========================================================================
+DEEP DIVE — MICHELLE
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_michelle/eeg_data_20260414_182434.csv
+Total rows: 64,490
+Total duration (s): 1298.2
+Median interval: 20.00 ms → actual SR ≈ 50.00 Hz
+Raw labels in CSV: ['analysis', 'baseline_completed', 'baseline_eyes_closed', 'baseline_eyes_open', 'ecological_paradigm mode=eco_haptic', 'ecological_paradigm mode=eco_keyboard', 'high_cognitive_load', 'idle', 'low_cognitive_load', 'low_load_completed', 'setup']
+Mapped canonical phases (row counts):
+  baseline_eyes_open          n=  4518  dur≈90.4s
+  baseline_eyes_closed        n=  4514  dur≈90.3s
+  low_cognitive_load          n=  9034  dur≈180.7s
+  high_cognitive_load         n=  9042  dur≈180.8s
+  Saved 01_raw_all_channels_timeline.png
+
+------------------------------------------------------------------------
+Phase: baseline_eyes_open
+  rows=4,518  dur=90.4s  sr_est=50.0 Hz
+  artifacts — Fz: 35 (0.8%),  Pz: 46 (1.0%)
+  windows (actual sr=50.0 Hz, win=49 samples ≈ 1.0s):
+    valid ratios: 187
+    mean ratio = 0.7171   median = 0.3705   std = 1.0558
+  windows (step4 style sr=250, win=250 samples):
+    valid ratios: 35
+    mean ratio = 0.2910   median = 0.2796   std = 0.1334
+
+------------------------------------------------------------------------
+Phase: baseline_eyes_closed
+  rows=4,514  dur=90.3s  sr_est=50.0 Hz
+  artifacts — Fz: 24 (0.5%),  Pz: 14 (0.3%)
+  windows (actual sr=50.0 Hz, win=49 samples ≈ 1.0s):
+    valid ratios: 130
+    mean ratio = 0.0637   median = 0.0298   std = 0.1010
+  windows (step4 style sr=250, win=250 samples):
+    valid ratios: 35
+    mean ratio = 0.7362   median = 0.5114   std = 0.8516
+
+------------------------------------------------------------------------
+Phase: low_cognitive_load
+  rows=9,034  dur=180.7s  sr_est=50.0 Hz
+  artifacts — Fz: 63 (0.7%),  Pz: 96 (1.1%)
+  windows (actual sr=50.0 Hz, win=50 samples ≈ 1.0s):
+    valid ratios: 344
+    mean ratio = 0.4391   median = 0.1346   std = 0.9280
+  windows (step4 style sr=250, win=250 samples):
+    valid ratios: 71
+    mean ratio = 0.7649   median = 0.4470   std = 1.2978
+
+------------------------------------------------------------------------
+Phase: high_cognitive_load
+  rows=9,042  dur=180.8s  sr_est=50.0 Hz
+  artifacts — Fz: 57 (0.6%),  Pz: 99 (1.1%)
+  windows (actual sr=50.0 Hz, win=49 samples ≈ 1.0s):
+    valid ratios: 362
+    mean ratio = 0.5665   median = 0.1208   std = 2.1875
+  windows (step4 style sr=250, win=250 samples):
+    valid ratios: 71
+    mean ratio = 0.7559   median = 0.3392   std = 0.9924
+  Saved 02_pipeline_baseline-eyes-open.png
+  Saved 02_pipeline_baseline-eyes-closed.png
+  Saved 02_pipeline_low-cognitive-load.png
+  Saved 02_pipeline_high-cognitive-load.png
+  Saved 03_psd_by_phase_overlay.png
+  Saved 04_windowed_ratios.png
+  Saved 05_mean_ratio_summary.png
+  Saved 06_band_powers.png
+  Saved michelle_windows.csv + michelle_summary.csv
+
+========================================================================
+FINAL SUMMARY — mean ratio per phase
+========================================================================
+phase                         mode      n_win  sr_used      theta      alpha  mean_ratio
+baseline_eyes_open            real        187     50.0      1.289      2.943      0.7171
+baseline_eyes_open            step4        35    250.0      2.541      9.069      0.2910
+baseline_eyes_closed          real        130     50.0      0.800     25.229      0.0637
+baseline_eyes_closed          step4        35    250.0      1.339      1.862      0.7362
+low_cognitive_load            real        344     50.0      1.411      6.563      0.4391
+low_cognitive_load            step4        71    250.0      2.787      5.261      0.7649
+high_cognitive_load           real        362     50.0      1.382      7.701      0.5665
+high_cognitive_load           step4        71    250.0      1.990      4.543      0.7559
+
+DONE.

@@ -1,0 +1,1349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>NeuroLab EEG</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700;1,400&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet" />
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg0: #080c10;
+    --bg1: #0d1117;
+    --bg2: #111820;
+    --bg3: #18222e;
+    --border: #1e2d3d;
+    --border-bright: #2a4060;
+    --accent: #00d4a8;
+    --accent2: #00a8ff;
+    --accent-dim: rgba(0,212,168,0.12);
+    --accent2-dim: rgba(0,168,255,0.10);
+    --warn: #ffb347;
+    --warn-dim: rgba(255,179,71,0.12);
+    --danger: #ff5555;
+    --text0: #e8f4f0;
+    --text1: #8baabb;
+    --text2: #4a6478;
+    --mono: 'Space Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --radius: 6px;
+    --radius-lg: 10px;
+  }
+
+  html, body { height: 100%; background: var(--bg0); color: var(--text0); font-family: var(--sans); font-size: 14px; line-height: 1.5; overflow: hidden; }
+
+  /* ── LAYOUT ── */
+  #app { display: grid; grid-template-rows: 44px 1fr; grid-template-columns: 220px 1fr; height: 100vh; }
+  #titlebar { grid-column: 1/-1; background: var(--bg1); border-bottom: 1px solid var(--border); display: flex; align-items: center; padding: 0 16px; gap: 12px; -webkit-app-region: drag; user-select: none; }
+  #sidebar { background: var(--bg1); border-right: 1px solid var(--border); display: flex; flex-direction: column; padding: 16px 0; overflow-y: auto; }
+  #main { overflow-y: auto; background: var(--bg0); }
+
+  /* ── TITLEBAR ── */
+  .tb-dot { width: 12px; height: 12px; border-radius: 50%; -webkit-app-region: no-drag; }
+  .tb-dot.close { background: #ff5f57; }
+  .tb-dot.min   { background: #febc2e; }
+  .tb-dot.max   { background: #28c840; }
+  .tb-title { font-family: var(--mono); font-size: 11px; color: var(--text2); letter-spacing: 0.12em; text-transform: uppercase; margin-left: 8px; }
+  /* Branding solo en cada vista: izquierda / derecha, sin cajas pesadas */
+  .panel-brand {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 16px;
+    margin: -4px 0 20px;
+    padding: 0 4px 18px;
+    border-bottom: 1px solid rgba(30, 45, 61, 0.65);
+  }
+  .panel-logo {
+    display: block;
+    width: auto;
+    object-fit: contain;
+    flex-shrink: 0;
+  }
+  /* Escudo UAEH en línea: invertir para fondo oscuro */
+  .panel-logo.uaeh {
+    max-height: 58px;
+    max-width: min(280px, 46vw);
+    filter: none;
+    opacity: 1;
+    background: rgba(245, 248, 252, 0.96);
+    border-radius: 10px;
+    padding: 5px 10px;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.25);
+  }
+  .panel-logo.mirai {
+    max-height: 52px;
+    max-width: min(260px, 44vw);
+    opacity: 0.98;
+  }
+  .tb-status { margin-left: auto; display: flex; align-items: center; gap: 8px; -webkit-app-region: no-drag; }
+  .status-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--text2); transition: background 0.3s; }
+  .status-dot.connected { background: var(--accent); box-shadow: 0 0 8px var(--accent); }
+  .status-dot.error { background: var(--danger); }
+  .status-text { font-family: var(--mono); font-size: 10px; color: var(--text1); letter-spacing: 0.08em; }
+
+  /* ── SIDEBAR ── */
+  .sidebar-section { padding: 0 12px; margin-bottom: 24px; }
+  .sidebar-label { font-family: var(--mono); font-size: 9px; color: var(--text2); letter-spacing: 0.16em; text-transform: uppercase; padding: 0 8px; margin-bottom: 8px; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 8px 12px; border-radius: var(--radius); cursor: pointer; color: var(--text1); font-size: 13px; transition: all 0.15s; }
+  .nav-item:hover { background: var(--bg3); color: var(--text0); }
+  .nav-item.active { background: var(--accent-dim); color: var(--accent); }
+  .nav-item .icon { width: 16px; height: 16px; opacity: 0.7; flex-shrink: 0; }
+  .nav-item.active .icon { opacity: 1; }
+  .phase-badge { margin-left: auto; font-family: var(--mono); font-size: 9px; padding: 2px 6px; border-radius: 3px; }
+  .phase-badge.done { background: rgba(0,212,168,0.15); color: var(--accent); }
+  .phase-badge.active { background: var(--warn-dim); color: var(--warn); }
+  .phase-badge.locked { background: var(--bg3); color: var(--text2); }
+
+  /* ── CONNECT BUTTON ── */
+  .connect-btn { margin: 0 12px; padding: 10px 14px; border-radius: var(--radius); border: 1px solid var(--border-bright); background: transparent; color: var(--text0); font-family: var(--sans); font-size: 13px; cursor: pointer; transition: all 0.2s; display: flex; align-items: center; gap: 8px; }
+  .connect-btn:hover { background: var(--bg3); border-color: var(--accent); color: var(--accent); }
+  .connect-btn.connected { border-color: var(--accent); color: var(--accent); background: var(--accent-dim); }
+  .connect-btn svg { width: 14px; height: 14px; }
+
+  .sidebar-divider { height: 1px; background: var(--border); margin: 8px 12px 16px; }
+
+  /* ── MAIN PANELS ── */
+  .panel { display: none; padding: 24px; }
+  .panel.active { display: block; }
+  .panel-header { margin-bottom: 24px; }
+  .panel-title { font-family: var(--mono); font-size: 16px; color: var(--text0); letter-spacing: 0.04em; margin-bottom: 4px; }
+  .panel-subtitle { font-size: 12px; color: var(--text2); }
+
+  /* ── GRIDS ── */
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 12px; margin-bottom: 16px; }
+  .grid4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; margin-bottom: 16px; }
+
+  /* ── CARDS ── */
+  .card { background: var(--bg1); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 16px; }
+  .card-sm { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 14px; }
+  .card-title { font-family: var(--mono); font-size: 10px; color: var(--text2); letter-spacing: 0.1em; text-transform: uppercase; margin-bottom: 10px; }
+  .metric-val { font-family: var(--mono); font-size: 22px; color: var(--text0); }
+  .metric-val.accent { color: var(--accent); }
+  .metric-val.warn { color: var(--warn); }
+  .metric-sub { font-size: 11px; color: var(--text2); margin-top: 2px; }
+
+  /* ── CHARTS (canvas placeholders) ── */
+  .chart-area { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden; position: relative; }
+  .chart-area canvas { display: block; width: 100% !important; }
+  .chart-label { font-family: var(--mono); font-size: 9px; color: var(--text2); position: absolute; top: 8px; left: 12px; letter-spacing: 0.1em; text-transform: uppercase; }
+  .channel-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .ch-strip { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); height: 64px; display: flex; align-items: center; padding: 0 12px; gap: 10px; position: relative; overflow: hidden; }
+  .ch-name { font-family: var(--mono); font-size: 9px; color: var(--text2); letter-spacing: 0.08em; flex-shrink: 0; width: 24px; }
+  .ch-canvas { flex: 1; height: 48px; }
+  .ch-val { font-family: var(--mono); font-size: 10px; color: var(--accent); min-width: 48px; text-align: right; }
+
+  /* ── BUTTONS ── */
+  .btn { display: inline-flex; align-items: center; gap: 8px; padding: 9px 18px; border-radius: var(--radius); border: 1px solid var(--border-bright); background: transparent; color: var(--text0); font-family: var(--sans); font-size: 13px; cursor: pointer; transition: all 0.18s; }
+  .btn:hover { background: var(--bg3); }
+  .btn:disabled { opacity: 0.35; cursor: not-allowed; }
+  .btn.primary { border-color: var(--accent); color: var(--accent); }
+  .btn.primary:hover:not(:disabled) { background: var(--accent-dim); }
+  .btn.secondary { border-color: var(--accent2); color: var(--accent2); }
+  .btn.secondary:hover:not(:disabled) { background: var(--accent2-dim); }
+  .btn.warn-btn { border-color: var(--warn); color: var(--warn); }
+  .btn.warn-btn:hover:not(:disabled) { background: var(--warn-dim); }
+  .btn-row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .time-grid { display: grid; grid-template-columns: repeat(4, minmax(120px, 1fr)); gap: 10px; margin-top: 8px; }
+  .time-field { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 8px 10px; }
+  .time-field label { display: block; font-family: var(--mono); font-size: 9px; color: var(--text2); letter-spacing: 0.08em; margin-bottom: 6px; text-transform: uppercase; }
+  .time-input { width: 100%; background: transparent; border: 1px solid var(--border-bright); border-radius: 5px; color: var(--text0); font-family: var(--mono); padding: 6px 8px; }
+
+  /* ── TAGS / BADGES ── */
+  .tag { display: inline-flex; align-items: center; font-family: var(--mono); font-size: 10px; padding: 2px 8px; border-radius: 3px; letter-spacing: 0.06em; }
+  .tag.green { background: rgba(0,212,168,0.12); color: var(--accent); border: 1px solid rgba(0,212,168,0.25); }
+  .tag.blue { background: rgba(0,168,255,0.10); color: var(--accent2); border: 1px solid rgba(0,168,255,0.22); }
+  .tag.amber { background: var(--warn-dim); color: var(--warn); border: 1px solid rgba(255,179,71,0.25); }
+  .tag.red { background: rgba(255,85,85,0.10); color: var(--danger); border: 1px solid rgba(255,85,85,0.22); }
+
+  /* ── TIMER ── */
+  .timer-display { font-family: var(--mono); font-size: 42px; color: var(--accent); letter-spacing: 0.04em; text-align: center; padding: 20px 0; }
+  .timer-display.warn { color: var(--warn); }
+
+  /* ── INSTRUCTIONS ── */
+  .instruction-box { background: var(--bg2); border: 1px solid var(--border); border-left: 3px solid var(--accent); border-radius: var(--radius); padding: 14px 16px; font-size: 13px; color: var(--text1); line-height: 1.7; margin-bottom: 16px; }
+
+  /* ── STROOP ── */
+  .stroop-word { font-family: var(--mono); font-size: 72px; font-weight: 700; text-align: center; padding: 40px 0; letter-spacing: -0.02em; line-height: 1; }
+  .stroop-prompt { font-size: 12px; color: var(--text2); text-align: center; margin-bottom: 24px; letter-spacing: 0.08em; font-family: var(--mono); text-transform: uppercase; }
+  .stroop-options { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; max-width: 480px; margin: 0 auto; }
+  .stroop-opt { padding: 14px; border-radius: var(--radius); border: 1px solid var(--border-bright); background: var(--bg2); cursor: pointer; text-align: center; font-family: var(--mono); font-size: 13px; transition: all 0.15s; }
+  .stroop-opt:hover { border-color: var(--accent); color: var(--accent); }
+  .stroop-opt.correct { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
+  .stroop-opt.wrong { border-color: var(--danger); background: rgba(255,85,85,0.08); color: var(--danger); }
+  .stroop-stats { display: flex; gap: 20px; justify-content: center; margin-bottom: 24px; }
+
+  /* ── TEXT READING ── */
+  .reading-text { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; font-size: 14px; line-height: 1.9; color: var(--text1); max-height: 340px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border-bright) transparent; }
+
+  /* ── SCROLLBAR ── */
+  ::-webkit-scrollbar { width: 5px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border-bright); border-radius: 3px; }
+
+  /* ── RATIO BAR ── */
+  .ratio-bar-wrap { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); padding: 12px 16px; }
+  .ratio-bar-track { height: 6px; background: var(--bg3); border-radius: 3px; overflow: hidden; margin: 8px 0; }
+  .ratio-bar-fill { height: 100%; border-radius: 3px; background: linear-gradient(90deg, var(--accent), var(--accent2)); transition: width 0.4s ease; }
+  .ratio-labels { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 9px; color: var(--text2); }
+
+  /* ── LOG TABLE ── */
+  .log-table { width: 100%; border-collapse: collapse; font-family: var(--mono); font-size: 11px; }
+  .log-table th { text-align: left; padding: 6px 10px; color: var(--text2); border-bottom: 1px solid var(--border); letter-spacing: 0.08em; font-weight: 400; }
+  .log-table td { padding: 5px 10px; color: var(--text1); border-bottom: 1px solid rgba(30,45,61,0.5); }
+  .log-table tr:hover td { background: var(--bg2); }
+
+  /* ── USER INPUT MODAL ── */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(8,12,16,0.85); display: flex; align-items: center; justify-content: center; z-index: 999; }
+  .modal { background: var(--bg1); border: 1px solid var(--border-bright); border-radius: var(--radius-lg); padding: 28px; width: 380px; }
+  .modal h3 { font-family: var(--mono); font-size: 13px; color: var(--text0); letter-spacing: 0.06em; margin-bottom: 6px; }
+  .modal p { font-size: 12px; color: var(--text2); margin-bottom: 20px; }
+  .input-field { width: 100%; background: var(--bg2); border: 1px solid var(--border-bright); border-radius: var(--radius); padding: 10px 12px; color: var(--text0); font-family: var(--mono); font-size: 13px; outline: none; transition: border-color 0.2s; }
+  .input-field:focus { border-color: var(--accent); }
+  .modal-actions { display: flex; gap: 10px; margin-top: 16px; justify-content: flex-end; }
+
+  /* ── SECTION SEPARATORS ── */
+  .section-sep { height: 1px; background: var(--border); margin: 20px 0; }
+
+  /* ── SCAN LINE ANIMATION (subtle) ── */
+  @keyframes scan { 0%{transform:translateY(-100%)} 100%{transform:translateY(100%)} }
+  .scan-overlay { position: absolute; inset: 0; overflow: hidden; pointer-events: none; }
+  .scan-overlay::after { content:''; position:absolute; left:0; right:0; height:1px; background: linear-gradient(90deg, transparent, rgba(0,212,168,0.15), transparent); animation: scan 3s linear infinite; }
+
+  /* ── WAVEFORM ANIMATION ── */
+  @keyframes wave-scroll { 0%{stroke-dashoffset:0} 100%{stroke-dashoffset:-200} }
+  .animated-wave { stroke-dasharray: 8 4; animation: wave-scroll 1s linear infinite; }
+
+  /* ── PULSE INDICATOR ── */
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .pulse { animation: pulse 1.4s ease-in-out infinite; }
+  @media (max-width: 1080px) {
+    .panel-brand { padding: 0 2px 14px; margin-bottom: 16px; }
+    .panel-logo.uaeh { max-height: 44px; max-width: 42vw; }
+    .panel-logo.mirai { max-height: 40px; max-width: 40vw; }
+  }
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- TITLEBAR -->
+  <div id="titlebar">
+    <div style="display:flex;gap:6px;align-items:center;">
+      <div class="tb-dot close"></div>
+      <div class="tb-dot min"></div>
+      <div class="tb-dot max"></div>
+    </div>
+    <span class="tb-title">NeuroLab EEG · v0.1.0</span>
+    <div class="tb-status">
+      <div class="status-dot" id="main-status-dot"></div>
+      <span class="status-text" id="main-status-text">DISCONNECTED</span>
+    </div>
+  </div>
+
+  <!-- SIDEBAR -->
+  <nav id="sidebar">
+    <div class="sidebar-section">
+      <button class="connect-btn" id="connect-btn" onclick="toggleConnect()">
+        <svg viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="4" cy="8" r="2.5" stroke="currentColor" stroke-width="1.2"/>
+          <circle cx="12" cy="8" r="2.5" stroke="currentColor" stroke-width="1.2"/>
+          <line x1="6.5" y1="8" x2="9.5" y2="8" stroke="currentColor" stroke-width="1.2"/>
+        </svg>
+        <span id="connect-btn-text">Connect AURA</span>
+      </button>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Experiment</div>
+      <div class="nav-item active" onclick="showPanel('dashboard')" id="nav-dashboard">
+        <svg class="icon" viewBox="0 0 16 16" fill="none"><rect x="2" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="9" y="2" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="2" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/><rect x="9" y="9" width="5" height="5" rx="1" stroke="currentColor" stroke-width="1.2"/></svg>
+        Dashboard
+      </div>
+      <div class="nav-item" onclick="showPanel('baseline')" id="nav-baseline">
+        <svg class="icon" viewBox="0 0 16 16" fill="none"><path d="M2 8h2l2-4 2 8 2-4 2 2 2-2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Baseline
+        <span class="phase-badge locked" id="badge-baseline">—</span>
+      </div>
+      <div class="nav-item" onclick="showPanel('low-load')" id="nav-low-load">
+        <svg class="icon" viewBox="0 0 16 16" fill="none"><path d="M3 12L8 4l5 8H3z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg>
+        Low Load
+        <span class="phase-badge locked" id="badge-low">—</span>
+      </div>
+      <div class="nav-item" onclick="showPanel('high-load')" id="nav-high-load">
+        <svg class="icon" viewBox="0 0 16 16" fill="none"><circle cx="8" cy="8" r="5" stroke="currentColor" stroke-width="1.2"/><path d="M8 5v3l2 2" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        High Load (Stroop)
+        <span class="phase-badge locked" id="badge-high">—</span>
+      </div>
+      <div class="nav-item" onclick="showPanel('ecological')" id="nav-ecological">
+        <svg class="icon" viewBox="0 0 16 16" fill="none"><path d="M3 12c2-4 4-6 10-6M3 8c2 2 4 3 6 3M3 4c3 1 6 1 10-1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round"/></svg>
+        Ecological Paradigm
+      </div>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">Data</div>
+      <div class="nav-item" onclick="showPanel('signals')" id="nav-signals">
+        <svg class="icon" viewBox="0 0 16 16" fill="none"><polyline points="1,10 4,6 6,10 8,4 10,10 12,7 15,10" stroke="currentColor" stroke-width="1.2" fill="none" stroke-linejoin="round"/></svg>
+        Live Signals
+      </div>
+      <div class="nav-item" onclick="showPanel('analysis')" id="nav-analysis">
+        <svg class="icon" viewBox="0 0 16 16" fill="none"><rect x="2" y="10" width="2" height="4" rx="0.5" fill="currentColor"/><rect x="6" y="7" width="2" height="7" rx="0.5" fill="currentColor"/><rect x="10" y="4" width="2" height="10" rx="0.5" fill="currentColor"/><rect x="14" y="2" width="0" height="0" rx="0.5" fill="currentColor"/></svg>
+        Analysis
+      </div>
+    </div>
+
+    <div style="flex:1"></div>
+
+    <div class="sidebar-section">
+      <button class="btn warn-btn" style="width:100%;justify-content:center;margin-top:8px;" id="save-btn" disabled onclick="saveData()">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none"><path d="M3 13h10M8 3v7M5 7l3 3 3-3" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg>
+        Save Data
+      </button>
+    </div>
+  </nav>
+
+  <!-- MAIN CONTENT -->
+  <main id="main">
+
+    <!-- ── DASHBOARD PANEL ── -->
+    <div class="panel active" id="panel-dashboard">
+      <div class="panel-header">
+        <div class="panel-title">// dashboard</div>
+        <div class="panel-subtitle">Session overview and experiment control</div>
+      </div>
+      <div class="panel-brand">
+        <img class="panel-logo uaeh" src="assets/logo-uaeh.png" alt="UAEH" />
+        <img class="panel-logo mirai" src="assets/logo-mirai.png" alt="MIRAI Innovation" />
+      </div>
+
+      <div class="grid4">
+        <div class="card-sm">
+          <div class="card-title">User</div>
+          <div class="metric-val" id="user-display" style="font-size:15px;">—</div>
+          <div class="metric-sub">participant ID</div>
+        </div>
+        <div class="card-sm">
+          <div class="card-title">Phase</div>
+          <div class="metric-val accent" id="phase-display" style="font-size:15px;">idle</div>
+          <div class="metric-sub">current state</div>
+        </div>
+        <div class="card-sm">
+          <div class="card-title">Samples</div>
+          <div class="metric-val" id="samples-display">0</div>
+          <div class="metric-sub">@ 50 Hz (subsampled)</div>
+        </div>
+        <div class="card-sm">
+          <div class="card-title">θ/α Ratio</div>
+          <div class="metric-val warn" id="ratio-display">—</div>
+          <div class="metric-sub">cognitive load index</div>
+        </div>
+      </div>
+
+      <div class="instruction-box" id="instruction-main">
+        Connect the AURA device and press <strong style="color:var(--text0)">Setup</strong> to begin the session.
+      </div>
+      <div class="card-sm" style="margin-bottom:16px;">
+        <div class="card-title">LSL Diagnostics</div>
+        <div style="display:flex;gap:14px;flex-wrap:wrap;align-items:center;">
+          <span class="tag" id="lsl-found-tag" style="background:var(--bg2);color:var(--text2);border-color:var(--border);">lsl: pending</span>
+          <span class="tag" id="inlet-tag" style="background:var(--bg2);color:var(--text2);border-color:var(--border);">inlet: inactive</span>
+          <span class="tag blue" id="stream-tag">stream: —</span>
+          <span class="tag" id="sps-tag" style="background:var(--bg2);color:var(--text2);border-color:var(--border);">samples/s: 0</span>
+          <button class="btn" id="scan-lsl-btn" style="padding:4px 10px;font-size:11px;" onclick="scanLSL()">Scan LSL</button>
+        </div>
+        <div class="metric-sub" id="visible-streams-text" style="margin-top:8px;">visible streams: —</div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Experiment Flow</div>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:4px;">
+          <span class="tag" id="flow-connect" style="background:var(--bg2);color:var(--text2);border-color:var(--border);">Connect</span>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M6 3l2 2-2 2" stroke="var(--text2)" stroke-width="1.2" stroke-linecap="round"/></svg>
+          <span class="tag" id="flow-setup" style="background:var(--bg2);color:var(--text2);border-color:var(--border);">Setup</span>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M6 3l2 2-2 2" stroke="var(--text2)" stroke-width="1.2" stroke-linecap="round"/></svg>
+          <span class="tag" id="flow-baseline">Baseline</span>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M6 3l2 2-2 2" stroke="var(--text2)" stroke-width="1.2" stroke-linecap="round"/></svg>
+          <span class="tag" id="flow-low">Low Load</span>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M6 3l2 2-2 2" stroke="var(--text2)" stroke-width="1.2" stroke-linecap="round"/></svg>
+          <span class="tag" id="flow-high">High Load</span>
+          <svg width="10" height="10" viewBox="0 0 10 10" fill="none"><path d="M2 5h6M6 3l2 2-2 2" stroke="var(--text2)" stroke-width="1.2" stroke-linecap="round"/></svg>
+          <span class="tag" id="flow-save">Save</span>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:16px;">
+        <div class="card-title">Phase durations (seconds)</div>
+        <div class="time-grid">
+          <div class="time-field">
+            <label for="dur-open">baseline open</label>
+            <input id="dur-open" class="time-input" type="number" min="5" max="3600" value="90" />
+          </div>
+          <div class="time-field">
+            <label for="dur-closed">baseline closed</label>
+            <input id="dur-closed" class="time-input" type="number" min="5" max="3600" value="90" />
+          </div>
+          <div class="time-field">
+            <label for="dur-low">low load</label>
+            <input id="dur-low" class="time-input" type="number" min="5" max="3600" value="180" />
+          </div>
+          <div class="time-field">
+            <label for="dur-high">high load</label>
+            <input id="dur-high" class="time-input" type="number" min="5" max="3600" value="180" />
+          </div>
+        </div>
+        <div class="btn-row" style="margin-top:10px;">
+          <button class="btn secondary" onclick="applyDurations()">Apply durations</button>
+          <span class="metric-sub" id="dur-status" style="align-self:center;">defaults loaded</span>
+        </div>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn primary" id="btn-setup" onclick="startSetup()" disabled>Setup Session</button>
+        <button class="btn secondary" id="btn-baseline" onclick="goPanel('baseline')" disabled>→ Baseline</button>
+        <button class="btn" id="btn-low" onclick="goPanel('low-load')" disabled>→ Low Load</button>
+        <button class="btn" id="btn-high" onclick="goPanel('high-load')" disabled>→ High Load</button>
+      </div>
+    </div>
+
+    <!-- ── BASELINE PANEL ── -->
+    <div class="panel" id="panel-baseline">
+      <div class="panel-header">
+        <div class="panel-title">// baseline</div>
+        <div class="panel-subtitle">Eyes open → eyes closed resting state recording</div>
+      </div>
+      <div class="panel-brand">
+        <img class="panel-logo uaeh" src="assets/logo-uaeh.png" alt="UAEH" />
+        <img class="panel-logo mirai" src="assets/logo-mirai.png" alt="MIRAI Innovation" />
+      </div>
+
+      <div class="grid2" style="margin-bottom:16px;">
+        <div class="card-sm">
+          <div class="card-title">Sub-phase</div>
+          <div class="metric-val accent" id="baseline-subphase">eyes open</div>
+        </div>
+        <div class="card-sm">
+          <div class="card-title">Remaining</div>
+          <div class="timer-display" id="baseline-timer" style="font-size:32px;padding:4px 0;">—</div>
+        </div>
+      </div>
+
+      <div class="instruction-box" id="baseline-instruction">
+        Keep your eyes open and relax. Stare at the center point of the screen.
+      </div>
+
+      <div class="chart-area" style="height:120px;margin-bottom:16px;">
+        <div class="scan-overlay"></div>
+        <div class="chart-label">raw · ch 0–1</div>
+        <canvas id="canvas-baseline-raw" height="120"></canvas>
+      </div>
+
+      <div class="btn-row">
+        <button class="btn primary" id="btn-start-baseline" onclick="startBaseline()">Start Baseline</button>
+      </div>
+    </div>
+
+    <!-- ── LOW LOAD PANEL ── -->
+    <div class="panel" id="panel-low-load">
+      <div class="panel-header">
+        <div class="panel-title">// low cognitive load</div>
+        <div class="panel-subtitle">Passive text reading task</div>
+      </div>
+      <div class="panel-brand">
+        <img class="panel-logo uaeh" src="assets/logo-uaeh.png" alt="UAEH" />
+        <img class="panel-logo mirai" src="assets/logo-mirai.png" alt="MIRAI Innovation" />
+      </div>
+
+      <div class="instruction-box">
+        Read the following text at a comfortable pace. No memorization required.
+      </div>
+
+      <div class="reading-text" id="reading-text">
+        Bad Bunny, whose real name is Benito Antonio Martínez Ocasio, was born on
+        March 10, 1994, in Vega Baja, Puerto Rico. He grew up in a working-class
+        family and developed a passion for music at a young age. Before becoming
+        a global superstar, he worked as a supermarket bagger and studied audiovisual
+        communication at the University of Puerto Rico.
+        <br><br>
+        His breakthrough came in 2016 when he uploaded his song "Diles" to SoundCloud.
+        The track caught the attention of DJ Luian, who signed him to his label.
+        Bad Bunny's unique style, which blends reggaeton, trap, and Latin pop, quickly
+        gained popularity. His distinctive voice, creative lyrics, and bold fashion
+        choices set him apart from other artists in the genre.
+        <br><br>
+        In 2018, he released his debut album "X 100pre" which included hits like
+        "Mía" and "Solo de Mí". The album was a massive success, establishing him
+        as one of the leading figures in Latin music. He continued to break records
+        with subsequent albums like "YHLQMDLG" and "El Último Tour del Mundo",
+        becoming the first Spanish-language artist to top the Billboard 200 chart.
+        <br><br>
+        Beyond music, Bad Bunny has made a significant cultural impact. He challenges
+        traditional gender norms through his fashion choices and public statements,
+        advocating for LGBTQ+ rights and social justice. His influence extends beyond
+        music, making him one of the most important cultural figures of his generation.
+      </div>
+
+      <div style="margin-top:16px;display:flex;align-items:center;gap:16px;">
+        <div class="timer-display" id="low-timer" style="font-size:28px;padding:8px 0;">—</div>
+        <div style="flex:1">
+          <div class="card-title" style="margin-bottom:6px;">θ/α Ratio (live)</div>
+          <div class="ratio-bar-wrap">
+            <div class="ratio-bar-track"><div class="ratio-bar-fill" id="low-ratio-bar" style="width:30%"></div></div>
+            <div class="ratio-labels"><span>low load</span><span>high load</span></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="btn-row" style="margin-top:16px;">
+        <button class="btn primary" id="btn-start-low" onclick="startLowLoad()">Start Task</button>
+        <button class="btn" id="btn-to-high" onclick="goPanel('high-load')" disabled>→ High Load</button>
+      </div>
+    </div>
+
+    <!-- ── HIGH LOAD / STROOP PANEL ── -->
+    <div class="panel" id="panel-high-load">
+      <div class="panel-header">
+        <div class="panel-title">// high cognitive load · stroop task</div>
+        <div class="panel-subtitle">Select the ink COLOR of the displayed word</div>
+      </div>
+      <div class="panel-brand">
+        <img class="panel-logo uaeh" src="assets/logo-uaeh.png" alt="UAEH" />
+        <img class="panel-logo mirai" src="assets/logo-mirai.png" alt="MIRAI Innovation" />
+      </div>
+
+      <div class="stroop-stats">
+        <div style="text-align:center;">
+          <div class="metric-val accent" id="stroop-correct">0</div>
+          <div class="metric-sub">correct</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="metric-val" id="stroop-total">0</div>
+          <div class="metric-sub">total</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="metric-val warn" id="stroop-rt">—</div>
+          <div class="metric-sub">avg RT (ms)</div>
+        </div>
+        <div style="text-align:center;">
+          <div class="timer-display" id="stroop-timer" style="font-size:26px;padding:0;">—</div>
+          <div class="metric-sub">remaining</div>
+        </div>
+      </div>
+
+      <div class="stroop-word" id="stroop-word" style="color:var(--accent);">READY</div>
+      <div class="stroop-prompt">Select the ink color</div>
+
+      <div class="stroop-options">
+        <div class="stroop-opt" style="color:#ff5555;" onclick="stroopAnswer('red')">RED</div>
+        <div class="stroop-opt" style="color:#00d4a8;" onclick="stroopAnswer('green')">GREEN</div>
+        <div class="stroop-opt" style="color:#00a8ff;" onclick="stroopAnswer('blue')">BLUE</div>
+        <div class="stroop-opt" style="color:#ffb347;" onclick="stroopAnswer('yellow')">YELLOW</div>
+      </div>
+
+      <div class="section-sep"></div>
+      <div class="btn-row">
+        <button class="btn primary" id="btn-start-stroop" onclick="startStroop()">Start Stroop</button>
+        <button class="btn warn-btn" id="btn-save-final" onclick="saveData()" disabled>Save &amp; Finish</button>
+      </div>
+    </div>
+
+    <!-- ── ECOLOGICAL PARADIGM PANEL ── -->
+    <div class="panel" id="panel-ecological">
+      <div class="panel-header">
+        <div class="panel-title">// ecological paradigm</div>
+        <div class="panel-subtitle">Manual blocks · same session CSV · columns phase + ecological_modality</div>
+      </div>
+      <div class="panel-brand">
+        <img class="panel-logo uaeh" src="assets/logo-uaeh.png" alt="UAEH" />
+        <img class="panel-logo mirai" src="assets/logo-mirai.png" alt="MIRAI Innovation" />
+      </div>
+
+      <div class="instruction-box" id="eco-gate-hint">
+        Connect AURA and complete <strong style="color:var(--text0)">Setup Session</strong> on the Dashboard. Then start one modality; stop it before starting another. Rows use <span class="tag blue">phase=ecological_paradigm</span> and labels <span class="tag green">ecological_paradigm mode=eco_*</span>.
+      </div>
+
+      <div class="card-sm" style="margin-bottom:16px;">
+        <div class="card-title">Recording</div>
+        <div style="display:flex;flex-wrap:wrap;align-items:center;gap:12px;justify-content:space-between;">
+          <div>
+            <div class="metric-val" id="eco-status-metric" style="font-size:16px;">idle</div>
+            <div class="metric-sub" id="eco-status-detail">no active ecological block</div>
+          </div>
+          <button class="btn warn-btn" id="btn-eco-stop" disabled onclick="ecologicalStop()">Stop recording</button>
+        </div>
+        <div class="metric-sub" id="eco-error-line" style="margin-top:10px;color:var(--danger);min-height:1.2em;"></div>
+      </div>
+
+      <div class="grid3">
+        <div class="card-sm">
+          <div class="card-title">eco_gamepad</div>
+          <div class="btn-row" style="margin-top:8px;">
+            <button class="btn primary" id="btn-eco-start-gamepad" disabled onclick="ecologicalStart('eco_gamepad')">Start</button>
+          </div>
+        </div>
+        <div class="card-sm">
+          <div class="card-title">eco_haptic</div>
+          <div class="btn-row" style="margin-top:8px;">
+            <button class="btn primary" id="btn-eco-start-haptic" disabled onclick="ecologicalStart('eco_haptic')">Start</button>
+          </div>
+        </div>
+        <div class="card-sm">
+          <div class="card-title">eco_keyboard</div>
+          <div class="btn-row" style="margin-top:8px;">
+            <button class="btn primary" id="btn-eco-start-keyboard" disabled onclick="ecologicalStart('eco_keyboard')">Start</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── LIVE SIGNALS PANEL ── -->
+    <div class="panel" id="panel-signals">
+      <div class="panel-header">
+        <div class="panel-title">// live signals</div>
+        <div class="panel-subtitle">8-channel EEG · 250 Hz · alpha-focused view (7-13 Hz)</div>
+      </div>
+      <div class="panel-brand">
+        <img class="panel-logo uaeh" src="assets/logo-uaeh.png" alt="UAEH" />
+        <img class="panel-logo mirai" src="assets/logo-mirai.png" alt="MIRAI Innovation" />
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-title">Raw signal · all channels</div>
+        <div class="chart-area" style="height:140px;margin-top:8px;">
+          <div class="scan-overlay"></div>
+          <canvas id="canvas-raw" height="140"></canvas>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-title">Filtered signal · bandpass 7-13 Hz</div>
+        <div class="chart-area" style="height:140px;margin-top:8px;">
+          <div class="scan-overlay"></div>
+          <canvas id="canvas-filtered" height="140"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Per-channel overview</div>
+        <div class="channel-grid" style="margin-top:10px;">
+          <div class="ch-strip">
+            <span class="ch-name">CH0</span>
+            <canvas class="ch-canvas" id="ch0"></canvas>
+            <span class="ch-val pulse" id="chv0">+0.00</span>
+          </div>
+          <div class="ch-strip">
+            <span class="ch-name">CH1</span>
+            <canvas class="ch-canvas" id="ch1"></canvas>
+            <span class="ch-val pulse" id="chv1">+0.00</span>
+          </div>
+          <div class="ch-strip">
+            <span class="ch-name">CH2</span>
+            <canvas class="ch-canvas" id="ch2"></canvas>
+            <span class="ch-val pulse" id="chv2">+0.00</span>
+          </div>
+          <div class="ch-strip">
+            <span class="ch-name">CH3</span>
+            <canvas class="ch-canvas" id="ch3"></canvas>
+            <span class="ch-val pulse" id="chv3">+0.00</span>
+          </div>
+          <div class="ch-strip">
+            <span class="ch-name">CH4</span>
+            <canvas class="ch-canvas" id="ch4"></canvas>
+            <span class="ch-val pulse" id="chv4">+0.00</span>
+          </div>
+          <div class="ch-strip">
+            <span class="ch-name">CH5</span>
+            <canvas class="ch-canvas" id="ch5"></canvas>
+            <span class="ch-val pulse" id="chv5">+0.00</span>
+          </div>
+          <div class="ch-strip">
+            <span class="ch-name">CH6</span>
+            <canvas class="ch-canvas" id="ch6"></canvas>
+            <span class="ch-val pulse" id="chv6">+0.00</span>
+          </div>
+          <div class="ch-strip">
+            <span class="ch-name">CH7</span>
+            <canvas class="ch-canvas" id="ch7"></canvas>
+            <span class="ch-val pulse" id="chv7">+0.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ANALYSIS PANEL ── -->
+    <div class="panel" id="panel-analysis">
+      <div class="panel-header">
+        <div class="panel-title">// analysis</div>
+        <div class="panel-subtitle">θ/α ratio · cognitive load index · band power</div>
+      </div>
+      <div class="panel-brand">
+        <img class="panel-logo uaeh" src="assets/logo-uaeh.png" alt="UAEH" />
+        <img class="panel-logo mirai" src="assets/logo-mirai.png" alt="MIRAI Innovation" />
+      </div>
+
+      <div class="grid3">
+        <div class="card-sm">
+          <div class="card-title">Theta power</div>
+          <div class="metric-val accent" id="theta-val">—</div>
+          <div class="metric-sub">4–8 Hz band</div>
+        </div>
+        <div class="card-sm">
+          <div class="card-title">Alpha power</div>
+          <div class="metric-val" id="alpha-val">—</div>
+          <div class="metric-sub">8–13 Hz band</div>
+        </div>
+        <div class="card-sm">
+          <div class="card-title">θ/α Ratio</div>
+          <div class="metric-val warn" id="ratio-val">—</div>
+          <div class="metric-sub">cognitive index</div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-bottom:12px;">
+        <div class="card-title">Ratio over time</div>
+        <div class="chart-area" style="height:160px;margin-top:8px;">
+          <div class="scan-overlay"></div>
+          <canvas id="canvas-ratio" height="160"></canvas>
+        </div>
+      </div>
+
+      <div class="card">
+        <div class="card-title">Phase summary</div>
+        <table class="log-table" style="margin-top:8px;">
+          <thead>
+            <tr>
+              <th>Phase</th>
+              <th>Samples</th>
+              <th>Avg θ/α</th>
+              <th>Status</th>
+            </tr>
+          </thead>
+          <tbody id="phase-summary-body">
+            <tr><td>baseline_eyes_open</td><td>—</td><td>—</td><td><span class="tag" style="background:var(--bg2);color:var(--text2);border-color:var(--border);">pending</span></td></tr>
+            <tr><td>baseline_eyes_closed</td><td>—</td><td>—</td><td><span class="tag" style="background:var(--bg2);color:var(--text2);border-color:var(--border);">pending</span></td></tr>
+            <tr><td>low_cognitive_load</td><td>—</td><td>—</td><td><span class="tag" style="background:var(--bg2);color:var(--text2);border-color:var(--border);">pending</span></td></tr>
+            <tr><td>high_cognitive_load</td><td>—</td><td>—</td><td><span class="tag" style="background:var(--bg2);color:var(--text2);border-color:var(--border);">pending</span></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- USER MODAL -->
+<div class="modal-overlay" id="user-modal" style="display:none;">
+  <div class="modal">
+    <h3>// New Session</h3>
+    <p>Enter participant ID or name to begin data logging.</p>
+    <input class="input-field" id="user-input" type="text" placeholder="e.g. participant_01" />
+    <div class="modal-actions">
+      <button class="btn" onclick="cancelModal()">Cancel</button>
+      <button class="btn primary" onclick="confirmUser()">Confirm →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+// ─── STATE ───────────────────────────────────────────────────────────
+const state = {
+  connected: false,
+  hasRealSignal: false,
+  user: null,
+  phase: 'idle',
+  samples: 0,
+  stroopCorrect: 0,
+  stroopTotal: 0,
+  stroopRTs: [],
+  stroopActive: false,
+  stroopStart: null,
+  stroopAnswer: null,
+  stroopTimerInterval: null,
+  stroopTimeLeft: 180,
+  ratioHistory: [],
+  rawHistory: [],
+  filteredHistory: [],
+  channelHistory: Array.from({ length: 8 }, () => []),
+  streamName: '—',
+  sampleRate: 0,
+  channels: 0,
+  lastSampleCount: 0,
+  lastSampleTsMs: 0,
+  isScanning: false,
+  isConnecting: false,
+  ecologicalModality: null,
+  phaseDurations: {
+    baseline_eyes_open: 90,
+    baseline_eyes_closed: 90,
+    low_load: 180,
+    high_load: 180,
+  },
+};
+
+const STROOP_COLORS = {
+  red:    { label: 'RED',    hex: '#ff5555' },
+  green:  { label: 'GREEN',  hex: '#00d4a8' },
+  blue:   { label: 'BLUE',   hex: '#00a8ff' },
+  yellow: { label: 'YELLOW', hex: '#ffb347' },
+};
+const COLOR_KEYS = Object.keys(STROOP_COLORS);
+
+window.addEventListener('error', (event) => {
+  if (window.electronAPI) {
+    window.electronAPI.logRendererError({
+      kind: 'error',
+      message: event.message,
+      source: event.filename,
+      line: event.lineno,
+      col: event.colno,
+    });
+  }
+});
+
+window.addEventListener('unhandledrejection', (event) => {
+  if (window.electronAPI) {
+    window.electronAPI.logRendererError({
+      kind: 'unhandledrejection',
+      reason: String(event.reason),
+    });
+  }
+});
+
+// ─── NAV ─────────────────────────────────────────────────────────────
+function showPanel(name) {
+  document.querySelectorAll('.panel').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('panel-' + name).classList.add('active');
+  const nav = document.getElementById('nav-' + name);
+  if (nav) nav.classList.add('active');
+}
+function goPanel(name) { showPanel(name); }
+
+function refreshEcologicalUi() {
+  const gate = !!(state.connected && state.user);
+  const active = state.ecologicalModality;
+  const canStart = gate && !active;
+  ['gamepad', 'haptic', 'keyboard'].forEach((k) => {
+    const el = document.getElementById(`btn-eco-start-${k}`);
+    if (el) el.disabled = !canStart;
+  });
+  const stopBtn = document.getElementById('btn-eco-stop');
+  if (stopBtn) stopBtn.disabled = !gate || !active;
+  const metric = document.getElementById('eco-status-metric');
+  const detail = document.getElementById('eco-status-detail');
+  const hint = document.getElementById('eco-gate-hint');
+  if (metric) {
+    metric.textContent = active ? active : 'idle';
+    metric.className = 'metric-val' + (active ? ' accent' : '');
+  }
+  if (detail) {
+    if (!state.connected) detail.textContent = 'connect AURA to enable';
+    else if (!state.user) detail.textContent = 'run Setup Session on Dashboard first';
+    else if (active) detail.textContent = 'recording to the same CSV as the rest of the session';
+    else detail.textContent = 'no active ecological block';
+  }
+  if (hint) {
+    hint.style.opacity = gate ? '0.65' : '1';
+  }
+}
+
+function setEcoError(msg) {
+  const line = document.getElementById('eco-error-line');
+  if (!line) return;
+  line.textContent = msg || '';
+  if (msg) {
+    clearTimeout(setEcoError._t);
+    setEcoError._t = setTimeout(() => { line.textContent = ''; }, 6000);
+  }
+}
+
+function ecologicalStart(modality) {
+  if (!window.electronAPI) return;
+  setEcoError('');
+  window.electronAPI.ecologicalStart(modality);
+}
+
+function ecologicalStop() {
+  if (!window.electronAPI) return;
+  setEcoError('');
+  window.electronAPI.ecologicalStop();
+}
+
+// ─── CONNECT ─────────────────────────────────────────────────────────
+function toggleConnect() {
+  if (state.isConnecting) return;
+  if (!state.connected) {
+    state.isConnecting = true;
+    document.getElementById('connect-btn').classList.add('connected');
+    document.getElementById('connect-btn-text').textContent = 'Connecting...';
+    document.getElementById('btn-setup').disabled = true;
+    setFlowTag('flow-connect', 'green', 'Connect ✓');
+    if (window.electronAPI) window.electronAPI.connectDevice();
+    setTimeout(() => { state.isConnecting = false; }, 1500);
+  } else {
+    state.connected = false;
+    state.hasRealSignal = false;
+    document.getElementById('connect-btn').classList.remove('connected');
+    document.getElementById('connect-btn-text').textContent = 'Connect AURA';
+    document.getElementById('main-status-dot').className = 'status-dot';
+    document.getElementById('main-status-text').textContent = 'DISCONNECTED';
+    document.getElementById('btn-setup').disabled = true;
+    setFlowTag('flow-connect', null, 'Connect');
+    if (window.electronAPI) window.electronAPI.disconnectDevice();
+  }
+}
+
+// ─── SETUP ───────────────────────────────────────────────────────────
+function startSetup() {
+  document.getElementById('user-modal').style.display = 'flex';
+  setTimeout(() => document.getElementById('user-input').focus(), 50);
+}
+function cancelModal() { document.getElementById('user-modal').style.display = 'none'; }
+function confirmUser() {
+  const val = document.getElementById('user-input').value.trim();
+  if (!val) return;
+  state.user = val;
+  document.getElementById('user-modal').style.display = 'none';
+  document.getElementById('user-display').textContent = val;
+  refreshEcologicalUi();
+  document.getElementById('btn-baseline').disabled = false;
+  document.getElementById('badge-baseline').textContent = 'ready';
+  document.getElementById('badge-baseline').className = 'phase-badge active';
+  setFlowTag('flow-setup', 'green', 'Setup ✓');
+  setPhase('setup');
+  document.getElementById('instruction-main').textContent =
+    'Check the EEG signal quality in the plots. Make sure all channels show activity without excessive artifacts. When ready, proceed to Baseline.';
+  if (window.electronAPI) window.electronAPI.startSetup(val);
+  applyDurations();
+}
+
+// ─── BASELINE ────────────────────────────────────────────────────────
+function startBaseline() {
+  document.getElementById('btn-start-baseline').disabled = true;
+  document.getElementById('btn-to-high').disabled = false;
+  setPhase('baseline_eyes_open');
+  document.getElementById('baseline-subphase').textContent = 'eyes open';
+  document.getElementById('baseline-instruction').textContent =
+    'Keep your eyes open and relax. Stare at the center point of the screen.';
+  if (window.electronAPI) window.electronAPI.startBaseline();
+}
+
+// ─── LOW LOAD ─────────────────────────────────────────────────────────
+function startLowLoad() {
+  document.getElementById('btn-start-low').disabled = true;
+  setPhase('low_cognitive_load');
+  if (window.electronAPI) window.electronAPI.startLowLoad();
+}
+
+// ─── HIGH LOAD / STROOP ───────────────────────────────────────────────
+const stroopWords = ['RED','GREEN','BLUE','YELLOW'];
+
+function startStroop() {
+  state.stroopActive = true;
+  state.stroopCorrect = 0;
+  state.stroopTotal = 0;
+  state.stroopRTs = [];
+  state.stroopTimeLeft = 180;
+  document.getElementById('btn-start-stroop').disabled = true;
+  setPhase('high_cognitive_load');
+  nextStroopTrial();
+  if (window.electronAPI) window.electronAPI.startHighLoad();
+}
+
+function nextStroopTrial() {
+  if (!state.stroopActive) return;
+  const wordKey = COLOR_KEYS[Math.floor(Math.random() * 4)];
+  let inkKey = COLOR_KEYS[Math.floor(Math.random() * 4)];
+  state.stroopAnswer = inkKey;
+  document.getElementById('stroop-word').style.color = STROOP_COLORS[inkKey].hex;
+  document.getElementById('stroop-word').textContent = STROOP_COLORS[wordKey].label;
+  state.stroopStart = performance.now();
+}
+
+function stroopAnswer(color) {
+  if (!state.stroopActive) return;
+  const rt = performance.now() - state.stroopStart;
+  state.stroopTotal++;
+  const opts = document.querySelectorAll('.stroop-opt');
+  const idx = COLOR_KEYS.indexOf(color);
+  if (color === state.stroopAnswer) {
+    state.stroopCorrect++;
+    state.stroopRTs.push(rt);
+    if (opts[idx]) { opts[idx].classList.add('correct'); setTimeout(() => opts[idx].classList.remove('correct'), 250); }
+  } else {
+    if (opts[idx]) { opts[idx].classList.add('wrong'); setTimeout(() => opts[idx].classList.remove('wrong'), 250); }
+  }
+  document.getElementById('stroop-correct').textContent = state.stroopCorrect;
+  document.getElementById('stroop-total').textContent = state.stroopTotal;
+  const avg = state.stroopRTs.length ? Math.round(state.stroopRTs.reduce((a,b)=>a+b,0)/state.stroopRTs.length) : '—';
+  document.getElementById('stroop-rt').textContent = avg;
+  setTimeout(nextStroopTrial, 300);
+}
+
+// ─── SAVE ─────────────────────────────────────────────────────────────
+function saveData() {
+  setFlowTag('flow-save', 'green', 'Saved ✓');
+  if (window.electronAPI) window.electronAPI.saveData();
+}
+
+function applyDurations() {
+  const open = parseInt(document.getElementById('dur-open').value, 10);
+  const closed = parseInt(document.getElementById('dur-closed').value, 10);
+  const low = parseInt(document.getElementById('dur-low').value, 10);
+  const high = parseInt(document.getElementById('dur-high').value, 10);
+  const clamp = (v, d) => (Number.isFinite(v) ? Math.max(5, Math.min(3600, v)) : d);
+  state.phaseDurations = {
+    baseline_eyes_open: clamp(open, state.phaseDurations.baseline_eyes_open),
+    baseline_eyes_closed: clamp(closed, state.phaseDurations.baseline_eyes_closed),
+    low_load: clamp(low, state.phaseDurations.low_load),
+    high_load: clamp(high, state.phaseDurations.high_load),
+  };
+  document.getElementById('dur-open').value = state.phaseDurations.baseline_eyes_open;
+  document.getElementById('dur-closed').value = state.phaseDurations.baseline_eyes_closed;
+  document.getElementById('dur-low').value = state.phaseDurations.low_load;
+  document.getElementById('dur-high').value = state.phaseDurations.high_load;
+  document.getElementById('dur-status').textContent = 'durations applied';
+  if (window.electronAPI) window.electronAPI.setPhaseDurations(state.phaseDurations);
+}
+
+// ─── HELPERS ──────────────────────────────────────────────────────────
+function setPhase(name) {
+  state.phase = name;
+  document.getElementById('phase-display').textContent = name.replace(/_/g,' ');
+}
+
+function setFlowTag(id, color, text) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.textContent = text;
+  if (color === 'green') el.className = 'tag green';
+  else if (color === 'amber') el.className = 'tag amber';
+  else el.className = 'tag';
+}
+
+function fmtTime(s) {
+  const m = Math.floor(s / 60);
+  const ss = s % 60;
+  return `${String(m).padStart(2,'0')}:${String(ss).padStart(2,'0')}`;
+}
+
+function startCountdown(elId, seconds, onDone) {
+  let left = seconds;
+  document.getElementById(elId).textContent = fmtTime(left);
+  const iv = setInterval(() => {
+    left--;
+    document.getElementById(elId).textContent = fmtTime(left);
+    if (left <= 0) { clearInterval(iv); if (onDone) onDone(); }
+  }, 1000);
+}
+
+// ─── Ratio chart rendering ─────────────────────────────────────────────
+(function ratioChartLoop() {
+  function drawRatioLine() {
+    const canvas = document.getElementById('canvas-ratio');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const w = canvas.clientWidth || 400;
+    const h = canvas.height;
+    canvas.width = w;
+    ctx.clearRect(0,0,w,h);
+    if (state.ratioHistory.length === 0) return;
+    ctx.strokeStyle = '#ffb347';
+    ctx.lineWidth = 1.5;
+    ctx.beginPath();
+    state.ratioHistory.forEach((v,i) => {
+      const x = (i/(state.ratioHistory.length-1))*w;
+      const y = h - ((v-0.5)/(2.5-0.5))*h;
+      if (i===0) ctx.moveTo(x,y); else ctx.lineTo(x,y);
+    });
+    ctx.stroke();
+    const lastRatio = state.ratioHistory[state.ratioHistory.length - 1].toFixed(2);
+    document.getElementById('ratio-display').textContent = lastRatio;
+    document.getElementById('ratio-val').textContent = lastRatio;
+    const fillPct = Math.min(100, Math.max(0, ((parseFloat(lastRatio)-0.5)/2)*100));
+    document.getElementById('low-ratio-bar').style.width = fillPct + '%';
+  }
+
+  function tick() {
+    drawRatioLine();
+    requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+})();
+
+function scanLSL() {
+  if (state.isScanning) return;
+  state.isScanning = true;
+  const btn = document.getElementById('scan-lsl-btn');
+  if (btn) btn.disabled = true;
+  if (window.electronAPI) window.electronAPI.scanLSL();
+  setTimeout(() => {
+    state.isScanning = false;
+    if (btn) btn.disabled = false;
+  }, 1200);
+}
+
+// ─── ELECTRON IPC LISTENERS (connect when running in Electron) ────────
+if (window.electronAPI) {
+  window.electronAPI.onConnectionStatus((connected, message) => {
+    state.connected = connected;
+    if (connected) {
+      document.getElementById('main-status-dot').classList.add('connected');
+      document.getElementById('main-status-text').textContent = 'CONNECTED · AURA';
+      document.getElementById('connect-btn-text').textContent = 'Disconnect';
+      document.getElementById('connect-btn').classList.add('connected');
+      document.getElementById('btn-setup').disabled = false;
+      refreshEcologicalUi();
+    } else {
+      document.getElementById('main-status-dot').className = 'status-dot error';
+      document.getElementById('main-status-text').textContent = message ? 'ERROR' : 'DISCONNECTED';
+      document.getElementById('connect-btn-text').textContent = 'Connect AURA';
+      document.getElementById('connect-btn').classList.remove('connected');
+      document.getElementById('btn-setup').disabled = true;
+      document.getElementById('ratio-display').textContent = '—';
+      document.getElementById('ratio-val').textContent = '—';
+      document.getElementById('theta-val').textContent = '—';
+      document.getElementById('alpha-val').textContent = '—';
+      state.ratioHistory = [];
+      state.ecologicalModality = null;
+      refreshEcologicalUi();
+    }
+  });
+
+  window.electronAPI.onEcologicalState((payload) => {
+    const active = payload && payload.active;
+    const mod = payload && payload.modality;
+    state.ecologicalModality = active && mod ? mod : null;
+    refreshEcologicalUi();
+  });
+
+  window.electronAPI.onEcologicalError((payload) => {
+    const err = (payload && payload.error) ? String(payload.error) : 'Ecological recording error';
+    setEcoError(err);
+  });
+
+  window.electronAPI.onPhaseChanged((phase) => {
+    setPhase(phase);
+    if (phase === 'baseline_eyes_closed') {
+      document.getElementById('baseline-subphase').textContent = 'eyes closed';
+      document.getElementById('baseline-instruction').textContent =
+        'Close your eyes and relax completely. Do not move and maintain calm breathing.';
+    } else if (phase === 'baseline_completed') {
+      document.getElementById('baseline-subphase').textContent = 'complete';
+      document.getElementById('baseline-instruction').textContent = 'Baseline complete. Proceed to Low Load phase.';
+      document.getElementById('btn-low').disabled = false;
+      document.getElementById('badge-low').textContent = 'ready';
+      document.getElementById('badge-low').className = 'phase-badge active';
+      setFlowTag('flow-baseline', 'green', 'Baseline ✓');
+    } else if (phase === 'low_load_completed') {
+      document.getElementById('btn-to-high').disabled = false;
+      document.getElementById('btn-high').disabled = false;
+      document.getElementById('badge-high').textContent = 'ready';
+      document.getElementById('badge-high').className = 'phase-badge active';
+      setFlowTag('flow-low', 'green', 'Low Load ✓');
+    } else if (phase === 'analysis') {
+      state.stroopActive = false;
+      if (state.stroopTimerInterval) clearInterval(state.stroopTimerInterval);
+      document.getElementById('btn-save-final').disabled = false;
+      document.getElementById('save-btn').disabled = false;
+      document.getElementById('stroop-word').style.color = 'var(--accent)';
+      document.getElementById('stroop-word').textContent = 'DONE';
+      setFlowTag('flow-high', 'green', 'High Load ✓');
+    }
+  });
+
+  window.electronAPI.onTimerUpdate((time) => {
+    // route timer to active panel
+    ['baseline-timer','low-timer','stroop-timer'].forEach(id => {
+      const el = document.getElementById(id);
+      if (el) el.textContent = time;
+    });
+  });
+
+  window.electronAPI.onRatioUpdate((ratio, theta, alpha) => {
+    if (![ratio, theta, alpha].every(v => Number.isFinite(v))) return;
+    state.ratioHistory.push(ratio);
+    if (state.ratioHistory.length > 120) state.ratioHistory.shift();
+    document.getElementById('ratio-display').textContent = ratio.toFixed(2);
+    document.getElementById('ratio-val').textContent = ratio.toFixed(2);
+    document.getElementById('theta-val').textContent = theta.toFixed(4);
+    document.getElementById('alpha-val').textContent = alpha.toFixed(4);
+    const fillPct = Math.min(100, Math.max(0, ((ratio-0.5)/2)*100));
+    document.getElementById('low-ratio-bar').style.width = fillPct + '%';
+  });
+
+  window.electronAPI.onSampleCount((n) => {
+    const now = Date.now();
+    if (state.lastSampleTsMs > 0 && n >= state.lastSampleCount) {
+      const dt = (now - state.lastSampleTsMs) / 1000;
+      if (dt > 0.25) {
+        const sps = Math.round((n - state.lastSampleCount) / dt);
+        const spsTag = document.getElementById('sps-tag');
+        spsTag.textContent = `samples/s: ${sps}`;
+        spsTag.className = sps > 0 ? 'tag green' : 'tag';
+      }
+    }
+    state.lastSampleCount = n;
+    state.lastSampleTsMs = now;
+    state.samples = n;
+    document.getElementById('samples-display').textContent = n;
+  });
+
+  window.electronAPI.onDeviceInfo((info) => {
+    const lslTag = document.getElementById('lsl-found-tag');
+    const inletTag = document.getElementById('inlet-tag');
+    const streamTag = document.getElementById('stream-tag');
+    const visibleText = document.getElementById('visible-streams-text');
+    const visible = (info && info.visible_streams) ? info.visible_streams : [];
+    if (visible.length > 0) {
+      const msg = visible.map(s => `${s.name || '?'} [${s.type || '?'}] (${s.channels || '?'}ch @ ${s.sample_rate || '?'}Hz)`).join(', ');
+      visibleText.textContent = `visible streams: ${msg}`;
+    } else {
+      visibleText.textContent = 'visible streams: —';
+    }
+    if (info && info.lsl_found) {
+      lslTag.textContent = 'lsl: found';
+      lslTag.className = 'tag green';
+      inletTag.textContent = info.inlet_active ? 'inlet: active' : 'inlet: inactive';
+      inletTag.className = info.inlet_active ? 'tag green' : 'tag';
+      const sr = info.sample_rate ? `${info.sample_rate} Hz` : 'n/a';
+      const ch = info.channels ? `${info.channels} ch` : 'n/a';
+      streamTag.textContent = `stream: ${info.stream_name || 'AURA'} (${sr}, ${ch})`;
+      streamTag.className = 'tag blue';
+      // Keep UI consistent even if connection-status event is delayed/missed
+      if (info.inlet_active) {
+        state.connected = true;
+        document.getElementById('main-status-dot').className = 'status-dot connected';
+        document.getElementById('main-status-text').textContent = 'CONNECTED · AURA';
+        document.getElementById('connect-btn-text').textContent = 'Disconnect';
+        document.getElementById('connect-btn').classList.add('connected');
+        document.getElementById('btn-setup').disabled = false;
+        refreshEcologicalUi();
+      }
+    } else {
+      lslTag.textContent = 'lsl: not found';
+      lslTag.className = 'tag red';
+      inletTag.textContent = 'inlet: inactive';
+      inletTag.className = 'tag';
+      streamTag.textContent = 'stream: —';
+      streamTag.className = 'tag blue';
+      document.getElementById('sps-tag').textContent = 'samples/s: 0';
+      document.getElementById('sps-tag').className = 'tag';
+      state.connected = false;
+      state.ecologicalModality = null;
+      document.getElementById('main-status-dot').className = 'status-dot';
+      document.getElementById('main-status-text').textContent = 'DISCONNECTED';
+      document.getElementById('connect-btn-text').textContent = 'Connect AURA';
+      document.getElementById('connect-btn').classList.remove('connected');
+      refreshEcologicalUi();
+    }
+  });
+
+  window.electronAPI.onPhaseDurations((dur) => {
+    if (!dur) return;
+    state.phaseDurations = { ...state.phaseDurations, ...dur };
+    document.getElementById('dur-open').value = state.phaseDurations.baseline_eyes_open;
+    document.getElementById('dur-closed').value = state.phaseDurations.baseline_eyes_closed;
+    document.getElementById('dur-low').value = state.phaseDurations.low_load;
+    document.getElementById('dur-high').value = state.phaseDurations.high_load;
+    document.getElementById('dur-status').textContent = 'synced from backend';
+  });
+
+  window.electronAPI.onPlotSample((raw, filtered) => {
+    try {
+      if (!Array.isArray(raw) || !Array.isArray(filtered)) return;
+    state.hasRealSignal = true;
+    const push = (arr, v, max = 400) => {
+      arr.push(v);
+      if (arr.length > max) arr.shift();
+    };
+    push(state.rawHistory, raw[0] || 0);
+    push(state.filteredHistory, filtered[0] || 0);
+    for (let i = 0; i < 8; i++) {
+      push(state.channelHistory[i], filtered[i] || 0, 120);
+    }
+
+    // Mixed rendering strategy:
+    // - raw canvas: adaptive y-range (robust to volts vs microvolts)
+    // - filtered/channel canvases: fixed ±200 µV for stability
+    const EEG_Y_MIN = -200;
+    const EEG_Y_MAX = 200;
+    const drawSeries = (canvasId, series, color) => {
+      const canvas = document.getElementById(canvasId);
+      if (!canvas || !series.length) return;
+      const ctx = canvas.getContext('2d');
+      const w = canvas.clientWidth || canvas.offsetWidth || 400;
+      const h = canvas.height;
+      canvas.width = w;
+      ctx.clearRect(0, 0, w, h);
+      const isRawAdaptive = canvasId === 'canvas-raw';
+      let yMin = EEG_Y_MIN;
+      let yMax = EEG_Y_MAX;
+      if (isRawAdaptive) {
+        const sMin = Math.min(...series);
+        const sMax = Math.max(...series);
+        const span = Math.max(1e-9, sMax - sMin);
+        const pad = span * 0.2;
+        yMin = sMin - pad;
+        yMax = sMax + pad;
+        if (Math.abs(yMax - yMin) < 1e-6) {
+          const m = (sMax + sMin) / 2;
+          yMin = m - 1;
+          yMax = m + 1;
+        }
+      }
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      const midY = h - ((0 - yMin) / Math.max(1e-9, (yMax - yMin))) * h;
+      ctx.moveTo(0, midY);
+      ctx.lineTo(w, midY);
+      ctx.stroke();
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      for (let i = 0; i < series.length; i++) {
+        const x = (i / Math.max(1, series.length - 1)) * w;
+        const v = isRawAdaptive
+          ? series[i]
+          : Math.max(EEG_Y_MIN, Math.min(EEG_Y_MAX, series[i]));
+        const y = h - ((v - yMin) / Math.max(1e-9, (yMax - yMin))) * h;
+        if (i === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+    };
+
+    drawSeries('canvas-raw', state.rawHistory, '#00d4a8');
+    drawSeries('canvas-filtered', state.filteredHistory, '#00a8ff');
+    drawSeries('canvas-baseline-raw', state.rawHistory, '#00d4a8');
+    for (let i = 0; i < 8; i++) {
+      drawSeries(`ch${i}`, state.channelHistory[i], i % 2 === 0 ? '#00d4a8' : '#00a8ff');
+      const vEl = document.getElementById(`chv${i}`);
+      if (vEl) {
+        const val = Number.isFinite(filtered[i]) ? filtered[i] : 0;
+        vEl.textContent = `${val >= 0 ? '+' : ''}${val.toFixed(2)}`;
+      }
+    }
+    } catch (err) {
+      if (window.electronAPI) {
+        window.electronAPI.logRendererError({
+          kind: 'plot_sample_handler',
+          reason: String(err),
+        });
+      }
+    }
+  });
+}
+
+refreshEcologicalUi();
+</script>
+</body>
+</html>

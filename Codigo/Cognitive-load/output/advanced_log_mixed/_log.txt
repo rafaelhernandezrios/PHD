@@ -1,0 +1,180 @@
+Candidatos: 17
+
+========================================================================
+SUJETO: 1
+  CSV: eeg_data_20260122_120044.csv  rows=29,356  SR≈50.00 Hz
+  [baseline_eyes_open] n=4500  sr=50.0  artFz=9.7%  artPz=1.4%  windows=89
+  [baseline_eyes_closed] n=4506  sr=50.1  artFz=6.0%  artPz=1.5%  windows=89
+  [low_cognitive_load] n=9004  sr=50.0  artFz=4.3%  artPz=1.7%  windows=179
+  [high_cognitive_load] n=8999  sr=50.0  artFz=2.4%  artPz=1.4%  windows=178
+
+========================================================================
+SUJETO: 2
+  CSV: eeg_data_20260122_123839.csv  rows=30,738  SR≈50.00 Hz
+  [baseline_eyes_open] n=4500  sr=50.0  artFz=5.1%  artPz=4.5%  windows=89
+  [baseline_eyes_closed] n=4500  sr=50.0  artFz=1.2%  artPz=0.9%  windows=89
+  [low_cognitive_load] n=9000  sr=50.0  artFz=1.7%  artPz=11.1%  windows=179
+  [high_cognitive_load] art alto (Fz=9.6% Pz=65.0%), fase saltada
+
+========================================================================
+SUJETO: 3
+  CSV: eeg_data_20260122_131125.csv  rows=29,804  SR≈50.00 Hz
+  [baseline_eyes_open] n=4498  sr=50.0  artFz=6.9%  artPz=10.4%  windows=88
+  [baseline_eyes_closed] n=4502  sr=50.0  artFz=1.7%  artPz=5.8%  windows=89
+  [low_cognitive_load] n=9000  sr=50.0  artFz=4.1%  artPz=9.2%  windows=179
+  [high_cognitive_load] n=9000  sr=50.0  artFz=4.5%  artPz=10.0%  windows=179
+
+========================================================================
+SUJETO: 4
+  CSV: eeg_data_20260122_134321.csv  rows=28,821  SR≈50.00 Hz
+  [baseline_eyes_open] n=4499  sr=50.0  artFz=4.0%  artPz=4.3%  windows=88
+  [baseline_eyes_closed] n=4500  sr=50.0  artFz=6.6%  artPz=6.8%  windows=89
+  [low_cognitive_load] n=9002  sr=50.0  artFz=9.2%  artPz=9.1%  windows=179
+  [high_cognitive_load] n=9000  sr=50.0  artFz=6.8%  artPz=5.6%  windows=179
+
+========================================================================
+SUJETO: Daniel
+  CSV: eeg_data_20260120_124018.csv  rows=1,673  SR≈2.58 Hz
+  -> EXCLUIDO (SR<45.0)
+
+========================================================================
+SUJETO: Edgar
+  CSV: eeg_data_20260120_140754.csv  rows=1,572  SR≈2.59 Hz
+  -> EXCLUIDO (SR<45.0)
+
+========================================================================
+SUJETO: Edwin
+  CSV: eeg_data_20260120_130753.csv  rows=1,594  SR≈2.58 Hz
+  -> EXCLUIDO (SR<45.0)
+
+========================================================================
+SUJETO: Jeronimo
+  CSV: eeg_data_20260120_133259.csv  rows=1,465  SR≈2.58 Hz
+  -> EXCLUIDO (SR<45.0)
+
+========================================================================
+SUJETO: Joss
+  CSV: eeg_data_20260120_120639.csv  rows=1,768  SR≈2.58 Hz
+  -> EXCLUIDO (SR<45.0)
+
+========================================================================
+SUJETO: Rafael
+  CSV: eeg_data_20251210_155926.csv  rows=5,285  SR≈18.30 Hz
+  -> EXCLUIDO (SR<45.0)
+
+========================================================================
+SUJETO: edwin2
+  CSV: eeg_data_20260121_123742.csv  rows=1,483  SR≈2.59 Hz
+  -> EXCLUIDO (SR<45.0)
+
+========================================================================
+SUJETO: eliza
+  CSV: eeg_data_20260121_104717.csv  rows=1,548  SR≈2.56 Hz
+  -> EXCLUIDO (SR<45.0)
+
+========================================================================
+SUJETO: heberto
+  CSV: eeg_data_20260123_114745.csv  rows=31,930  SR≈50.00 Hz
+  [baseline_eyes_open] art alto (Fz=18.3% Pz=33.3%), fase saltada
+  [baseline_eyes_closed] art alto (Fz=14.3% Pz=33.3%), fase saltada
+  [low_cognitive_load] n=9000  sr=50.0  artFz=6.9%  artPz=16.5%  windows=179
+  [high_cognitive_load] n=9000  sr=50.0  artFz=7.1%  artPz=10.1%  windows=179
+
+========================================================================
+SUJETO: jonhy
+  CSV: eeg_data_20260417_160903.csv  rows=65,962  SR≈50.00 Hz
+  [baseline_eyes_open] n=4502  sr=50.0  artFz=1.6%  artPz=1.6%  windows=89
+  [baseline_eyes_closed] n=4533  sr=50.0  artFz=0.7%  artPz=0.8%  windows=89
+  [low_cognitive_load] n=9036  sr=50.0  artFz=2.1%  artPz=2.0%  windows=179
+  [high_cognitive_load] n=8991  sr=49.8  artFz=5.3%  artPz=4.7%  windows=178
+
+========================================================================
+SUJETO: mai
+  CSV: eeg_data_20251211_152323.csv  rows=1,498  SR≈2.68 Hz
+  -> EXCLUIDO (SR<45.0)
+
+========================================================================
+SUJETO: michelle
+  CSV: eeg_data_20260414_182434.csv  rows=64,490  SR≈50.00 Hz
+  [baseline_eyes_open] n=4518  sr=50.0  artFz=0.8%  artPz=1.0%  windows=89
+  [baseline_eyes_closed] n=4514  sr=50.0  artFz=0.5%  artPz=0.3%  windows=89
+  [low_cognitive_load] n=9034  sr=50.0  artFz=0.7%  artPz=1.1%  windows=179
+  [high_cognitive_load] n=9042  sr=50.0  artFz=0.6%  artPz=1.1%  windows=179
+
+========================================================================
+SUJETO: clau2
+  CSV: eeg_data_20260417_182251.csv  rows=30,385  SR≈50.00 Hz
+  [baseline_eyes_open] n=4520  sr=50.0  artFz=1.0%  artPz=0.8%  windows=89
+  [baseline_eyes_closed] n=4518  sr=50.0  artFz=0.8%  artPz=0.3%  windows=89
+  [low_cognitive_load] n=9038  sr=50.0  artFz=0.9%  artPz=1.0%  windows=179
+  [high_cognitive_load] n=9034  sr=50.0  artFz=0.8%  artPz=0.8%  windows=179
+
+Ventanas totales: 3,927  sujetos: 8  fases: 4
+
+Resumen por sujeto/fase (first 20):
+subject                phase  n_windows  mean_ratio  median_ratio  mean_logratio  mean_logratio_norm
+      1 baseline_eyes_closed         89    4.708689      1.973155       0.660276       -1.533674e+00
+      1   baseline_eyes_open         89   29.018324      7.594025       2.193950       -1.247442e-16
+      1  high_cognitive_load        178    1.792702      1.160549       0.172886       -2.021064e+00
+      1   low_cognitive_load        179    5.270192      1.860535       0.809507       -1.384443e+00
+      2 baseline_eyes_closed         89    1.233024      0.790449      -0.164289       -1.068289e+00
+      2   baseline_eyes_open         89    4.029796      2.631979       0.904000        9.730044e-17
+      2   low_cognitive_load        179    5.009769      1.220803       0.324251       -5.797492e-01
+      3 baseline_eyes_closed         89    0.219684      0.112135      -2.075457       -5.075583e-01
+      3   baseline_eyes_open         88    0.325129      0.224414      -1.567898        7.065056e-17
+      3  high_cognitive_load        179    0.361741      0.171690      -1.730036       -1.621379e-01
+      3   low_cognitive_load        179    0.247421      0.154726      -1.867416       -2.995179e-01
+      4 baseline_eyes_closed         89    8.546775      4.978039       1.557978        9.159106e-01
+      4   baseline_eyes_open         88    3.653416      1.984081       0.642067        2.523234e-17
+      4  high_cognitive_load        179    7.951095      4.645413       1.520568        8.785003e-01
+      4   low_cognitive_load        179   12.060533      7.661553       1.999269        1.357201e+00
+  clau2 baseline_eyes_closed         89    0.237352      0.163364      -1.784635       -9.163633e-01
+  clau2   baseline_eyes_open         89    0.672677      0.413093      -0.868272       -5.114511e-17
+  clau2  high_cognitive_load        179    0.571868      0.410155      -0.863709        4.562853e-03
+  clau2   low_cognitive_load        179    0.683887      0.429872      -0.835403        3.286950e-02
+heberto  high_cognitive_load        179    0.221841      0.101615      -2.180620                 NaN
+
+--- Paired Wilcoxon High vs Low (subject-level) ---
+            metric  n  mean_diff  median_diff        dz  wilcoxon_W       p
+        mean_ratio  7  -0.942928     0.111485 -0.477869        13.0 0.93750
+     mean_logratio  7   0.026741    -0.028307  0.052316        14.0 1.00000
+mean_logratio_norm  6  -0.037094    -0.053689 -0.070191         9.0 0.84375
+
+--- Mixed-Effects Model (log_ratio, window-level) ---
+                                         Mixed Linear Model Regression Results
+=======================================================================================================================
+Model:                                 MixedLM                      Dependent Variable:                      log_ratio 
+No. Observations:                      3927                         Method:                                  REML      
+No. Groups:                            8                            Scale:                                   1.3333    
+Min. group size:                       357                          Log-Likelihood:                          -6167.4874
+Max. group size:                       536                          Converged:                               Yes       
+Mean group size:                       490.9                                                                           
+-----------------------------------------------------------------------------------------------------------------------
+                                                                            Coef.  Std.Err.    z    P>|z| [0.025 0.975]
+-----------------------------------------------------------------------------------------------------------------------
+Intercept                                                                   -0.605    0.509  -1.188 0.235 -1.602  0.393
+C(phase, Treatment(reference='low_cognitive_load'))[T.high_cognitive_load]   0.045    0.045   0.991 0.322 -0.044  0.134
+C(phase, Treatment(reference='low_cognitive_load'))[T.baseline_eyes_open]    0.313    0.056   5.589 0.000  0.204  0.423
+C(phase, Treatment(reference='low_cognitive_load'))[T.baseline_eyes_closed] -0.740    0.056 -13.213 0.000 -0.850 -0.630
+Group Var                                                                    2.065    0.954                            
+=======================================================================================================================
+
+
+--- Mixed-Effects Model (log_ratio_norm, window-level) ---
+                                         Mixed Linear Model Regression Results
+=======================================================================================================================
+Model:                                 MixedLM                    Dependent Variable:                    log_ratio_norm
+No. Observations:                      3569                       Method:                                REML          
+No. Groups:                            7                          Scale:                                 1.3601        
+Min. group size:                       357                        Log-Likelihood:                        inf           
+Max. group size:                       536                        Converged:                             Yes           
+Mean group size:                       509.9                                                                           
+-----------------------------------------------------------------------------------------------------------------------
+                                                                            Coef.  Std.Err.    z    P>|z| [0.025 0.975]
+-----------------------------------------------------------------------------------------------------------------------
+Intercept                                                                    0.023                                     
+C(phase, Treatment(reference='low_cognitive_load'))[T.high_cognitive_load]  -0.013    0.049  -0.269 0.788 -0.110  0.084
+C(phase, Treatment(reference='low_cognitive_load'))[T.baseline_eyes_open]    0.287    0.057   5.014 0.000  0.175  0.399
+C(phase, Treatment(reference='low_cognitive_load'))[T.baseline_eyes_closed] -0.767    0.057 -13.412 0.000 -0.879 -0.655
+Group Var                                                                    0.000                                     
+=======================================================================================================================

@@ -1,0 +1,57 @@
+========================================================================
+SENSITIVITY ANALYSIS — LONG SESSIONS ONLY
+Criterion: n_windows_after >= 10 AND artifact_pct <= 50% in low & high
+========================================================================
+Loaded Fz/Pz: 64 rows, 16 subjects
+Loaded Region: 56 rows, 14 subjects
+
+Long-session Fz/Pz (included): 6
+  1, 3, 4, heberto, michelle, jonhy
+Long-session Fz/Pz (excluded): 10
+  - 2: high art Fz=10% Pz=65%
+  - Daniel: low n_windows=2<10; high n_windows=2<10
+  - Edgar: low n_windows=2<10; high n_windows=2<10
+  - Edwin: low n_windows=2<10; high n_windows=2<10
+  - Jeronimo: low n_windows=2<10; high n_windows=2<10
+  - Joss: low n_windows=2<10; high n_windows=2<10
+  - Rafael: low n_windows=0<10; high n_windows=3<10; low art Fz=76% Pz=81%; high art Fz=74% Pz=80%
+  - edwin2: low n_windows=2<10; high n_windows=2<10
+  - eliza: low n_windows=2<10; high n_windows=2<10
+  - mai: low n_windows=1<10; high n_windows=1<10
+
+Long-session Region (included): 5
+  1, 2, 3, 4, heberto
+Long-session Region (excluded): 9
+  - Daniel: low n_windows=2<10; high n_windows=2<10
+  - Edgar: low n_windows=2<10; high n_windows=2<10
+  - Edwin: low n_windows=2<10; high n_windows=2<10
+  - edwin2: low n_windows=2<10; high n_windows=2<10
+  - eliza: low n_windows=2<10; high n_windows=2<10
+  - Jeronimo: low n_windows=2<10; high n_windows=2<10
+  - Joss: low n_windows=2<10; high n_windows=2<10
+  - mai: low n_windows=1<10; high n_windows=1<10
+  - Rafael: low n_windows=1<10; high n_windows=4<10
+
+Saved per_subject_data.csv
+
+--- fz_pz ---
+H1_High_vs_Low               n=6    mean_a=1.794  mean_b=1.486  Δ=-0.308  [CI -0.85, +0.09]  Wilcoxon p=0.109  t(log) p=0.607  dz=-0.45  signs=1/6 (p=0.984)
+H2a_High_vs_BaseOpen         n=6    mean_a=2.552  mean_b=1.486  Δ=-1.066  [CI -4.58, +1.21]  Wilcoxon p=0.719  t(log) p=0.708  dz=-0.26  signs=4/6 (p=0.344)
+H2b_High_vs_BaseClosed       n=6    mean_a=2.408  mean_b=1.486  Δ=-0.922  [CI -3.93, +1.09]  Wilcoxon p=0.500  t(log) p=0.828  dz=-0.26  signs=3/6 (p=0.656)
+H3a_Low_vs_BaseOpen          n=6    mean_a=2.552  mean_b=1.794  Δ=-0.758  [CI -3.75, +1.25]  Wilcoxon p=0.844  t(log) p=0.589  dz=-0.21  signs=3/6 (p=1.000)
+H3b_Low_vs_BaseClosed        n=6    mean_a=2.408  mean_b=1.794  Δ=-0.614  [CI -3.07, +1.16]  Wilcoxon p=1.000  t(log) p=0.334  dz=-0.21  signs=3/6 (p=1.000)
+H4_BaseOpen_vs_BaseClosed    n=6    mean_a=2.552  mean_b=2.408  Δ=-0.144  [CI -0.67, +0.23]  Wilcoxon p=1.000  t(log) p=0.398  dz=-0.22  signs=3/6 (p=1.000)
+
+--- region ---
+H1_High_vs_Low               n=5    mean_a=0.580  mean_b=1.233  Δ=+0.652  [CI -0.17, +2.06]  Wilcoxon p=0.781  t(log) p=0.238  dz=+0.42  signs=3/5 (p=0.500)
+H2a_High_vs_BaseOpen         n=5    mean_a=0.671  mean_b=1.233  Δ=+0.562  [CI -0.20, +1.89]  Wilcoxon p=0.500  t(log) p=0.286  dz=+0.38  signs=2/5 (p=0.812)
+H2b_High_vs_BaseClosed       n=5    mean_a=0.693  mean_b=1.233  Δ=+0.539  [CI -0.34, +1.97]  Wilcoxon p=0.500  t(log) p=0.324  dz=+0.34  signs=2/5 (p=0.812)
+H3a_Low_vs_BaseOpen          n=5    mean_a=0.671  mean_b=0.580  Δ=-0.091  [CI -0.27, +0.05]  Wilcoxon p=0.812  t(log) p=0.361  dz=-0.44  signs=3/5 (p=1.000)
+H3b_Low_vs_BaseClosed        n=5    mean_a=0.693  mean_b=0.580  Δ=-0.113  [CI -0.28, +0.08]  Wilcoxon p=0.438  t(log) p=0.405  dz=-0.49  signs=1/5 (p=0.375)
+H4_BaseOpen_vs_BaseClosed    n=5    mean_a=0.671  mean_b=0.693  Δ=+0.023  [CI -0.13, +0.19]  Wilcoxon p=1.000  t(log) p=0.943  dz=+0.11  signs=2/5 (p=1.000)
+
+Figures
+  Saved Fz/Pz figures
+  Saved Region figures
+
+DONE.

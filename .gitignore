@@ -1,6 +1,13 @@
-AI-Cognitive/csv/eeg_all_samples.csv
+Codigo/AI-Cognitive/csv/eeg_all_samples.csv
+Codigo/AI-Cognitive/csv/eeg_window_features.csv
+Codigo/AI-Cognitive/csv/eeg_window_features_aura.csv
+Codigo/AI-Cognitive/csv/zyma_window_features.csv
 
 # Nunca subir entornos virtuales (torch, etc. superan el límite de GitHub)
-AI-Cognitive/venv/
+Codigo/AI-Cognitive/venv/
 venv/
 .venv/
+
+# Logs, instaladores y datos crudos pesados que no deben ir a GitHub
+.cursor/*.log
+Codigo/Clean EEG/USB-AURA/*.exe

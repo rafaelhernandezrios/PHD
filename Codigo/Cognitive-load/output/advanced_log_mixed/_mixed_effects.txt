@@ -1,0 +1,41 @@
+Mixed-effects: log_ratio ~ phase + (1|subject)
+======================================================================
+                                         Mixed Linear Model Regression Results
+=======================================================================================================================
+Model:                                 MixedLM                      Dependent Variable:                      log_ratio 
+No. Observations:                      3927                         Method:                                  REML      
+No. Groups:                            8                            Scale:                                   1.3333    
+Min. group size:                       357                          Log-Likelihood:                          -6167.4874
+Max. group size:                       536                          Converged:                               Yes       
+Mean group size:                       490.9                                                                           
+-----------------------------------------------------------------------------------------------------------------------
+                                                                            Coef.  Std.Err.    z    P>|z| [0.025 0.975]
+-----------------------------------------------------------------------------------------------------------------------
+Intercept                                                                   -0.605    0.509  -1.188 0.235 -1.602  0.393
+C(phase, Treatment(reference='low_cognitive_load'))[T.high_cognitive_load]   0.045    0.045   0.991 0.322 -0.044  0.134
+C(phase, Treatment(reference='low_cognitive_load'))[T.baseline_eyes_open]    0.313    0.056   5.589 0.000  0.204  0.423
+C(phase, Treatment(reference='low_cognitive_load'))[T.baseline_eyes_closed] -0.740    0.056 -13.213 0.000 -0.850 -0.630
+Group Var                                                                    2.065    0.954                            
+=======================================================================================================================
+
+
+Mixed-effects: log_ratio_norm ~ phase + (1|subject)
+======================================================================
+                                         Mixed Linear Model Regression Results
+=======================================================================================================================
+Model:                                 MixedLM                    Dependent Variable:                    log_ratio_norm
+No. Observations:                      3569                       Method:                                REML          
+No. Groups:                            7                          Scale:                                 1.3601        
+Min. group size:                       357                        Log-Likelihood:                        inf           
+Max. group size:                       536                        Converged:                             Yes           
+Mean group size:                       509.9                                                                           
+-----------------------------------------------------------------------------------------------------------------------
+                                                                            Coef.  Std.Err.    z    P>|z| [0.025 0.975]
+-----------------------------------------------------------------------------------------------------------------------
+Intercept                                                                    0.023                                     
+C(phase, Treatment(reference='low_cognitive_load'))[T.high_cognitive_load]  -0.013    0.049  -0.269 0.788 -0.110  0.084
+C(phase, Treatment(reference='low_cognitive_load'))[T.baseline_eyes_open]    0.287    0.057   5.014 0.000  0.175  0.399
+C(phase, Treatment(reference='low_cognitive_load'))[T.baseline_eyes_closed] -0.767    0.057 -13.412 0.000 -0.879 -0.655
+Group Var                                                                    0.000                                     
+=======================================================================================================================
+

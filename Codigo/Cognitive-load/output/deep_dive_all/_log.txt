@@ -1,0 +1,199 @@
+========================================================================
+DEEP DIVE — TODOS LOS SUJETOS
+========================================================================
+Sujetos encontrados: 17
+
+========================================================================
+SUJETO: 1
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_1/eeg_data_20260122_120044.csv
+rows=29,356  dur=587.1s  SR≈50.00 Hz
+  [baseline_eyes_open] n=4500  dur=89.9s  sr=50.0  artFz=9.7%  artPz=1.4%  win=156  ratio=15.860  θ=56.724  α=5.418
+  [baseline_eyes_closed] n=4506  dur=90.0s  sr=50.1  artFz=6.0%  artPz=1.5%  win=178  ratio=6.325  θ=37.183  α=10.962
+  [low_cognitive_load] n=9004  dur=180.0s  sr=50.0  artFz=4.3%  artPz=1.7%  win=356  ratio=6.341  θ=14.892  α=3.915
+  [high_cognitive_load] n=8999  dur=179.9s  sr=50.0  artFz=2.4%  artPz=1.4%  win=358  ratio=2.339  θ=6.594  α=5.934
+
+========================================================================
+SUJETO: 2
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_2/eeg_data_20260122_123839.csv
+rows=30,738  dur=614.7s  SR≈50.00 Hz
+  [baseline_eyes_open] n=4500  dur=90.0s  sr=50.0  artFz=5.1%  artPz=4.5%  win=178  ratio=4.842  θ=59.144  α=18.827
+  [baseline_eyes_closed] n=4500  dur=90.0s  sr=50.0  artFz=1.2%  artPz=0.9%  win=179  ratio=1.602  θ=36.100  α=35.632
+  [low_cognitive_load] n=9000  dur=180.0s  sr=50.0  artFz=1.7%  artPz=11.1%  win=353  ratio=3.844  θ=290.830  α=187.651
+  [high_cognitive_load] n=8999  dur=180.0s  sr=50.0  artFz=9.6%  artPz=65.0%  win=252  ratio=7.367  θ=262.848  α=436.071
+
+========================================================================
+SUJETO: 3
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_3/eeg_data_20260122_131125.csv
+rows=29,804  dur=596.0s  SR≈50.00 Hz
+  [baseline_eyes_open] n=4498  dur=89.9s  sr=50.0  artFz=6.9%  artPz=10.4%  win=177  ratio=0.433  θ=12.157  α=45.401
+  [baseline_eyes_closed] n=4502  dur=90.0s  sr=50.0  artFz=1.7%  artPz=5.8%  win=176  ratio=0.325  θ=6.663  α=44.394
+  [low_cognitive_load] n=9000  dur=180.0s  sr=50.0  artFz=4.1%  artPz=9.2%  win=357  ratio=0.301  θ=6.418  α=35.150
+  [high_cognitive_load] n=9000  dur=179.9s  sr=50.0  artFz=4.5%  artPz=10.0%  win=351  ratio=0.484  θ=80.510  α=371.095
+
+========================================================================
+SUJETO: 4
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_4/eeg_data_20260122_134321.csv
+rows=28,821  dur=586.4s  SR≈50.00 Hz
+  [baseline_eyes_open] n=4499  dur=89.9s  sr=50.0  artFz=4.0%  artPz=4.3%  win=178  ratio=4.104  θ=53.561  α=16.636
+  [baseline_eyes_closed] n=4500  dur=90.0s  sr=50.0  artFz=6.6%  artPz=6.8%  win=178  ratio=11.057  θ=493.530  α=73.882
+  [low_cognitive_load] n=9002  dur=180.0s  sr=50.0  artFz=9.2%  artPz=9.1%  win=353  ratio=13.109  θ=323.067  α=26.135
+  [high_cognitive_load] n=9000  dur=180.0s  sr=50.0  artFz=6.8%  artPz=5.6%  win=357  ratio=9.358  θ=391.643  α=62.087
+
+========================================================================
+SUJETO: Daniel
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_Daniel/eeg_data_20260120_124018.csv
+rows=1,673  dur=644.5s  SR≈2.58 Hz
+  [baseline_eyes_open] n=234  dur=89.5s  sr=2.6  artFz=6.0%  artPz=4.3%  win=0  ratio=nan  θ=nan  α=nan
+  [baseline_eyes_closed] n=233  dur=89.8s  sr=2.6  artFz=5.2%  artPz=8.2%  win=0  ratio=nan  θ=nan  α=nan
+  [low_cognitive_load] n=467  dur=179.5s  sr=2.6  artFz=1.7%  artPz=4.5%  win=0  ratio=nan  θ=nan  α=nan
+  [high_cognitive_load] n=468  dur=179.7s  sr=2.6  artFz=1.7%  artPz=0.9%  win=0  ratio=nan  θ=nan  α=nan
+
+========================================================================
+SUJETO: Edgar
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_Edgar/eeg_data_20260120_140754.csv
+rows=1,572  dur=602.1s  SR≈2.59 Hz
+  [baseline_eyes_open] n=235  dur=89.7s  sr=2.6  artFz=1.3%  artPz=0.9%  win=0  ratio=nan  θ=nan  α=nan
+  [baseline_eyes_closed] n=235  dur=89.4s  sr=2.6  artFz=0.9%  artPz=0.9%  win=0  ratio=nan  θ=nan  α=nan
+  [low_cognitive_load] n=467  dur=179.8s  sr=2.6  artFz=0.4%  artPz=0.2%  win=0  ratio=nan  θ=nan  α=nan
+  [high_cognitive_load] n=473  dur=179.6s  sr=2.6  artFz=1.3%  artPz=0.8%  win=0  ratio=nan  θ=nan  α=nan
+
+========================================================================
+SUJETO: Edwin
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_Edwin/eeg_data_20260120_130753.csv
+rows=1,594  dur=610.9s  SR≈2.58 Hz
+  [baseline_eyes_open] n=233  dur=89.8s  sr=2.6  artFz=2.1%  artPz=1.7%  win=0  ratio=nan  θ=nan  α=nan
+  [baseline_eyes_closed] n=234  dur=89.6s  sr=2.6  artFz=1.3%  artPz=1.3%  win=0  ratio=nan  θ=nan  α=nan
+  [low_cognitive_load] n=466  dur=179.5s  sr=2.6  artFz=1.9%  artPz=2.1%  win=0  ratio=nan  θ=nan  α=nan
+  [high_cognitive_load] n=473  dur=179.6s  sr=2.6  artFz=0.4%  artPz=1.3%  win=0  ratio=nan  θ=nan  α=nan
+
+========================================================================
+SUJETO: Jeronimo
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_Jeronimo/eeg_data_20260120_133259.csv
+rows=1,465  dur=564.8s  SR≈2.58 Hz
+  [baseline_eyes_open] n=214  dur=81.7s  sr=2.6  artFz=2.8%  artPz=3.3%  win=0  ratio=nan  θ=nan  α=nan
+  [baseline_eyes_closed] n=232  dur=89.5s  sr=2.6  artFz=2.2%  artPz=1.3%  win=0  ratio=nan  θ=nan  α=nan
+  [low_cognitive_load] n=468  dur=180.2s  sr=2.6  artFz=3.4%  artPz=2.4%  win=0  ratio=nan  θ=nan  α=nan
+  [high_cognitive_load] n=470  dur=181.9s  sr=2.6  artFz=5.5%  artPz=4.9%  win=0  ratio=nan  θ=nan  α=nan
+
+========================================================================
+SUJETO: Joss
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_Joss/eeg_data_20260120_120639.csv
+rows=1,768  dur=678.8s  SR≈2.58 Hz
+  [baseline_eyes_open] n=235  dur=89.8s  sr=2.6  artFz=8.1%  artPz=9.8%  win=0  ratio=nan  θ=nan  α=nan
+  [baseline_eyes_closed] n=232  dur=89.7s  sr=2.6  artFz=0.9%  artPz=0.9%  win=0  ratio=nan  θ=nan  α=nan
+  [low_cognitive_load] n=469  dur=179.3s  sr=2.6  artFz=5.1%  artPz=3.6%  win=0  ratio=nan  θ=nan  α=nan
+  [high_cognitive_load] n=471  dur=179.8s  sr=2.6  artFz=3.6%  artPz=2.3%  win=0  ratio=nan  θ=nan  α=nan
+
+========================================================================
+SUJETO: Rafael
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_Rafael/eeg_data_20251210_155926.csv
+rows=5,285  dur=264.2s  SR≈18.30 Hz
+  [baseline_eyes_open] n=1804  dur=90.2s  sr=20.0  artFz=75.2%  artPz=82.6%  win=66  ratio=16.319  θ=1.056  α=0.084
+  [baseline_eyes_closed] n=1806  dur=90.2s  sr=20.0  artFz=68.0%  artPz=73.4%  win=79  ratio=18.919  θ=2.812  α=0.114
+  [low_cognitive_load] n=333  dur=16.6s  sr=20.0  artFz=76.3%  artPz=80.8%  win=8  ratio=21.836  θ=1.054  α=0.084
+  [high_cognitive_load] n=676  dur=33.7s  sr=20.0  artFz=74.3%  artPz=79.9%  win=22  ratio=32.640  θ=0.905  α=0.039
+
+========================================================================
+SUJETO: edwin2
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_edwin2/eeg_data_20260121_123742.csv
+rows=1,483  dur=569.5s  SR≈2.59 Hz
+  [baseline_eyes_open] n=234  dur=89.5s  sr=2.6  artFz=1.7%  artPz=1.3%  win=0  ratio=nan  θ=nan  α=nan
+  [baseline_eyes_closed] n=234  dur=89.7s  sr=2.6  artFz=0.4%  artPz=0.4%  win=0  ratio=nan  θ=nan  α=nan
+  [low_cognitive_load] n=473  dur=179.6s  sr=2.6  artFz=1.1%  artPz=0.6%  win=0  ratio=nan  θ=nan  α=nan
+  [high_cognitive_load] n=464  dur=179.7s  sr=2.6  artFz=1.7%  artPz=1.9%  win=0  ratio=nan  θ=nan  α=nan
+
+========================================================================
+SUJETO: eliza
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_eliza/eeg_data_20260121_104717.csv
+rows=1,548  dur=601.7s  SR≈2.56 Hz
+  [baseline_eyes_open] n=234  dur=89.6s  sr=2.6  artFz=2.1%  artPz=10.3%  win=0  ratio=nan  θ=nan  α=nan
+  [baseline_eyes_closed] n=234  dur=89.6s  sr=2.6  artFz=0.9%  artPz=1.7%  win=0  ratio=nan  θ=nan  α=nan
+  [low_cognitive_load] n=460  dur=179.6s  sr=2.6  artFz=1.7%  artPz=9.3%  win=0  ratio=nan  θ=nan  α=nan
+  [high_cognitive_load] n=459  dur=179.7s  sr=2.6  artFz=2.0%  artPz=3.9%  win=0  ratio=nan  θ=nan  α=nan
+
+========================================================================
+SUJETO: heberto
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_heberto/eeg_data_20260123_114745.csv
+rows=31,930  dur=638.6s  SR≈50.00 Hz
+  [baseline_eyes_open] n=4500  dur=90.0s  sr=50.0  artFz=18.3%  artPz=33.3%  win=171  ratio=3.020  θ=43.150  α=107.392
+  [baseline_eyes_closed] n=4500  dur=90.0s  sr=50.0  artFz=14.3%  artPz=33.3%  win=168  ratio=1.517  θ=30.112  α=139.520
+  [low_cognitive_load] n=9000  dur=180.0s  sr=50.0  artFz=6.9%  artPz=16.5%  win=341  ratio=0.212  θ=10.569  α=99.641
+  [high_cognitive_load] n=9000  dur=180.0s  sr=50.0  artFz=7.1%  artPz=10.1%  win=347  ratio=0.348  θ=12.584  α=79.675
+
+========================================================================
+SUJETO: jonhy
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_jonhy/eeg_data_20260417_160903.csv
+rows=65,962  dur=1329.0s  SR≈50.00 Hz
+  [baseline_eyes_open] n=4502  dur=90.1s  sr=50.0  artFz=1.6%  artPz=1.6%  win=179  ratio=2.118  θ=1.111  α=2.614
+  [baseline_eyes_closed] n=4533  dur=90.7s  sr=50.0  artFz=0.7%  artPz=0.8%  win=178  ratio=0.413  θ=0.544  α=4.542
+  [low_cognitive_load] n=9036  dur=180.8s  sr=50.0  artFz=2.1%  artPz=2.0%  win=357  ratio=0.830  θ=0.753  α=1.773
+  [high_cognitive_load] n=8991  dur=180.7s  sr=49.8  artFz=5.3%  artPz=4.7%  win=357  ratio=1.780  θ=6.128  α=5.973
+
+========================================================================
+SUJETO: mai
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_mai/eeg_data_20251211_152323.csv
+rows=1,498  dur=559.5s  SR≈2.68 Hz
+  [baseline_eyes_open] n=242  dur=90.1s  sr=2.7  artFz=2.1%  artPz=3.7%  win=0  ratio=nan  θ=nan  α=nan
+  [baseline_eyes_closed] n=242  dur=90.0s  sr=2.7  artFz=1.7%  artPz=2.5%  win=0  ratio=nan  θ=nan  α=nan
+  [low_cognitive_load] n=322  dur=120.3s  sr=2.7  artFz=1.2%  artPz=3.7%  win=0  ratio=nan  θ=nan  α=nan
+  [high_cognitive_load] n=323  dur=120.7s  sr=2.7  artFz=3.4%  artPz=9.9%  win=0  ratio=nan  θ=nan  α=nan
+
+========================================================================
+SUJETO: michelle
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/data/Data-Experimento-Rafa/data_michelle/eeg_data_20260414_182434.csv
+rows=64,490  dur=1298.2s  SR≈50.00 Hz
+  [baseline_eyes_open] n=4518  dur=90.4s  sr=50.0  artFz=0.8%  artPz=1.0%  win=179  ratio=0.736  θ=1.318  α=2.963
+  [baseline_eyes_closed] n=4514  dur=90.3s  sr=50.0  artFz=0.5%  artPz=0.3%  win=124  ratio=0.055  θ=0.827  α=26.662
+  [low_cognitive_load] n=9034  dur=180.7s  sr=50.0  artFz=0.7%  artPz=1.1%  win=344  ratio=0.439  θ=1.411  α=6.563
+  [high_cognitive_load] n=9042  dur=180.8s  sr=50.0  artFz=0.6%  artPz=1.1%  win=348  ratio=0.561  θ=1.379  α=7.814
+
+========================================================================
+SUJETO: clau2
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/electron/data_clau2/eeg_data_20260417_182251.csv
+rows=30,385  dur=607.7s  SR≈50.00 Hz
+  [baseline_eyes_open] n=4520  dur=90.4s  sr=50.0  artFz=1.0%  artPz=0.8%  win=179  ratio=0.824  θ=1.775  α=3.674
+  [baseline_eyes_closed] n=4518  dur=90.4s  sr=50.0  artFz=0.8%  artPz=0.3%  win=179  ratio=0.304  θ=1.689  α=9.969
+  [low_cognitive_load] n=9038  dur=180.7s  sr=50.0  artFz=0.9%  artPz=1.0%  win=360  ratio=0.845  θ=1.753  α=3.739
+  [high_cognitive_load] n=9034  dur=180.6s  sr=50.0  artFz=0.8%  artPz=0.8%  win=360  ratio=0.729  θ=1.347  α=3.223
+
+Saved: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/output/deep_dive_all/_master_summary.csv  (68 rows)
+Saved: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/output/deep_dive_all/_per_subject_ratios.png
+Saved: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/output/deep_dive_all/_artifacts_per_subject.png
+Saved: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/output/deep_dive_all/_sanity_table.csv
+
+Tabla sanity:
+ subject     sr_hz       low      high     delta  alpha_open  alpha_closed  berger_ok  high_gt_low  min_windows_low_high
+       1 50.029931  6.341307  2.339478 -4.001830    5.417646     10.962195       True        False                   356
+       4 50.026326 13.108694  9.358202 -3.750493   16.635989     73.881812       True        False                   353
+       2 50.023711  3.843657  7.366649  3.522992   18.826921     35.631731       True         True                   252
+   clau2 50.014518  0.844830  0.729044 -0.115787    3.674176      9.968832       True        False                   360
+       3 50.012094  0.301194  0.483634  0.182440   45.401403     44.394282      False         True                   351
+ heberto 50.006378  0.211725  0.347716  0.135991  107.391932    139.520051       True         True                   341
+   jonhy 49.990813  0.829551  1.779838  0.950287    2.614454      4.541647       True         True                   357
+michelle 49.985592  0.439141  0.561351  0.122210    2.962502     26.662204       True         True                   344
+  Rafael 20.010473 21.835569 32.640081 10.804512    0.084441      0.114288       True         True                     8
+     mai  2.685369       NaN       NaN       NaN         NaN           NaN      False        False                     0
+Jeronimo  2.619149       NaN       NaN       NaN         NaN           NaN      False        False                     0
+   Edgar  2.618609       NaN       NaN       NaN         NaN           NaN      False        False                     0
+    Joss  2.618040       NaN       NaN       NaN         NaN           NaN      False        False                     0
+  edwin2  2.615649       NaN       NaN       NaN         NaN           NaN      False        False                     0
+  Daniel  2.613438       NaN       NaN       NaN         NaN           NaN      False        False                     0
+   eliza  2.610236       NaN       NaN       NaN         NaN           NaN      False        False                     0
+   Edwin  2.595238       NaN       NaN       NaN         NaN           NaN      False        False                     0

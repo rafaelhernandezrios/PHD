@@ -1,0 +1,73 @@
+========================================================================
+STATISTICAL VALIDITY ANALYSIS — Theta/Alpha Cognitive Load Index
+========================================================================
+Loaded Fz/Pz summary: 68 rows, subjects=17
+Loaded F/P region summary: 68 rows
+
+Inclusion Fz/Pz — included (N=7):
+  1, 3, 4, heberto, jonhy, michelle, clau2
+Excluded (N=10):
+  - 2: high art Fz=10% Pz=65%
+  - Daniel: low n_windows=0; high n_windows=0
+  - Edgar: low n_windows=0; high n_windows=0
+  - Edwin: low n_windows=0; high n_windows=0
+  - Jeronimo: low n_windows=0; high n_windows=0
+  - Joss: low n_windows=0; high n_windows=0
+  - Rafael: low art Fz=76% Pz=81%; high art Fz=74% Pz=80%
+  - edwin2: low n_windows=0; high n_windows=0
+  - eliza: low n_windows=0; high n_windows=0
+  - mai: low n_windows=0; high n_windows=0
+
+Inclusion F/P regions — included (N=9):
+  1, 2, 3, 4, Rafael, heberto, jonhy, michelle, clau2
+Excluded (N=8):
+  - Daniel: low n_windows=0; high n_windows=0
+  - Edgar: low n_windows=0; high n_windows=0
+  - Edwin: low n_windows=0; high n_windows=0
+  - Jeronimo: low n_windows=0; high n_windows=0
+  - Joss: low n_windows=0; high n_windows=0
+  - edwin2: low n_windows=0; high n_windows=0
+  - eliza: low n_windows=0; high n_windows=0
+  - mai: low n_windows=0; high n_windows=0
+
+Saved: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/output/statistical_validity_fixed/per_subject_data.csv
+
+========================================================================
+STATISTICAL TESTS
+========================================================================
+
+Saved: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/output/statistical_validity_fixed/statistical_tests.csv
+
+
+--- fz_pz ---
+H1_High_vs_Low               n=7    mean_a=3.123   mean_b=2.240    Δ=-0.883  [95%CI -2.16, +0.34]  Wilcoxon p=0.531    t(log) p=0.359    dz=-0.45  rb=+0.00  signs=4/7 (p=0.500)
+H2a_High_vs_BaseOpen         n=7    mean_a=4.044   mean_b=2.240    Δ=-1.804  [95%CI -6.67, +1.80]  Wilcoxon p=0.148    t(log) p=0.875    dz=-0.29  rb=-0.50  signs=2/7 (p=0.938)
+H2b_High_vs_BaseClosed       n=7    mean_a=2.802   mean_b=2.240    Δ=-0.561  [95%CI -1.80, +0.48]  Wilcoxon p=0.344    t(log) p=0.255    dz=-0.34  rb=-0.21  signs=4/7 (p=0.500)
+H3a_Low_vs_BaseOpen          n=7    mean_a=4.044   mean_b=3.123    Δ=-0.921  [95%CI -5.07, +3.25]  Wilcoxon p=0.297    t(log) p=0.206    dz=-0.16  rb=-0.50  signs=2/7 (p=0.453)
+H3b_Low_vs_BaseClosed        n=7    mean_a=2.802   mean_b=3.123    Δ=0.321   [95%CI -0.37, +1.03]  Wilcoxon p=0.297    t(log) p=0.589    dz=+0.33  rb=+0.50  signs=5/7 (p=0.453)
+H4_BaseOpen_vs_BaseClosed    n=7    mean_a=4.044   mean_b=2.802    Δ=-1.242  [95%CI -5.22, +2.39]  Wilcoxon p=0.219    t(log) p=0.079    dz=-0.24  rb=-0.57  signs=1/7 (p=0.125)
+
+--- region ---
+H1_High_vs_Low               n=9    mean_a=5.277   mean_b=4.839    Δ=-0.438  [95%CI -1.79, +0.47]  Wilcoxon p=0.500    t(log) p=0.458    dz=-0.23  rb=-0.02  signs=5/9 (p=0.500)
+H2a_High_vs_BaseOpen         n=9    mean_a=5.166   mean_b=4.839    Δ=-0.327  [95%CI -1.43, +0.55]  Wilcoxon p=0.326    t(log) p=0.680    dz=-0.21  rb=-0.20  signs=5/9 (p=0.500)
+H2b_High_vs_BaseClosed       n=9    mean_a=4.324   mean_b=4.839    Δ=0.515   [95%CI -0.17, +1.42]  Wilcoxon p=0.850    t(log) p=0.028    dz=+0.39  rb=+0.38  signs=6/9 (p=0.254)
+H3a_Low_vs_BaseOpen          n=9    mean_a=5.166   mean_b=5.277    Δ=0.111   [95%CI -0.30, +0.56]  Wilcoxon p=0.820    t(log) p=0.484    dz=+0.16  rb=+0.11  signs=4/9 (p=1.000)
+H3b_Low_vs_BaseClosed        n=9    mean_a=4.324   mean_b=5.277    Δ=0.953   [95%CI +0.04, +2.21]  Wilcoxon p=0.164    t(log) p=0.038    dz=+0.53  rb=+0.56  signs=7/9 (p=0.180)
+H4_BaseOpen_vs_BaseClosed    n=9    mean_a=5.166   mean_b=4.324    Δ=-0.842  [95%CI -1.75, -0.09]  Wilcoxon p=0.055    t(log) p=0.038    dz=-0.63  rb=-0.73  signs=1/9 (p=0.039)
+
+========================================================================
+NASA-TLX (exploratory convergent validity)
+========================================================================
+NASA-TLX sheet 'Resultados' — 10 people.
+Saved: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/output/statistical_validity_fixed/nasa_tlx_merged.csv
+Overlap NASA-TLX ∩ incluibles (Fz/Pz): N=0
+
+========================================================================
+FIGURES
+========================================================================
+Saved Fz/Pz figures 01–04
+Saved Region figures 05–08
+
+Saved: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/output/statistical_validity_fixed/results_summary.csv
+
+DONE.

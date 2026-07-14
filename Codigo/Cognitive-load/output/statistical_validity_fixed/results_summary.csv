@@ -1,0 +1,13 @@
+dataset,contrast,n,mean_phase_a,mean_phase_b,mean_diff_b_minus_a,ci95_mean_diff,wilcoxon_p,paired_t_log_p,cohens_dz,rank_biserial_r,signs_b_gt_a,sign_test_p,alternative
+fz_pz,H1_High_vs_Low,7,3.1229,2.2403,-0.8827,"[-2.157, +0.341]",0.531,0.359,-0.446,0.0,4/7,0.500,greater
+fz_pz,H2a_High_vs_BaseOpen,7,4.044,2.2403,-1.8037,"[-6.667, +1.801]",0.148,0.875,-0.293,-0.5,2/7,0.938,greater
+fz_pz,H2b_High_vs_BaseClosed,7,2.8016,2.2403,-0.5613,"[-1.795, +0.481]",0.344,0.255,-0.336,-0.214,4/7,0.500,greater
+fz_pz,H3a_Low_vs_BaseOpen,7,4.044,3.1229,-0.9211,"[-5.068, +3.247]",0.297,0.206,-0.159,-0.5,2/7,0.453,two-sided
+fz_pz,H3b_Low_vs_BaseClosed,7,2.8016,3.1229,0.3213,"[-0.372, +1.028]",0.297,0.589,0.33,0.5,5/7,0.453,two-sided
+fz_pz,H4_BaseOpen_vs_BaseClosed,7,4.044,2.8016,-1.2424,"[-5.221, +2.392]",0.219,0.079,-0.236,-0.571,1/7,0.125,two-sided
+region,H1_High_vs_Low,9,5.2774,4.8391,-0.4383,"[-1.794, +0.468]",0.500,0.458,-0.226,-0.022,5/9,0.500,greater
+region,H2a_High_vs_BaseOpen,9,5.1659,4.8391,-0.3269,"[-1.427, +0.546]",0.326,0.680,-0.206,-0.2,5/9,0.500,greater
+region,H2b_High_vs_BaseClosed,9,4.3239,4.8391,0.5151,"[-0.166, +1.417]",0.850,0.028,0.393,0.378,6/9,0.254,greater
+region,H3a_Low_vs_BaseOpen,9,5.1659,5.2774,0.1115,"[-0.301, +0.559]",0.820,0.484,0.159,0.111,4/9,1.000,two-sided
+region,H3b_Low_vs_BaseClosed,9,4.3239,5.2774,0.9535,"[+0.041, +2.212]",0.164,0.038,0.526,0.556,7/9,0.180,two-sided
+region,H4_BaseOpen_vs_BaseClosed,9,5.1659,4.3239,-0.842,"[-1.747, -0.095]",0.055,0.038,-0.633,-0.733,1/9,0.039,two-sided

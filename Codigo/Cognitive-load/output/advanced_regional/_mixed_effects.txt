@@ -1,0 +1,43 @@
+REGIONAL (F3/Fz/F4 theta ; P3/Pz/P4 alpha)
+======================================================================
+log_ratio ~ phase + (1|subject)
+
+                                         Mixed Linear Model Regression Results
+=======================================================================================================================
+Model:                                 MixedLM                      Dependent Variable:                      log_ratio 
+No. Observations:                      4105                         Method:                                  REML      
+No. Groups:                            8                            Scale:                                   0.7582    
+Min. group size:                       357                          Log-Likelihood:                          -5288.1125
+Max. group size:                       536                          Converged:                               Yes       
+Mean group size:                       513.1                                                                           
+-----------------------------------------------------------------------------------------------------------------------
+                                                                            Coef.  Std.Err.    z    P>|z| [0.025 0.975]
+-----------------------------------------------------------------------------------------------------------------------
+Intercept                                                                   -0.034    0.366  -0.093 0.926 -0.752  0.684
+C(phase, Treatment(reference='low_cognitive_load'))[T.baseline_eyes_closed] -0.770    0.040 -19.286 0.000 -0.848 -0.692
+C(phase, Treatment(reference='low_cognitive_load'))[T.baseline_eyes_open]    0.260    0.040   6.497 0.000  0.181  0.338
+C(phase, Treatment(reference='low_cognitive_load'))[T.high_cognitive_load]   0.111    0.034   3.253 0.001  0.044  0.179
+Group Var                                                                    1.069    0.655                            
+=======================================================================================================================
+
+
+log_ratio_norm ~ phase + (1|subject)
+
+                                         Mixed Linear Model Regression Results
+=======================================================================================================================
+Model:                                 MixedLM                    Dependent Variable:                    log_ratio_norm
+No. Observations:                      4105                       Method:                                REML          
+No. Groups:                            8                          Scale:                                 0.7569        
+Min. group size:                       357                        Log-Likelihood:                        inf           
+Max. group size:                       536                        Converged:                             Yes           
+Mean group size:                       513.1                                                                           
+-----------------------------------------------------------------------------------------------------------------------
+                                                                            Coef.  Std.Err.    z    P>|z| [0.025 0.975]
+-----------------------------------------------------------------------------------------------------------------------
+Intercept                                                                    0.027                                     
+C(phase, Treatment(reference='low_cognitive_load'))[T.baseline_eyes_closed] -0.770    0.040 -19.303 0.000 -0.848 -0.692
+C(phase, Treatment(reference='low_cognitive_load'))[T.baseline_eyes_open]    0.260    0.040   6.503 0.000  0.181  0.338
+C(phase, Treatment(reference='low_cognitive_load'))[T.high_cognitive_load]   0.112    0.034   3.264 0.001  0.045  0.179
+Group Var                                                                    0.000                                     
+=======================================================================================================================
+

@@ -1,0 +1,82 @@
+========================================================================
+DEEP DIVE — CLAU2
+========================================================================
+CSV: /sessions/peaceful-adoring-goldberg/mnt/PHD/Cognitive-load/electron/data_clau2/eeg_data_20260417_182251.csv
+Total rows: 30,385
+Total duration (s): 607.7
+Median interval: 20.00 ms → actual SR ≈ 50.00 Hz
+Raw labels in CSV: ['analysis', 'baseline_completed', 'baseline_eyes_closed', 'baseline_eyes_open', 'high_cognitive_load', 'idle', 'low_cognitive_load', 'low_load_completed', 'setup']
+Mapped canonical phases (row counts):
+  baseline_eyes_open          n=  4520  dur≈90.4s
+  baseline_eyes_closed        n=  4518  dur≈90.4s
+  low_cognitive_load          n=  9038  dur≈180.8s
+  high_cognitive_load         n=  9034  dur≈180.7s
+  Saved 01_raw_all_channels_timeline.png
+
+------------------------------------------------------------------------
+Phase: baseline_eyes_open
+  rows=4,520  dur=90.4s  sr_est=50.0 Hz
+  artifacts — Fz: 46 (1.0%),  Pz: 34 (0.8%)
+  windows (actual sr=50.0 Hz, win=50 samples ≈ 1.0s):
+    valid ratios: 179
+    mean ratio = 0.8237   median = 0.4288   std = 1.1104
+  windows (step4 style sr=250, win=250 samples):
+    valid ratios: 35
+    mean ratio = 1.6398   median = 0.6027   std = 3.2321
+
+------------------------------------------------------------------------
+Phase: baseline_eyes_closed
+  rows=4,518  dur=90.4s  sr_est=50.0 Hz
+  artifacts — Fz: 35 (0.8%),  Pz: 13 (0.3%)
+  windows (actual sr=50.0 Hz, win=49 samples ≈ 1.0s):
+    valid ratios: 185
+    mean ratio = 0.2951   median = 0.1625   std = 0.4243
+  windows (step4 style sr=250, win=250 samples):
+    valid ratios: 35
+    mean ratio = 1.4446   median = 0.8731   std = 1.3352
+
+------------------------------------------------------------------------
+Phase: low_cognitive_load
+  rows=9,038  dur=180.7s  sr_est=50.0 Hz
+  artifacts — Fz: 78 (0.9%),  Pz: 92 (1.0%)
+  windows (actual sr=50.0 Hz, win=50 samples ≈ 1.0s):
+    valid ratios: 360
+    mean ratio = 0.8448   median = 0.4096   std = 1.4681
+  windows (step4 style sr=250, win=250 samples):
+    valid ratios: 71
+    mean ratio = 1.8741   median = 0.9542   std = 2.7159
+
+------------------------------------------------------------------------
+Phase: high_cognitive_load
+  rows=9,034  dur=180.6s  sr_est=50.0 Hz
+  artifacts — Fz: 70 (0.8%),  Pz: 70 (0.8%)
+  windows (actual sr=50.0 Hz, win=50 samples ≈ 1.0s):
+    valid ratios: 360
+    mean ratio = 0.7290   median = 0.4165   std = 0.9924
+  windows (step4 style sr=250, win=250 samples):
+    valid ratios: 71
+    mean ratio = 0.9103   median = 0.6409   std = 0.8052
+  Saved 02_pipeline_baseline-eyes-open.png
+  Saved 02_pipeline_baseline-eyes-closed.png
+  Saved 02_pipeline_low-cognitive-load.png
+  Saved 02_pipeline_high-cognitive-load.png
+  Saved 03_psd_by_phase_overlay.png
+  Saved 04_windowed_ratios.png
+  Saved 05_mean_ratio_summary.png
+  Saved 06_band_powers.png
+  Saved clau2_windows.csv + clau2_summary.csv
+
+========================================================================
+FINAL SUMMARY — mean ratio per phase
+========================================================================
+phase                         mode      n_win  sr_used      theta      alpha  mean_ratio
+baseline_eyes_open            real        179     50.0      1.775      3.674      0.8237
+baseline_eyes_open            step4        35    250.0      3.054      3.114      1.6398
+baseline_eyes_closed          real        185     50.0      1.666      9.879      0.2951
+baseline_eyes_closed          step4        35    250.0      2.540      2.036      1.4446
+low_cognitive_load            real        360     50.0      1.753      3.739      0.8448
+low_cognitive_load            step4        71    250.0      2.347      2.589      1.8741
+high_cognitive_load           real        360     50.0      1.347      3.223      0.7290
+high_cognitive_load           step4        71    250.0      1.491      2.300      0.9103
+
+DONE.
