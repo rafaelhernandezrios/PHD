@@ -628,45 +628,45 @@
   "param_map": {
     "RoboticArm.motionScale": {
       "easiest": 0.45,
-      "hardest": 1.05,
-      "ships": 0.75
+      "ships": 0.75,
+      "hardest": 1.05
     },
     "PunctureTarget.radius": {
       "easiest": 0.04,
-      "hardest": 0.018,
-      "ships": 0.028
+      "ships": 0.028,
+      "hardest": 0.018
     },
     "RingTarget.ringRadius": {
       "easiest": 0.06,
-      "hardest": 0.032,
-      "ships": 0.045
+      "ships": 0.045,
+      "hardest": 0.032
     },
     "VerletThread.tenseThreshold": {
       "easiest": 1.45,
-      "hardest": 0.95,
-      "ships": 1.12
+      "ships": 1.12,
+      "hardest": 0.95
     },
     "hapticGuidanceGain": {
       "easiest": 1.4,
-      "hardest": 0.6,
-      "ships": 1.0
+      "ships": 1.0,
+      "hardest": 0.6
     }
   },
   "scoring_map_not_modulated": {
     "TrainingLevel.parTimeSec": {
       "easiest": 180.0,
-      "hardest": 90.0,
-      "ships": 120.0
+      "ships": 120.0,
+      "hardest": 90.0
     },
     "TrainingLevel.parPathMeters": {
       "easiest": 18.0,
-      "hardest": 9.0,
-      "ships": 12.0
+      "ships": 12.0,
+      "hardest": 9.0
     },
     "TrainingLevel.maxErrors": {
       "easiest": 3,
-      "hardest": 0,
-      "ships": 1
+      "ships": 1,
+      "hardest": 0
     }
   }
 }

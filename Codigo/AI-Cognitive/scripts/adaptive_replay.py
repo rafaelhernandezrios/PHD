@@ -162,29 +162,41 @@ class AdaptivePolicy:
 # Parameter mapping: difficulty scalar -> platform fields
 # ----------------------------------------------------------------------------
 
-# Endpoints bracket the values the platform ships with (shown as `default`),
-# so d = 0.5 reproduces the stock configuration. They are design choices to be
-# calibrated in the human trial, not measured optima.
+# Each parameter is given three points: easiest (d=0), the value the platform
+# ships with (d=0.5) and hardest (d=1). Interpolation is piecewise-linear
+# through the middle point, so d = 0.5 reproduces the stock configuration
+# exactly even though the shipped value is not the midpoint of the range --- a
+# plain two-point lerp would silently shift 6 of these 8 parameters at the
+# neutral setting. The endpoints are design choices to be calibrated in the
+# human trial, not measured optima.
 PARAM_MAP = {
-    # field                        easiest (d=0), hardest (d=1), default
-    "RoboticArm.motionScale":         (0.45,  1.05, 0.75),
-    "PunctureTarget.radius":          (0.040, 0.018, 0.028),
-    "RingTarget.ringRadius":          (0.060, 0.032, 0.045),
-    "VerletThread.tenseThreshold":    (1.45,  0.95, 1.12),
-    "hapticGuidanceGain":             (1.40,  0.60, 1.00),
+    # field                        easiest (d=0), ships (d=0.5), hardest (d=1)
+    "RoboticArm.motionScale":         (0.45,  0.75, 1.05),
+    "PunctureTarget.radius":          (0.040, 0.028, 0.018),
+    "RingTarget.ringRadius":          (0.060, 0.045, 0.032),
+    "VerletThread.tenseThreshold":    (1.45,  1.12, 0.95),
+    "hapticGuidanceGain":             (1.40,  1.00, 0.60),
 }
 # Scoring thresholds are deliberately NOT modulated mid-run: changing them
 # during a run would make the star score incomparable across runs. They are
 # set once at run start from the difficulty the run began at.
 SCORING_MAP = {
-    "TrainingLevel.parTimeSec":       (180.0, 90.0, 120.0),
-    "TrainingLevel.parPathMeters":    (18.0,   9.0,  12.0),
-    "TrainingLevel.maxErrors":        (3,      0,    1),
+    # field                        easiest (d=0), ships (d=0.5), hardest (d=1)
+    "TrainingLevel.parTimeSec":       (180.0, 120.0, 90.0),
+    "TrainingLevel.parPathMeters":    (18.0,   12.0,  9.0),
+    "TrainingLevel.maxErrors":        (3,       1,    0),
 }
 
 
+def project(d: float, easy: float, ships: float, hard: float) -> float:
+    """Piecewise-linear through the shipped value at d = 0.5."""
+    d = min(1.0, max(0.0, d))
+    return easy + (ships - easy) * (d / 0.5) if d <= 0.5 \
+        else ships + (hard - ships) * ((d - 0.5) / 0.5)
+
+
 def apply_difficulty(d: float, table=PARAM_MAP) -> dict:
-    return {k: lo + (hi - lo) * d for k, (lo, hi, _) in table.items()}
+    return {k: project(d, *pts) for k, pts in table.items()}
 
 
 # ----------------------------------------------------------------------------
@@ -454,9 +466,9 @@ def main():
 
     # --- parameter mapping at the three operating points -------------------
     print("\n=== difficulty -> platform parameters ===")
-    print(f"  {'field':30s} {'d=0.0':>8s} {'d=0.5':>8s} {'d=1.0':>8s} {'ships':>8s}")
-    for k, (lo, hi, dflt) in PARAM_MAP.items():
-        print(f"  {k:30s} {lo:8.3f} {lo+(hi-lo)*0.5:8.3f} {hi:8.3f} {dflt:8.3f}")
+    print(f"  {'field':30s} {'d=0.0':>8s} {'d=0.5':>8s} {'d=1.0':>8s}")
+    for k, pts in PARAM_MAP.items():
+        print(f"  {k:30s} {project(0.0,*pts):8.3f} {project(0.5,*pts):8.3f} {project(1.0,*pts):8.3f}")
 
     strip = lambda d: {k: v for k, v in d.items() if not k.startswith("_")}
     results = {
@@ -469,10 +481,10 @@ def main():
         "ablation_antioscillation": ablation,
         "sweep_theta_hi": sweep,
         "sweep_persistence": persist,
-        "param_map": {k: {"easiest": lo, "hardest": hi, "ships": d}
-                      for k, (lo, hi, d) in PARAM_MAP.items()},
-        "scoring_map_not_modulated": {k: {"easiest": lo, "hardest": hi, "ships": d}
-                                      for k, (lo, hi, d) in SCORING_MAP.items()},
+        "param_map": {k: {"easiest": p[0], "ships": p[1], "hardest": p[2]}
+                      for k, p in PARAM_MAP.items()},
+        "scoring_map_not_modulated": {k: {"easiest": p[0], "ships": p[1], "hardest": p[2]}
+                                      for k, p in SCORING_MAP.items()},
     }
     out = ROOT / "csv" / "adaptive_replay_results.json"
     out.write_text(json.dumps(results, indent=2))
