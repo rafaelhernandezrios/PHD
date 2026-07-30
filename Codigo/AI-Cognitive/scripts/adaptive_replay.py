@@ -321,13 +321,13 @@ def make_figure(per_subj, ablation, out_path, example_subj=11):
     import matplotlib.pyplot as plt
 
     plt.rcParams.update({
-        "font.family": "serif", "font.size": 9, "axes.titlesize": 10,
-        "axes.labelsize": 9, "xtick.labelsize": 8, "ytick.labelsize": 8,
-        "legend.fontsize": 7.5, "figure.dpi": 150, "savefig.dpi": 300,
+        "font.family": "serif", "font.size": 10, "axes.titlesize": 11,
+        "axes.labelsize": 10, "xtick.labelsize": 9, "ytick.labelsize": 9,
+        "legend.fontsize": 8.5, "figure.dpi": 150, "savefig.dpi": 300,
         "savefig.bbox": "tight",
     })
 
-    fig, axes = plt.subplots(1, 2, figsize=(7.1, 2.7),
+    fig, axes = plt.subplots(1, 2, figsize=(7.1, 3.05),
                              gridspec_kw={"width_ratios": [1.55, 1.0]})
 
     # (a) difficulty trajectory of one subject
@@ -347,7 +347,7 @@ def make_figure(per_subj, ablation, out_path, example_subj=11):
             j += 1
         ax.axvspan(t[i], t[j], color=shades[truth[i]], zorder=0, linewidth=0)
         ax.text((t[i] + t[j]) / 2, -0.19, "rest low mid high".split()[truth[i]],
-                ha="center", va="bottom", fontsize=7, color="#555")
+                ha="center", va="bottom", fontsize=8, color="#555")
         i = j + 1
 
     ax.plot(t, ema, color="#3b6fb0", linewidth=1.0, label="smoothed load score")
