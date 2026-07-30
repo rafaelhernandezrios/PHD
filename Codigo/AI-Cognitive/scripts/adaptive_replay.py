@@ -508,3 +508,21 @@ def main():
 
 if __name__ == "__main__":
     main()
+
+
+# ----------------------------------------------------------------------------
+# Oracle comparison: same policy, perfect input
+# ----------------------------------------------------------------------------
+
+def run_oracle(df, cfg):
+    """Drive the policy with the imposed condition instead of the EEG score.
+
+    Separates estimator error from policy error: whatever the loop fails to do
+    here is the policy's fault, and whatever it recovers relative to the
+    EEG-driven run is the cost of perception.
+    """
+    out = {}
+    for sid, g in df.groupby("subject_id"):
+        _, truth = build_ramp(g)
+        out[int(sid)] = run_subject(truth.astype(float), truth, cfg)
+    return summarise(out)
