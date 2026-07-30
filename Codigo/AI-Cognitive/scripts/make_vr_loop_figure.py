@@ -59,19 +59,23 @@ arrow(5.0, 5.85, 5.0, 5.10, RED)
 arrow(5.0, 3.85, 5.0, 3.35, RED)
 arrow(5.0, 2.30, 5.0, 1.70, RED)
 
+def path(pts, color, lw=1.0):
+    """Polyline with a single arrowhead, on the last segment only."""
+    for (x1, y1), (x2, y2) in zip(pts[:-1], pts[1:-1] + [pts[-2]]):
+        ax.plot([x1, x2], [y1, y2], color=color, lw=lw, zorder=0,
+                solid_capstyle="round")
+    arrow(*pts[-2], *pts[-1], color, lw=lw)
+
+
 # ---- performance gate: second path, telemetry -> guards ---------------------
-ax.plot([9.6, 9.6], [1.05, 4.48], color=GRAY, lw=1.0, zorder=0)
-arrow(9.6, 1.05, 9.6, 4.48, GRAY, lw=1.0)
-arrow(9.6, 4.48, 8.9, 4.48, GRAY, lw=1.0)
-ax.text(9.25, 2.75, "error telemetry", rotation=90, ha="center", va="center",
-        fontsize=5.8, color=GRAY)
+path([(9.3, 1.05), (9.75, 1.05), (9.75, 4.48), (8.9, 4.48)], GRAY)
+ax.text(8.35, 2.85, "error\ntelemetry", ha="center", va="center",
+        fontsize=5.9, color=GRAY, linespacing=1.3)
 
 # ---- the trainee closes the loop -------------------------------------------
-ax.plot([0.25, 0.25], [1.05, 8.05], color=BLUE, lw=1.0, zorder=0)
-arrow(0.25, 1.05, 0.25, 8.05, BLUE, lw=1.0)
-arrow(0.25, 8.05, 0.7, 8.05, BLUE, lw=1.0)
-ax.text(0.58, 4.7, "trainee", rotation=90, ha="center", va="center",
-        fontsize=5.8, color=BLUE)
+path([(0.7, 1.05), (0.25, 1.05), (0.25, 8.05), (0.7, 8.05)], BLUE)
+ax.text(1.75, 2.85, "trainee", ha="center", va="center",
+        fontsize=5.9, color=BLUE)
 
 OUT.parent.mkdir(parents=True, exist_ok=True)
 fig.savefig(OUT)
