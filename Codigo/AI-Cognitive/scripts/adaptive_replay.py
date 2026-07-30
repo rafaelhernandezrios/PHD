@@ -61,9 +61,20 @@ TRUE_ZONE = {REST: BAJA, LOW: OPTIMA, MID: OPTIMA, HIGH: ALTA}
 class PolicyConfig:
     """Tunables of the adaptive-difficulty policy.
 
-    Thresholds are on the ordinal load score (condition_4 scale, 0..3). The
-    defaults sit at the 33rd (theta_lo) and 78th (theta_hi) percentile of the
-    pooled prediction distribution; see --sweep for sensitivity.
+    Thresholds are on the ordinal load score (condition_4 scale, 0..3), and the
+    two do not have equal standing:
+
+      theta_lo=1.0  is the midpoint between the rest cluster (mean predicted
+                    0.727) and the task cluster (1.435). The data puts a
+                    boundary there; the 33.6th percentile of the pooled
+                    predictions falls on it too.
+      theta_hi=1.6  has no anchor in the data — conditions 1/2/3 predict to
+                    1.39/1.45/1.45 — and was picked as the knee of the sweep
+                    below, on the same data the results are reported on. The
+                    sweep is printed in full for exactly that reason.
+
+    hysteresis=0.12 is 20% of the optimal band width; a design choice, not a
+    derived value. Same for ema_lambda, refractory_sec and the two step sizes.
     """
     ema_lambda: float = 0.6      # smoothing of the raw per-window score
     theta_lo: float = 1.00       # below -> underloaded (baja)
