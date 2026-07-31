@@ -520,9 +520,20 @@ def run_oracle(df, cfg):
     Separates estimator error from policy error: whatever the loop fails to do
     here is the policy's fault, and whatever it recovers relative to the
     EEG-driven run is the cost of perception.
+
+    The conditions are NOT fed as their raw codes 0..3. Doing that is not a
+    perfect input: with theta_lo=1.0, theta_hi=1.6 and hysteresis 0.12, a code
+    of 2 lands in `alta` from every starting zone although mid is expected to
+    be `optima`, and a code of 1 stays stuck in `baja` because leaving it
+    requires exceeding 1.12. Instead each condition is mapped to its expected
+    operational zone and represented by a score that falls unambiguously
+    inside that zone from any previous state. Every guard and step size is
+    unchanged.
     """
+    zone_score = {REST: 0.5, LOW: 1.3, MID: 1.3, HIGH: 2.0}
     out = {}
     for sid, g in df.groupby("subject_id"):
         _, truth = build_ramp(g)
-        out[int(sid)] = run_subject(truth.astype(float), truth, cfg)
+        feed = np.array([zone_score[c] for c in truth], dtype=float)
+        out[int(sid)] = run_subject(feed, truth, cfg)
     return summarise(out)
