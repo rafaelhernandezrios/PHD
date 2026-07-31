@@ -484,7 +484,7 @@
         "n": 15
       }
     },
-    "+ persistence": {
+    "+ persistence, refractory": {
       "zone_agreement": {
         "mean": 0.5715729899908564,
         "std": 0.07548326294249799,

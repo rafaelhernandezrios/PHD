@@ -425,7 +425,7 @@ def main():
                                           theta_lo=cfg.theta_lo, theta_hi=cfg.theta_hi),
         "+ dead-band":       PolicyConfig(persist_windows=1, refractory_sec=0.0,
                                           theta_lo=cfg.theta_lo, theta_hi=cfg.theta_hi),
-        "+ persistence":     cfg,
+        "+ persistence, refractory": cfg,
     }
     for name, vcfg in variants.items():
         ablation[name] = summarise(run_all(df, vcfg))
