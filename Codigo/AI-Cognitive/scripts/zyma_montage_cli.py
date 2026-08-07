@@ -121,6 +121,25 @@ def main():
                       "n_subjects": len(task_r), "wilcoxon_W": float(stat),
                       "wilcoxon_p": float(p)}
 
+    # ---- que mitad del cociente hace el trabajo ---------------------------
+    # El paper afirma que el numerador esta plano y que el denominador es el
+    # que se mueve. Eso hay que medirlo, no suponerlo.
+    for part, col in (("theta_Fz", fz_theta), ("alpha_Pz", pz_alpha)):
+        ratios = []
+        for s_, g in df.groupby("subject_id"):
+            b = g.loc[g.load_2 == "normal", col].median()
+            t = g.loc[g.load_2 == "alta", col].median()
+            if np.isfinite(b) and np.isfinite(t) and b > 0:
+                ratios.append(t / b)
+        ratios = np.asarray(ratios)
+        w, pv = wilcoxon(ratios, np.ones_like(ratios))
+        up = int(np.sum(ratios > 1))
+        results[part] = {"median_task_over_rest": float(np.median(ratios)),
+                         "n_up": up, "n_subjects": len(ratios),
+                         "wilcoxon_W": float(w), "wilcoxon_p": float(pv)}
+        print(f"    {part:10s} task/rest {np.median(ratios):.3f}   "
+              f"sube en {up}/{len(ratios)}   W={w:.0f}, p={pv:.3g}")
+
     out = ROOT / "csv" / "zyma_montage_cli.json"
     out.write_text(json.dumps(results, indent=2))
     print(f"\n[json] {out}")
