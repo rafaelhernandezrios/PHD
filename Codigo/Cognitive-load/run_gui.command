@@ -33,7 +33,7 @@ fi
 echo "==> Starting Electron with venv python..."
 # Some environments (IDE/CI) export this and break Electron GUI startup.
 unset ELECTRON_RUN_AS_NODE
-mkdir -p "electron/logs"
+mkdir -p "logs"   # we are already inside electron/
 echo "==> Logs:"
 echo "    bridge:  $SCRIPT_DIR/electron/logs/eeg_bridge.log"
 echo "    electron:$SCRIPT_DIR/electron/logs/electron_main.log"

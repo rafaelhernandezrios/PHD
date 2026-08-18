@@ -177,6 +177,24 @@
   .stroop-stats { display: flex; gap: 20px; justify-content: center; margin-bottom: 24px; }
 
   /* ── TEXT READING ── */
+  /* ── Stroop (ERP mode) ── */
+  .stroop-stage { height: 190px; display: flex; align-items: center; justify-content: center; position: relative; }
+  .stroop-fixation { font-family: var(--mono); font-size: 46px; color: var(--text2); line-height: 1; }
+  .stroop-key { padding: 12px 10px; border-radius: var(--radius); border: 1px solid var(--border-bright); background: var(--bg2); text-align: center; font-family: var(--mono); font-size: 12px; }
+  .stroop-key b { display: block; font-size: 17px; margin-bottom: 4px; }
+  .stroop-key.hit { border-color: var(--accent); background: var(--accent-dim); }
+  .stroop-key.miss { border-color: var(--danger); background: rgba(255,85,85,0.08); }
+
+  /* ── Acquisition health (sidebar) ── */
+  .health-row { display: flex; justify-content: space-between; font-family: var(--mono); font-size: 10px; color: var(--text2); padding: 2px 12px; }
+  .health-row span:last-child { color: var(--text0); }
+  .health-chans { display: grid; grid-template-columns: repeat(4, 1fr); gap: 3px; padding: 6px 12px 2px; }
+  .health-chip { font-family: var(--mono); font-size: 8px; text-align: center; padding: 3px 0; border-radius: 3px; background: var(--bg2); border: 1px solid var(--border); color: var(--text2); }
+  .health-chip.ok { border-color: rgba(0,212,168,0.5); color: var(--accent); }
+  .health-chip.bad { border-color: var(--danger); background: rgba(255,85,85,0.12); color: var(--danger); }
+  .health-warn { font-family: var(--mono); font-size: 9px; color: var(--danger); padding: 4px 12px 0; line-height: 1.4; min-height: 12px; }
+  .health-warn.ok { color: var(--accent); }
+
   .reading-text { background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius-lg); padding: 24px; font-size: 14px; line-height: 1.9; color: var(--text1); max-height: 340px; overflow-y: auto; scrollbar-width: thin; scrollbar-color: var(--border-bright) transparent; }
 
   /* ── SCROLLBAR ── */
@@ -255,6 +273,19 @@
         </svg>
         <span id="connect-btn-text">Connect AURA</span>
       </button>
+    </div>
+
+    <div class="sidebar-divider"></div>
+
+    <!-- Acquisition health. A railed electrode is invisible after the
+         band-pass, so this is computed on the RAW signal. -->
+    <div class="sidebar-section">
+      <div class="sidebar-label">Acquisition health</div>
+      <div class="health-row"><span>rate</span><span id="health-fs">—</span></div>
+      <div class="health-row"><span>lost</span><span id="health-drop">—</span></div>
+      <div class="health-row"><span>clock sync</span><span id="health-clock">—</span></div>
+      <div class="health-chans" id="health-chans"></div>
+      <div class="health-warn" id="health-warn"></div>
     </div>
 
     <div class="sidebar-divider"></div>
@@ -511,7 +542,7 @@
     <div class="panel" id="panel-high-load">
       <div class="panel-header">
         <div class="panel-title">// high cognitive load · stroop task</div>
-        <div class="panel-subtitle">Select the ink COLOR of the displayed word</div>
+        <div class="panel-subtitle">Press the key matching the INK colour · keyboard only</div>
       </div>
       <div class="panel-brand">
         <img class="panel-logo uaeh" src="assets/logo-uaeh.png" alt="UAEH" />
@@ -537,14 +568,17 @@
         </div>
       </div>
 
-      <div class="stroop-word" id="stroop-word" style="color:var(--accent);">READY</div>
-      <div class="stroop-prompt">Select the ink color</div>
+      <div class="stroop-stage">
+        <div class="stroop-fixation" id="stroop-fixation">+</div>
+        <div class="stroop-word" id="stroop-word" style="display:none;"></div>
+      </div>
+      <div class="stroop-prompt">Press the key for the INK colour, not the word</div>
 
       <div class="stroop-options">
-        <div class="stroop-opt" style="color:#ff5555;" onclick="stroopAnswer('red')">RED</div>
-        <div class="stroop-opt" style="color:#00d4a8;" onclick="stroopAnswer('green')">GREEN</div>
-        <div class="stroop-opt" style="color:#00a8ff;" onclick="stroopAnswer('blue')">BLUE</div>
-        <div class="stroop-opt" style="color:#ffb347;" onclick="stroopAnswer('yellow')">YELLOW</div>
+        <div class="stroop-key" id="key-red"    style="color:#ff5555;"><b>D</b>RED</div>
+        <div class="stroop-key" id="key-green"  style="color:#00d4a8;"><b>F</b>GREEN</div>
+        <div class="stroop-key" id="key-blue"   style="color:#00a8ff;"><b>J</b>BLUE</div>
+        <div class="stroop-key" id="key-yellow" style="color:#ffb347;"><b>K</b>YELLOW</div>
       </div>
 
       <div class="section-sep"></div>
@@ -763,10 +797,19 @@ const state = {
   stroopTotal: 0,
   stroopRTs: [],
   stroopActive: false,
-  stroopStart: null,
-  stroopAnswer: null,
+  stroopAwaitingResponse: false,
+  stroopTrial: null,
+  stroopSequence: [],
+  stroopSeqIdx: 0,
   stroopTimerInterval: null,
+  stroopDeadline: null,
   stroopTimeLeft: 180,
+  // performance.now() -> LSL clock. Established by a round-trip handshake; a
+  // stimulus onset is only usable for ERPs once this is known.
+  clockOffset: null,
+  clockRttMs: null,
+  clockPending: new Map(),
+  clockSamples: [],
   ratioHistory: [],
   rawHistory: [],
   filteredHistory: [],
@@ -942,50 +985,310 @@ function startLowLoad() {
   if (window.electronAPI) window.electronAPI.startLowLoad();
 }
 
-// ─── HIGH LOAD / STROOP ───────────────────────────────────────────────
-const stroopWords = ['RED','GREEN','BLUE','YELLOW'];
+// ─── CLOCK ALIGNMENT (performance.now → LSL) ──────────────────────────
+// The EEG is timestamped on the LSL clock; the stimulus is timed with
+// performance.now(). Without a mapping between the two, a stimulus marker
+// cannot be aligned to the signal and no ERP is possible.
+//
+// Cristian's algorithm: send a ping at t0, receive the LSL clock reading,
+// note the arrival at t1. The reading was taken somewhere inside [t0, t1], so
+// the midpoint is the best estimate, with an error bounded by rtt/2. Repeat
+// and keep the round trip with the smallest rtt.
 
-function startStroop() {
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+function perfToLsl(perfMs) {
+  if (state.clockOffset === null) return null;
+  return perfMs / 1000 + state.clockOffset;
+}
+
+function onClockPong(payload) {
+  const t1 = performance.now();
+  const t0 = state.clockPending.get(payload.id);
+  if (t0 === undefined) return;
+  state.clockPending.delete(payload.id);
+  const rtt = t1 - t0;
+  // performance.now() is in ms, local_clock() is in seconds.
+  const offset = payload.lsl - ((t0 + t1) / 2) / 1000;
+  state.clockSamples.push({ rtt, offset });
+}
+
+async function syncClock(rounds = 25) {
+  if (!window.electronAPI) return null;
+  state.clockSamples = [];
+  state.clockPending.clear();
+  setClockStatus('syncing…', false);
+  for (let i = 0; i < rounds; i++) {
+    const id = `s${Date.now()}_${i}`;
+    const t0 = performance.now();
+    state.clockPending.set(id, t0);
+    window.electronAPI.clockPing({ id, t0 });
+    await sleep(25);
+  }
+  await sleep(400);  // let stragglers land
+  if (!state.clockSamples.length) {
+    setClockStatus('failed', true);
+    return null;
+  }
+  state.clockSamples.sort((a, b) => a.rtt - b.rtt);
+  const best = state.clockSamples[0];
+  state.clockOffset = best.offset;
+  state.clockRttMs = best.rtt;
+  window.electronAPI.clockOffset({ offset: best.offset, rtt_ms: best.rtt });
+  setClockStatus(`±${(best.rtt / 2).toFixed(1)} ms`, false);
+  return best;
+}
+
+function setClockStatus(text, isError) {
+  const el = document.getElementById('health-clock');
+  if (!el) return;
+  el.textContent = text;
+  el.style.color = isError ? 'var(--danger)' : '';
+}
+
+// ─── HIGH LOAD / STROOP ───────────────────────────────────────────────
+// Timing parameters. Jittered fixation prevents the participant from
+// anticipating stimulus onset, which would contaminate the pre-stimulus
+// baseline and smear stimulus-locked averages.
+const STROOP_FIXATION_MIN_MS = 600;
+const STROOP_FIXATION_JITTER_MS = 400;
+const STROOP_RESPONSE_WINDOW_MS = 2000;
+const STROOP_FEEDBACK_GAP_MS = 400;
+const STROOP_KEYMAP = { d: 'red', f: 'green', j: 'blue', k: 'yellow' };
+
+/**
+ * Builds a counterbalanced trial list: 50% congruent, and within the
+ * incongruent half each competing word appears equally often per ink.
+ * The previous version drew word and ink independently at random, which gave
+ * roughly 25% congruent trials in a proportion that varied per participant
+ * and was never recorded.
+ */
+// perInk must be even, and half of it divisible by 3, so that the incongruent
+// half splits evenly across the three competing words. 30 gives 15 congruent
+// plus 5 of each incongruent word per ink → 120 balanced trials.
+function buildStroopSequence(perInk = 30) {
+  const trials = [];
+  const nCongruent = perInk / 2;
+  for (const ink of COLOR_KEYS) {
+    for (let i = 0; i < nCongruent; i++) {
+      trials.push({ ink, word: ink, congruent: true });
+    }
+    const others = COLOR_KEYS.filter((c) => c !== ink);
+    const perOther = (perInk - nCongruent) / others.length;
+    for (const word of others) {
+      for (let i = 0; i < perOther; i++) {
+        trials.push({ ink, word, congruent: false });
+      }
+    }
+  }
+  // Fisher-Yates
+  for (let i = trials.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [trials[i], trials[j]] = [trials[j], trials[i]];
+  }
+  // Break runs of more than two identical inks in a row.
+  for (let i = 2; i < trials.length; i++) {
+    if (trials[i].ink === trials[i - 1].ink && trials[i].ink === trials[i - 2].ink) {
+      for (let j = i + 1; j < trials.length; j++) {
+        if (trials[j].ink !== trials[i].ink) {
+          [trials[i], trials[j]] = [trials[j], trials[i]];
+          break;
+        }
+      }
+    }
+  }
+  return trials;
+}
+
+async function startStroop() {
+  if (state.stroopActive) return;
+  const btn = document.getElementById('btn-start-stroop');
+  if (btn) { btn.disabled = true; btn.textContent = 'Syncing clock…'; }
+
+  // Align the renderer clock to LSL before the first stimulus.
+  if (window.electronAPI) await syncClock();
+  if (btn) btn.textContent = 'Stroop running';
+
   state.stroopActive = true;
   state.stroopCorrect = 0;
   state.stroopTotal = 0;
   state.stroopRTs = [];
-  state.stroopTimeLeft = 180;
-  document.getElementById('btn-start-stroop').disabled = true;
+  state.stroopSequence = buildStroopSequence();
+  state.stroopSeqIdx = 0;
+  state.stroopTimeLeft = state.phaseDurations.high_load;
+  state.stroopDeadline = performance.now() + state.stroopTimeLeft * 1000;
+
   setPhase('high_cognitive_load');
-  nextStroopTrial();
-  if (window.electronAPI) window.electronAPI.startHighLoad();
-}
-
-function nextStroopTrial() {
-  if (!state.stroopActive) return;
-  const wordKey = COLOR_KEYS[Math.floor(Math.random() * 4)];
-  let inkKey = COLOR_KEYS[Math.floor(Math.random() * 4)];
-  state.stroopAnswer = inkKey;
-  document.getElementById('stroop-word').style.color = STROOP_COLORS[inkKey].hex;
-  document.getElementById('stroop-word').textContent = STROOP_COLORS[wordKey].label;
-  state.stroopStart = performance.now();
-}
-
-function stroopAnswer(color) {
-  if (!state.stroopActive) return;
-  const rt = performance.now() - state.stroopStart;
-  state.stroopTotal++;
-  const opts = document.querySelectorAll('.stroop-opt');
-  const idx = COLOR_KEYS.indexOf(color);
-  if (color === state.stroopAnswer) {
-    state.stroopCorrect++;
-    state.stroopRTs.push(rt);
-    if (opts[idx]) { opts[idx].classList.add('correct'); setTimeout(() => opts[idx].classList.remove('correct'), 250); }
-  } else {
-    if (opts[idx]) { opts[idx].classList.add('wrong'); setTimeout(() => opts[idx].classList.remove('wrong'), 250); }
+  if (window.electronAPI) {
+    window.electronAPI.startHighLoad();
+    window.electronAPI.mark({ name: 'stroop_block_start', detail: { n_planned: state.stroopSequence.length } });
   }
+
+  startStroopCountdown();
+  runStroopTrial();
+}
+
+function startStroopCountdown() {
+  clearInterval(state.stroopTimerInterval);
+  state.stroopTimerInterval = setInterval(() => {
+    const left = Math.max(0, Math.round((state.stroopDeadline - performance.now()) / 1000));
+    state.stroopTimeLeft = left;
+    const el = document.getElementById('stroop-timer');
+    if (el) el.textContent = fmtTime(left);
+    if (left <= 0) endStroop();
+  }, 200);
+}
+
+function endStroop() {
+  if (!state.stroopActive) return;
+  state.stroopActive = false;
+  state.stroopAwaitingResponse = false;
+  state.stroopTrial = null;
+  clearInterval(state.stroopTimerInterval);
+  clearTimeout(state._stroopTimeoutId);
+  document.getElementById('stroop-word').style.display = 'none';
+  document.getElementById('stroop-fixation').style.display = '';
+  const btn = document.getElementById('btn-start-stroop');
+  if (btn) btn.textContent = 'Stroop complete';
+  const save = document.getElementById('btn-save-final');
+  if (save) save.disabled = false;
+  if (window.electronAPI) {
+    window.electronAPI.mark({
+      name: 'stroop_block_end',
+      detail: { trials: state.stroopTotal, correct: state.stroopCorrect },
+    });
+  }
+}
+
+function runStroopTrial() {
+  if (!state.stroopActive) return;
+  if (state.stroopSeqIdx >= state.stroopSequence.length) {
+    state.stroopSequence = buildStroopSequence();
+    state.stroopSeqIdx = 0;
+  }
+
+  // Fixation with jittered duration
+  const wordEl = document.getElementById('stroop-word');
+  const fixEl = document.getElementById('stroop-fixation');
+  wordEl.style.display = 'none';
+  fixEl.style.display = '';
+  clearKeyHighlights();
+
+  const fixDuration = STROOP_FIXATION_MIN_MS + Math.random() * STROOP_FIXATION_JITTER_MS;
+  state._stroopTimeoutId = setTimeout(() => {
+    if (!state.stroopActive) return;
+    presentStroopStimulus(state.stroopSequence[state.stroopSeqIdx++]);
+  }, fixDuration);
+}
+
+function presentStroopStimulus(spec) {
+  const trial = {
+    word: spec.word,
+    ink: spec.ink,
+    congruent: spec.congruent,
+    block: 'high_load',
+  };
+  state.stroopTrial = trial;
+
+  const wordEl = document.getElementById('stroop-word');
+  const fixEl = document.getElementById('stroop-fixation');
+  fixEl.style.display = 'none';
+  wordEl.style.color = STROOP_COLORS[spec.ink].hex;
+  wordEl.textContent = STROOP_COLORS[spec.word].label;
+  wordEl.style.display = '';
+
+  // Double rAF: the first callback runs before the frame containing our DOM
+  // change is painted, the second at the start of the following frame — i.e.
+  // after the word is actually on screen. This is as close to true onset as a
+  // browser gets; residual display latency (panel + compositor, ~10-25 ms) is
+  // roughly constant and should be measured once with a photodiode if the
+  // component of interest is early.
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const tPerf = performance.now();
+      trial.onset_perf_ms = tPerf;
+      trial.onset_lsl = perfToLsl(tPerf);
+      state.stroopAwaitingResponse = true;
+
+      clearTimeout(state._stroopTimeoutId);
+      state._stroopTimeoutId = setTimeout(() => {
+        if (state.stroopAwaitingResponse && state.stroopTrial === trial) {
+          finishStroopTrial(trial, null, null);
+        }
+      }, STROOP_RESPONSE_WINDOW_MS);
+    });
+  });
+}
+
+function handleStroopKey(event) {
+  if (!state.stroopActive || !state.stroopAwaitingResponse) return;
+  const tag = document.activeElement && document.activeElement.tagName;
+  if (tag === 'INPUT' || tag === 'TEXTAREA') return;
+  const response = STROOP_KEYMAP[event.key.toLowerCase()];
+  if (!response) return;
+  event.preventDefault();
+
+  // event.timeStamp is taken when the event was created, which is earlier and
+  // steadier than when this handler happens to run.
+  let tPerf = event.timeStamp;
+  if (!tPerf || Math.abs(tPerf - performance.now()) > 60000) tPerf = performance.now();
+
+  finishStroopTrial(state.stroopTrial, response, tPerf);
+}
+
+function finishStroopTrial(trial, response, tPerf) {
+  if (!trial || state.stroopTrial !== trial) return;
+  state.stroopAwaitingResponse = false;
+  state.stroopTrial = null;
+  clearTimeout(state._stroopTimeoutId);
+
+  const correct = response !== null && response === trial.ink;
+  trial.response = response === null ? 'none' : response;
+  trial.correct = correct;
+  if (response !== null) {
+    trial.response_perf_ms = tPerf;
+    trial.response_lsl = perfToLsl(tPerf);
+    trial.rt_ms = tPerf - trial.onset_perf_ms;
+  }
+
+  state.stroopTotal++;
+  if (correct) {
+    state.stroopCorrect++;
+    state.stroopRTs.push(trial.rt_ms);
+  }
+
+  if (response !== null) {
+    const keyEl = document.getElementById('key-' + response);
+    if (keyEl) {
+      keyEl.classList.add(correct ? 'hit' : 'miss');
+      setTimeout(() => keyEl.classList.remove('hit', 'miss'), 250);
+    }
+  }
+
   document.getElementById('stroop-correct').textContent = state.stroopCorrect;
   document.getElementById('stroop-total').textContent = state.stroopTotal;
-  const avg = state.stroopRTs.length ? Math.round(state.stroopRTs.reduce((a,b)=>a+b,0)/state.stroopRTs.length) : '—';
+  const avg = state.stroopRTs.length
+    ? Math.round(state.stroopRTs.reduce((a, b) => a + b, 0) / state.stroopRTs.length)
+    : '—';
   document.getElementById('stroop-rt').textContent = avg;
-  setTimeout(nextStroopTrial, 300);
+
+  // Persist. This is the step that did not exist before: accuracy, RT and
+  // congruency used to live only in this object and died with the window.
+  if (window.electronAPI) window.electronAPI.stroopTrial(trial);
+
+  document.getElementById('stroop-word').style.display = 'none';
+  document.getElementById('stroop-fixation').style.display = '';
+  state._stroopTimeoutId = setTimeout(runStroopTrial, STROOP_FEEDBACK_GAP_MS);
 }
+
+function clearKeyHighlights() {
+  ['red', 'green', 'blue', 'yellow'].forEach((c) => {
+    const el = document.getElementById('key-' + c);
+    if (el) el.classList.remove('hit', 'miss');
+  });
+}
+
+document.addEventListener('keydown', handleStroopKey);
 
 // ─── SAVE ─────────────────────────────────────────────────────────────
 function saveData() {
@@ -1017,6 +1320,57 @@ function applyDurations() {
 function setPhase(name) {
   state.phase = name;
   document.getElementById('phase-display').textContent = name.replace(/_/g,' ');
+}
+
+// ─── ACQUISITION HEALTH ───────────────────────────────────────────────
+// Verdicts come from the RAW signal on purpose: a disconnected electrode
+// railed at the ADC limit becomes ~1e-6 µV after the band-pass, i.e. it looks
+// like the cleanest trace on screen. Several past sessions were recorded with
+// F4 and P3 dead for exactly this reason.
+const CHANNEL_LABELS = ['Fp1', 'Fp2', 'F3', 'Fz', 'F4', 'P3', 'Pz', 'P4'];
+
+function renderAcqHealth(h) {
+  if (!h) return;
+
+  const fsEl = document.getElementById('health-fs');
+  if (fsEl) {
+    fsEl.textContent = `${h.effective_fs} / ${h.nominal_fs} Hz`;
+    fsEl.style.color = h.fs_ok ? '' : 'var(--danger)';
+  }
+
+  const dropEl = document.getElementById('health-drop');
+  if (dropEl) {
+    dropEl.textContent = `${h.dropped_pct}%`;
+    dropEl.style.color = (h.dropped_pct > 1) ? 'var(--danger)' : '';
+  }
+
+  const chansEl = document.getElementById('health-chans');
+  if (chansEl && h.channels && h.channels.length) {
+    chansEl.innerHTML = h.channels.map((c) => {
+      const cls = c.status === 'ok' ? 'ok' : 'bad';
+      return `<div class="health-chip ${cls}" title="${c.status} · sd=${c.std.toFixed(1)}">${CHANNEL_LABELS[c.index] || c.index}</div>`;
+    }).join('');
+  }
+
+  const problems = [];
+  if (!h.fs_ok && h.effective_fs > 0) {
+    problems.push(`RATE ${h.effective_fs} Hz (expected ${h.nominal_fs})`);
+  }
+  if (h.bad_channels && h.bad_channels.length) {
+    const names = h.bad_channels.map((i) => CHANNEL_LABELS[i] || i).join(', ');
+    problems.push(`DEAD/RAILED: ${names}`);
+  }
+  if (h.stream_lost) problems.push('STREAM LOST');
+
+  if (problems.length) setHealthWarning(problems.join(' · '), true);
+  else setHealthWarning('all good', false);
+}
+
+function setHealthWarning(text, isError) {
+  const el = document.getElementById('health-warn');
+  if (!el) return;
+  el.textContent = text;
+  el.className = isError ? 'health-warn' : 'health-warn ok';
 }
 
 function setFlowTag(id, color, text) {
@@ -1127,6 +1481,28 @@ if (window.electronAPI) {
   window.electronAPI.onEcologicalError((payload) => {
     const err = (payload && payload.error) ? String(payload.error) : 'Ecological recording error';
     setEcoError(err);
+  });
+
+  window.electronAPI.onClockPong((payload) => onClockPong(payload));
+
+  window.electronAPI.onClockSyncOk((payload) => {
+    if (payload && typeof payload.rtt_ms === 'number') {
+      setClockStatus(`±${(payload.rtt_ms / 2).toFixed(1)} ms`, false);
+    }
+  });
+
+  window.electronAPI.onAcqHealth((h) => renderAcqHealth(h));
+
+  window.electronAPI.onStreamStatus((payload) => {
+    if (payload && payload.stream_lost) {
+      setHealthWarning('STREAM LOST — no samples arriving', true);
+    } else if (payload && payload.error) {
+      setHealthWarning(String(payload.error), true);
+    }
+  });
+
+  window.electronAPI.onSessionInfo((info) => {
+    if (info && info.session_dir) console.log('[session]', info.session_dir);
   });
 
   window.electronAPI.onPhaseChanged((phase) => {

@@ -1,7 +1,21 @@
-"""Electron <-> Python bridge for Cognitive-load."""
+"""Electron <-> Python bridge for Cognitive-load.
+
+2026-08 revision (ERP-ready acquisition):
+  * raw AND filtered signal are written at the full 250 Hz (the previous build
+    kept only the filtered signal, decimated 5x by plain sample dropping);
+  * everything is streamed to disk incrementally, so a crash no longer costs
+    the whole session;
+  * stimulus events and Stroop trials are persisted with LSL timestamps, which
+    is what makes stimulus-locked epoching possible;
+  * a clock-synchronisation round trip maps the renderer's ``performance.now``
+    onto the LSL clock;
+  * acquisition health (effective Fs, dropped samples, flat/rail electrodes) is
+    reported to the UI once per second.
+"""
 
 import sys
 import os
+import csv
 import json
 import threading
 import time
@@ -13,21 +27,34 @@ ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 if ROOT not in sys.path:
     sys.path.insert(0, ROOT)
 
+# All recordings land under <project>/data, never relative to the CWD that
+# Electron happens to spawn us with.
+DATA_ROOT = os.path.join(ROOT, "data")
+
 # Optional backend import
 try:
-    from core.signal_worker import SignalWorker
-    from pylsl import resolve_streams, resolve_byprop, StreamInlet
+    from core.signal_worker import SignalWorker, make_inlet
+    from pylsl import resolve_streams, resolve_byprop, local_clock
     HAS_BACKEND = True
 except ImportError as e:
     HAS_BACKEND = False
     _import_error = str(e)
 
+    def local_clock():
+        return time.time()
+
+
+N_CHANNELS = 8
+
+_stdout_lock = threading.Lock()
+
 
 def emit(event: str, data: dict):
     """Write one JSON line to stdout for Electron to consume."""
     payload = json.dumps({"event": event, "data": data}, ensure_ascii=True)
-    sys.stdout.write(payload + "\n")
-    sys.stdout.flush()
+    with _stdout_lock:
+        sys.stdout.write(payload + "\n")
+        sys.stdout.flush()
 
 
 LOG_DIR = os.path.join(os.path.dirname(__file__), "logs")
@@ -49,19 +76,86 @@ def bridge_log(message: str, data=None):
         pass
 
 
+class IncrementalCsv:
+    """
+    Append-only CSV writer that flushes on a size/time budget.
+
+    The point is that the file on disk is always a valid, near-complete
+    recording: if Electron dies mid-session, at most the last few hundred
+    milliseconds are missing instead of the entire run.
+    """
+
+    def __init__(self, path, header, flush_rows=250, flush_seconds=2.0):
+        self.path = path
+        self.header = header
+        self.flush_rows = flush_rows
+        self.flush_seconds = flush_seconds
+        self._pending = 0
+        self._last_flush = time.time()
+        self._rows_written = 0
+        self._fh = open(path, "w", newline="", encoding="utf-8")
+        self._writer = csv.writer(self._fh)
+        self._writer.writerow(header)
+        self._fh.flush()
+
+    def write_rows(self, rows):
+        if not rows:
+            return
+        self._writer.writerows(rows)
+        self._pending += len(rows)
+        self._rows_written += len(rows)
+        now = time.time()
+        if self._pending >= self.flush_rows or (now - self._last_flush) >= self.flush_seconds:
+            self.flush()
+
+    def write_row(self, row):
+        self.write_rows([row])
+
+    def flush(self):
+        try:
+            self._fh.flush()
+            os.fsync(self._fh.fileno())
+        except Exception:
+            pass
+        self._pending = 0
+        self._last_flush = time.time()
+
+    @property
+    def rows_written(self):
+        return self._rows_written
+
+    def close(self):
+        try:
+            self.flush()
+            self._fh.close()
+        except Exception:
+            pass
+
+
 class EEGBridge:
     def __init__(self):
         self.signal_worker = None
         self.connected = False
         self.is_logging = False
-        self.data_log = []
-        self._log_buffer = []
-        self._log_counter = 0
-        self._subsampling_factor = 5   # 250 Hz → 50 Hz
-        self._log_buffer_size = 50
         self.current_phase = "idle"
         self.current_user = None
-        self.user_folder = None
+        self.session_dir = None
+
+        self._writer_lock = threading.Lock()
+        self.raw_csv = None
+        self.filt_csv = None
+        self.events_csv = None
+        self.trials_csv = None
+        self._sample_total = 0
+        self._last_count_emit = 0.0
+        self._trial_counter = 0
+
+        # Clock alignment between the renderer (performance.now) and LSL.
+        self.clock_offset = None
+        self.clock_rtt_ms = None
+
+        self.line_freq = 60.0  # Mexico. Set to 50.0 for 50 Hz mains.
+
         self._phase_labels = {
             'idle': 'idle',
             'setup': 'setup',
@@ -83,6 +177,8 @@ class EEGBridge:
         # Background workers
         self._ratio_thread = None
         self._ratio_running = False
+        self._health_thread = None
+        self._health_running = False
         self._phase_timer_thread = None
         self._phase_timer_running = False
         self.phase_durations = {
@@ -92,17 +188,114 @@ class EEGBridge:
             "high_load": 180,
         }
 
-    def _ensure_logging_session(self):
-        """Guarantee a valid session so Save works even without explicit setup."""
-        if not self.current_user:
-            self.current_user = datetime.now().strftime("session_%Y%m%d_%H%M%S")
-            self.user_folder = f"data_{self.current_user}"
-            os.makedirs(self.user_folder, exist_ok=True)
-        elif not self.user_folder:
-            self.user_folder = f"data_{self.current_user}"
-            os.makedirs(self.user_folder, exist_ok=True)
-        self.is_logging = True
+    # ------------------------------------------------------------------
+    # Session / files
+    # ------------------------------------------------------------------
+    def _open_session(self, user=None):
+        """Creates the session directory and the four output files."""
+        self._close_session()
 
+        if not user:
+            user = datetime.now().strftime("session_%Y%m%d_%H%M%S")
+        self.current_user = user
+        stamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        self.session_dir = os.path.join(DATA_ROOT, f"data_{user}", f"{user}_{stamp}")
+        os.makedirs(self.session_dir, exist_ok=True)
+
+        chan_cols = [f"channel_{i}" for i in range(N_CHANNELS)]
+        signal_header = ["timestamp_lsl", "phase", "label", "ecological_modality"] + chan_cols
+
+        with self._writer_lock:
+            self.raw_csv = IncrementalCsv(
+                os.path.join(self.session_dir, "eeg_raw.csv"), signal_header
+            )
+            self.filt_csv = IncrementalCsv(
+                os.path.join(self.session_dir, "eeg_filtered.csv"), signal_header
+            )
+            self.events_csv = IncrementalCsv(
+                os.path.join(self.session_dir, "events.csv"),
+                ["timestamp_lsl", "event", "phase", "detail"],
+                flush_rows=1, flush_seconds=0.0,
+            )
+            self.trials_csv = IncrementalCsv(
+                os.path.join(self.session_dir, "trials_stroop.csv"),
+                [
+                    "trial_index", "block", "word", "ink", "congruent",
+                    "response", "correct", "rt_ms",
+                    "onset_lsl", "response_lsl",
+                    "onset_perf_ms", "response_perf_ms",
+                    "clock_offset", "clock_rtt_ms",
+                ],
+                flush_rows=1, flush_seconds=0.0,
+            )
+            self._sample_total = 0
+            self._trial_counter = 0
+
+        self.is_logging = True
+        self._write_session_meta()
+        self.mark_event("session_start", {"user": user})
+        emit("session_info", {"user": user, "session_dir": self.session_dir})
+        bridge_log("session_opened", {"dir": self.session_dir})
+
+    def _write_session_meta(self):
+        if not self.session_dir:
+            return
+        meta = {
+            "user": self.current_user,
+            "created_at": datetime.now().isoformat(),
+            "sample_rate_hz": 250,
+            "n_channels": N_CHANNELS,
+            "line_freq_hz": self.line_freq,
+            "channel_map": ["Fp1", "Fp2", "F3", "Fz", "F4", "P3", "Pz", "P4"],
+            "filter_raw": "none (ADC counts as delivered by AURA)",
+            "filter_filtered": f"notch {self.line_freq} Hz (Q=30) -> butter bandpass 1-40 Hz order 4, causal",
+            "clock_offset_perf_to_lsl": self.clock_offset,
+            "clock_rtt_ms": self.clock_rtt_ms,
+            "phase_durations": self.phase_durations,
+            "note": (
+                "events.csv is the authoritative source for phase and stimulus "
+                "boundaries; the phase column in the signal files is chunk-level "
+                "and can be off by up to one pull (~100 ms)."
+            ),
+        }
+        try:
+            with open(os.path.join(self.session_dir, "session.json"), "w", encoding="utf-8") as f:
+                json.dump(meta, f, indent=2)
+        except Exception as exc:
+            bridge_log("session_meta_error", {"error": str(exc)})
+
+    def _close_session(self):
+        with self._writer_lock:
+            for w in (self.raw_csv, self.filt_csv, self.events_csv, self.trials_csv):
+                if w:
+                    w.close()
+            self.raw_csv = self.filt_csv = self.events_csv = self.trials_csv = None
+        self.is_logging = False
+
+    def _ensure_logging_session(self):
+        """Guarantee a valid session so data is never dropped on the floor."""
+        if not self.session_dir:
+            self._open_session(self.current_user)
+
+    def mark_event(self, name, detail=None):
+        """Writes a timestamped marker on the LSL clock."""
+        if not self.events_csv:
+            return None
+        t = float(local_clock())
+        row = [
+            f"{t:.6f}",
+            name,
+            self.current_phase,
+            json.dumps(detail or {}, ensure_ascii=True),
+        ]
+        with self._writer_lock:
+            if self.events_csv:
+                self.events_csv.write_row(row)
+        return t
+
+    # ------------------------------------------------------------------
+    # Connection
+    # ------------------------------------------------------------------
     def connect(self):
         bridge_log("connect_called")
         if not HAS_BACKEND:
@@ -118,11 +311,15 @@ class EEGBridge:
 
         try:
             bridge_log("creating_signal_worker")
-            self.signal_worker = SignalWorker(sample_rate=250, n_channels=8, buffer_duration=2.0)
+            self.signal_worker = SignalWorker(
+                sample_rate=250, n_channels=N_CHANNELS, buffer_duration=2.0,
+                line_freq=self.line_freq,
+            )
             self.signal_worker.connection_status.connect(self._on_connection_status)
-            # No Qt event loop in this process: use direct callbacks (see SignalWorker).
-            self.signal_worker._electron_bridge_data = self._electron_data_direct
+            # No Qt event loop in this process: use direct callbacks.
+            self.signal_worker._electron_bridge_chunk = self._on_chunk
             self.signal_worker._electron_bridge_plot = self._electron_plot_direct
+            self.signal_worker._electron_bridge_status = self._on_worker_status
 
             chosen = self._pick_best_stream()
             if chosen is not None:
@@ -136,7 +333,7 @@ class EEGBridge:
                         "sample_rate": float(chosen.nominal_srate()),
                     },
                 )
-                self.signal_worker.inlet = StreamInlet(chosen)
+                self.signal_worker.inlet = make_inlet(chosen)
                 info = chosen
                 emit(
                     "device_info",
@@ -151,11 +348,16 @@ class EEGBridge:
                 )
                 self.connected = True
                 self.signal_worker.start()
-                self._ensure_logging_session()
+                # Deliberately NOT opening a session here. Connecting first and
+                # running Setup afterwards used to create two folders per
+                # participant: a throwaway "session_<timestamp>" with the few
+                # seconds of montage fiddling, then the real one. The live
+                # health monitor works without logging, so nothing is lost.
                 bridge_log("signal_worker_started", {"is_running": bool(self.signal_worker.isRunning())})
                 emit("connection_status", {"connected": True, "message": ""})
                 emit("phase_durations", self.phase_durations)
                 self._start_ratio_polling()
+                self._start_health_polling()
             else:
                 bridge_log("no_stream_selected")
                 self.connected = False
@@ -169,20 +371,13 @@ class EEGBridge:
 
     def disconnect(self):
         bridge_log("disconnect_called")
+        self.mark_event("session_end")
         self._ratio_running = False
+        self._health_running = False
         self._phase_timer_running = False
-        if (
-            self._ratio_thread
-            and self._ratio_thread.is_alive()
-            and self._ratio_thread is not threading.current_thread()
-        ):
-            self._ratio_thread.join(timeout=0.3)
-        if (
-            self._phase_timer_thread
-            and self._phase_timer_thread.is_alive()
-            and self._phase_timer_thread is not threading.current_thread()
-        ):
-            self._phase_timer_thread.join(timeout=0.3)
+        for th in (self._ratio_thread, self._health_thread, self._phase_timer_thread):
+            if th and th.is_alive() and th is not threading.current_thread():
+                th.join(timeout=0.3)
         if self.signal_worker and self.signal_worker.isRunning():
             self.signal_worker.stop()
             self.signal_worker.wait()
@@ -190,6 +385,8 @@ class EEGBridge:
         self.connected = False
         self.ecological_recording = False
         self.ecological_modality = None
+        self._write_session_meta()
+        self._close_session()
         emit("ecological_state", {"active": False, "modality": None})
         emit("device_info", {"lsl_found": False, "inlet_active": False, "visible_streams": []})
         emit("connection_status", {"connected": False, "message": ""})
@@ -197,6 +394,15 @@ class EEGBridge:
     def _on_connection_status(self, connected, message):
         bridge_log("connection_status_signal", {"connected": bool(connected), "message": str(message)})
         emit("connection_status", {"connected": bool(connected), "message": str(message)})
+
+    def _on_worker_status(self, payload):
+        """Stream-loss / acquisition-error notices coming from the worker thread."""
+        bridge_log("worker_status", payload)
+        emit("stream_status", payload)
+        if payload.get("stream_lost"):
+            self.mark_event("stream_lost", payload)
+        elif payload.get("stream_lost") is False:
+            self.mark_event("stream_recovered", payload)
 
     def _scan_streams(self):
         if not HAS_BACKEND:
@@ -290,32 +496,35 @@ class EEGBridge:
             },
         )
 
+    # ------------------------------------------------------------------
+    # Phases
+    # ------------------------------------------------------------------
+    def _set_phase(self, phase, message=""):
+        self.current_phase = phase
+        t = self.mark_event("phase_change", {"phase": phase})
+        emit("phase_changed", {"phase": phase, "message": message, "timestamp_lsl": t})
+
     def start_setup(self, user: str):
         if not user:
             emit("save_error", {"error": "User is required."})
             return
-        self.current_user = user
-        self.user_folder = f"data_{user}"
-        os.makedirs(self.user_folder, exist_ok=True)
-        self.current_phase = "setup"
-        self.is_logging = True
-        self._log_counter = 0
-        emit("phase_changed", {"phase": "setup", "message": ""})
+        self._open_session(user)
+        self._set_phase("setup")
         emit("timer_update", {"time": self._fmt_time(0)})
 
     def start_baseline(self):
-        self.current_phase = "baseline_eyes_open"
-        emit("phase_changed", {"phase": "baseline_eyes_open", "message": ""})
+        self._ensure_logging_session()
+        self._set_phase("baseline_eyes_open")
         self._start_timer(int(self.phase_durations["baseline_eyes_open"]), "baseline_eyes_open")
 
     def start_low_load(self):
-        self.current_phase = "low_load"
-        emit("phase_changed", {"phase": "low_load", "message": ""})
+        self._ensure_logging_session()
+        self._set_phase("low_load")
         self._start_timer(int(self.phase_durations["low_load"]), "low_load")
 
     def start_high_load(self):
-        self.current_phase = "high_load"
-        emit("phase_changed", {"phase": "high_load", "message": ""})
+        self._ensure_logging_session()
+        self._set_phase("high_load")
         self._start_timer(int(self.phase_durations["high_load"]), "high_load")
 
     def set_phase_durations(self, payload: dict):
@@ -326,18 +535,8 @@ class EEGBridge:
             except Exception:
                 return default
 
-        self.phase_durations["baseline_eyes_open"] = _clamp(
-            payload.get("baseline_eyes_open"), self.phase_durations["baseline_eyes_open"]
-        )
-        self.phase_durations["baseline_eyes_closed"] = _clamp(
-            payload.get("baseline_eyes_closed"), self.phase_durations["baseline_eyes_closed"]
-        )
-        self.phase_durations["low_load"] = _clamp(
-            payload.get("low_load"), self.phase_durations["low_load"]
-        )
-        self.phase_durations["high_load"] = _clamp(
-            payload.get("high_load"), self.phase_durations["high_load"]
-        )
+        for key in ("baseline_eyes_open", "baseline_eyes_closed", "low_load", "high_load"):
+            self.phase_durations[key] = _clamp(payload.get(key), self.phase_durations[key])
         emit("phase_durations", self.phase_durations)
 
     def _start_timer(self, seconds: int, phase: str):
@@ -355,29 +554,29 @@ class EEGBridge:
         self._phase_timer_thread.start()
 
     def _phase_timer_loop(self, seconds: int, phase: str):
+        # Deadline-based rather than accumulating sleep(1) errors.
+        deadline = time.monotonic() + seconds
         remaining = int(seconds)
         emit("timer_update", {"time": self._fmt_time(remaining)})
         while self._phase_timer_running and remaining > 0:
-            time.sleep(1)
-            remaining -= 1
-            emit("timer_update", {"time": self._fmt_time(remaining)})
+            time.sleep(0.2)
+            new_remaining = max(0, int(round(deadline - time.monotonic())))
+            if new_remaining != remaining:
+                remaining = new_remaining
+                emit("timer_update", {"time": self._fmt_time(remaining)})
 
         if not self._phase_timer_running:
             return
 
         if phase == "baseline_eyes_open":
-            self.current_phase = "baseline_eyes_closed"
-            emit("phase_changed", {"phase": "baseline_eyes_closed", "message": ""})
+            self._set_phase("baseline_eyes_closed")
             self._start_timer(int(self.phase_durations["baseline_eyes_closed"]), "baseline_eyes_closed")
         elif phase == "baseline_eyes_closed":
-            self.current_phase = "baseline_completed"
-            emit("phase_changed", {"phase": "baseline_completed", "message": ""})
+            self._set_phase("baseline_completed")
         elif phase == "low_load":
-            self.current_phase = "low_load_completed"
-            emit("phase_changed", {"phase": "low_load_completed", "message": ""})
+            self._set_phase("low_load_completed")
         elif phase == "high_load":
-            self.current_phase = "analysis"
-            emit("phase_changed", {"phase": "analysis", "message": ""})
+            self._set_phase("analysis")
 
     @staticmethod
     def _fmt_time(seconds: int) -> str:
@@ -385,6 +584,9 @@ class EEGBridge:
         secs = int(seconds % 60)
         return f"{minutes:02d}:{secs:02d}"
 
+    # ------------------------------------------------------------------
+    # Data path
+    # ------------------------------------------------------------------
     def _log_row_phase_and_eco(self):
         """While ecological recording is on, rows are tagged as ecological_paradigm + modality."""
         if self.ecological_recording and self.ecological_modality:
@@ -396,21 +598,44 @@ class EEGBridge:
             return f"ecological_paradigm mode={eco_mod}"
         return self._phase_labels.get(phase, phase)
 
-    def _on_data_ready(self, data, timestamp):
-        if not self.is_logging:
-            return
-        self._log_counter += 1
-        if self._log_counter % self._subsampling_factor != 0:
-            return
-        ph, eco = self._log_row_phase_and_eco()
-        self._log_buffer.append((data, float(timestamp), ph, eco))
-        if len(self._log_buffer) >= self._log_buffer_size:
-            self._flush_buffer()
-        emit("sample_count", {"count": int(len(self.data_log) + len(self._log_buffer))})
+    def _on_chunk(self, raw_block, filt_block, timestamps):
+        """
+        Called from the SignalWorker thread with a whole block of samples.
 
-    def _electron_data_direct(self, data, timestamp):
-        """Called from SignalWorker thread; avoids Qt queued delivery (no event loop in this process)."""
-        self._on_data_ready(data, timestamp)
+        Both raw and filtered are written at the full sampling rate. No
+        decimation: dropping 4 of every 5 samples without an anti-alias filter
+        folded 38-42 Hz straight onto the 8-12 Hz alpha band that the
+        cognitive-load index divides by.
+        """
+        if not self.is_logging or self.raw_csv is None:
+            return
+
+        phase, eco = self._log_row_phase_and_eco()
+        label = self._label_for_record(phase, eco)
+        eco_val = eco if eco else ""
+
+        raw_rows = []
+        filt_rows = []
+        for i in range(len(raw_block)):
+            ts = f"{float(timestamps[i]):.6f}"
+            prefix = [ts, phase, label, eco_val]
+            raw_rows.append(prefix + [f"{v:.6f}" for v in raw_block[i]])
+            filt_rows.append(prefix + [f"{v:.6f}" for v in filt_block[i]])
+
+        with self._writer_lock:
+            if self.raw_csv is None:
+                return
+            self.raw_csv.write_rows(raw_rows)
+            self.filt_csv.write_rows(filt_rows)
+            self._sample_total += len(raw_rows)
+            total = self._sample_total
+
+        # Throttled: this used to fire once per logged sample (50 JSON lines
+        # per second over stdout, on top of the plot stream).
+        now = time.time()
+        if now - self._last_count_emit >= 0.5:
+            self._last_count_emit = now
+            emit("sample_count", {"count": int(total)})
 
     def _electron_plot_direct(self, raw_arr, filt_arr, timestamp):
         """Called from SignalWorker thread with paired raw + filtered samples."""
@@ -418,31 +643,124 @@ class EEGBridge:
         filt = [float(x) for x in filt_arr]
         emit("plot_sample", {"raw": raw, "filtered": filt, "timestamp": float(timestamp)})
 
-    def _flush_buffer(self):
-        for row in self._log_buffer:
-            data, ts, phase, eco_mod = row
-            eco_val = eco_mod if eco_mod else ""
-            record = {
-                'timestamp': ts,
-                'phase': phase,
-                'label': self._label_for_record(phase, eco_mod),
-                'ecological_modality': eco_val,
-                'channel_0': float(data[0]) if len(data) > 0 else float('nan'),
-                'channel_1': float(data[1]) if len(data) > 1 else float('nan'),
-                'channel_2': float(data[2]) if len(data) > 2 else float('nan'),
-                'channel_3': float(data[3]) if len(data) > 3 else float('nan'),
-                'channel_4': float(data[4]) if len(data) > 4 else float('nan'),
-                'channel_5': float(data[5]) if len(data) > 5 else float('nan'),
-                'channel_6': float(data[6]) if len(data) > 6 else float('nan'),
-                'channel_7': float(data[7]) if len(data) > 7 else float('nan'),
-            }
-            self.data_log.append(record)
-        self._log_buffer.clear()
+    # ------------------------------------------------------------------
+    # Clock alignment (renderer performance.now -> LSL)
+    # ------------------------------------------------------------------
+    def clock_ping(self, msg):
+        """
+        Replies with the current LSL clock so the renderer can estimate the
+        offset with Cristian's algorithm:
 
+            offset = lsl_at_reply - (t0 + t1) / 2
+
+        The renderer repeats this and keeps the estimate with the smallest
+        round-trip time.
+        """
+        emit("clock_pong", {
+            "id": msg.get("id"),
+            "t0": msg.get("t0"),
+            "lsl": float(local_clock()),
+        })
+
+    def set_clock_offset(self, msg):
+        try:
+            self.clock_offset = float(msg.get("offset"))
+            self.clock_rtt_ms = float(msg.get("rtt_ms"))
+        except (TypeError, ValueError):
+            return
+        self.mark_event("clock_sync", {
+            "offset": self.clock_offset,
+            "rtt_ms": self.clock_rtt_ms,
+        })
+        self._write_session_meta()
+        emit("clock_sync_ok", {"offset": self.clock_offset, "rtt_ms": self.clock_rtt_ms})
+
+    # ------------------------------------------------------------------
+    # Behavioural events
+    # ------------------------------------------------------------------
+    def stroop_trial(self, msg):
+        """
+        Persists one Stroop trial. Previously this data existed only in the
+        renderer's memory and was lost when the window closed.
+        """
+        self._ensure_logging_session()
+        trial = msg.get("trial") or {}
+        with self._writer_lock:
+            self._trial_counter += 1
+            idx = self._trial_counter
+            writer = self.trials_csv
+
+        def _num(key):
+            v = trial.get(key)
+            try:
+                return f"{float(v):.6f}"
+            except (TypeError, ValueError):
+                return ""
+
+        row = [
+            idx,
+            trial.get("block", ""),
+            trial.get("word", ""),
+            trial.get("ink", ""),
+            int(bool(trial.get("congruent"))),
+            trial.get("response", ""),
+            int(bool(trial.get("correct"))),
+            _num("rt_ms"),
+            _num("onset_lsl"),
+            _num("response_lsl"),
+            _num("onset_perf_ms"),
+            _num("response_perf_ms"),
+            self.clock_offset if self.clock_offset is not None else "",
+            self.clock_rtt_ms if self.clock_rtt_ms is not None else "",
+        ]
+        with self._writer_lock:
+            if writer:
+                writer.write_row(row)
+
+        # Also drop markers into events.csv so epoching can be driven from a
+        # single file.
+        marker_detail = {
+            "trial_index": idx,
+            "word": trial.get("word"),
+            "ink": trial.get("ink"),
+            "congruent": bool(trial.get("congruent")),
+        }
+        self._write_marker(trial.get("onset_lsl"), "stroop_onset", marker_detail)
+        self._write_marker(
+            trial.get("response_lsl"), "stroop_response",
+            dict(marker_detail, response=trial.get("response"),
+                 correct=bool(trial.get("correct")), rt_ms=trial.get("rt_ms")),
+        )
+        emit("trial_logged", {"trial_index": idx})
+
+    def _write_marker(self, t_lsl, name, detail):
+        if t_lsl is None or not self.events_csv:
+            return
+        try:
+            t = float(t_lsl)
+        except (TypeError, ValueError):
+            return
+        row = [f"{t:.6f}", name, self.current_phase, json.dumps(detail, ensure_ascii=True)]
+        with self._writer_lock:
+            if self.events_csv:
+                self.events_csv.write_row(row)
+
+    def generic_mark(self, msg):
+        """Marker requested by the UI (e.g. reading task start/stop)."""
+        self._ensure_logging_session()
+        name = msg.get("name") or "mark"
+        t = self._write_marker(msg.get("t_lsl"), name, msg.get("detail") or {})
+        if msg.get("t_lsl") is None:
+            self.mark_event(name, msg.get("detail") or {})
+        return t
+
+    # ------------------------------------------------------------------
+    # Ecological paradigm
+    # ------------------------------------------------------------------
     def ecological_start(self, modality: str):
         m = (modality or "").strip()
         if m not in self._allowed_eco_modalities:
-            emit("ecological_error", {"error": f"Invalid modality: use eco_gamepad, eco_haptic, or eco_keyboard."})
+            emit("ecological_error", {"error": "Invalid modality: use eco_gamepad, eco_haptic, or eco_keyboard."})
             return
         if not self.connected or not (self.signal_worker and self.signal_worker.isRunning()):
             emit("ecological_error", {"error": "Connect AURA first."})
@@ -452,13 +770,18 @@ class EEGBridge:
             return
         self.ecological_recording = True
         self.ecological_modality = m
+        self.mark_event("ecological_start", {"modality": m})
         emit("ecological_state", {"active": True, "modality": m})
 
     def ecological_stop(self):
+        self.mark_event("ecological_stop", {"modality": self.ecological_modality})
         self.ecological_recording = False
         self.ecological_modality = None
         emit("ecological_state", {"active": False, "modality": None})
 
+    # ------------------------------------------------------------------
+    # Background polling
+    # ------------------------------------------------------------------
     def _start_ratio_polling(self):
         self._ratio_running = False
         if (
@@ -484,53 +807,77 @@ class EEGBridge:
                         "alpha": float(alpha),
                     })
 
-    def save_data(self):
-        try:
-            import pandas as pd
-        except ImportError:
-            emit("save_error", {"error": "Missing dependency: pandas. Install project requirements first."})
-            return
-        if self._log_buffer:
-            self._flush_buffer()
-        if not self.current_user:
-            self._ensure_logging_session()
-        if not self.data_log and self.signal_worker:
-            # Fallback snapshot from current ring buffer if user saves early.
+    def _start_health_polling(self):
+        self._health_running = False
+        if (
+            self._health_thread
+            and self._health_thread.is_alive()
+            and self._health_thread is not threading.current_thread()
+        ):
+            self._health_thread.join(timeout=0.2)
+        self._health_running = True
+        self._health_thread = threading.Thread(target=self._health_loop, daemon=True)
+        self._health_thread.start()
+
+    def _health_loop(self):
+        """
+        Once a second, report effective sampling rate and electrode status.
+
+        This is the check that would have caught the January sessions that
+        silently recorded at ~13 Hz instead of 250 Hz, and the F4/P3 electrodes
+        that sat railed at the ADC limit for entire runs.
+        """
+        warned_fs = False
+        while self._health_running:
+            time.sleep(1.0)
+            if not (self.signal_worker and self.signal_worker.isRunning()):
+                continue
             try:
-                window = self.signal_worker.ring_buffer.get_window(self.signal_worker.buffer_samples)
-                ph, eco = self._log_row_phase_and_eco()
-                eco_val = eco if eco else ""
-                for row in window:
-                    vals = [float(x) for x in row[:8]]
-                    record = {
-                        "timestamp": float(time.time()),
-                        "phase": ph,
-                        "label": self._label_for_record(ph, eco),
-                        "ecological_modality": eco_val,
-                        "channel_0": vals[0] if len(vals) > 0 else float("nan"),
-                        "channel_1": vals[1] if len(vals) > 1 else float("nan"),
-                        "channel_2": vals[2] if len(vals) > 2 else float("nan"),
-                        "channel_3": vals[3] if len(vals) > 3 else float("nan"),
-                        "channel_4": vals[4] if len(vals) > 4 else float("nan"),
-                        "channel_5": vals[5] if len(vals) > 5 else float("nan"),
-                        "channel_6": vals[6] if len(vals) > 6 else float("nan"),
-                        "channel_7": vals[7] if len(vals) > 7 else float("nan"),
-                    }
-                    self.data_log.append(record)
-            except Exception:
-                pass
-        if not self.data_log:
-            emit("save_error", {"error": "No data to save yet. Keep connected for a few seconds and try again."})
+                health = self.signal_worker.get_acquisition_health()
+            except Exception as exc:
+                bridge_log("health_error", {"error": str(exc)})
+                continue
+
+            eff = health.get("effective_fs", 0.0)
+            nominal = health.get("nominal_fs", 250.0)
+            bad = [c for c in health.get("channels", []) if c["status"] != "ok"]
+            health["bad_channels"] = [c["index"] for c in bad]
+            # Two-sided: a rate well ABOVE nominal means we are draining a
+            # backlog or the stream is not what we think it is, and is just as
+            # much a red flag as a rate below it.
+            if health.get("warming_up"):
+                health["fs_ok"] = True
+            else:
+                health["fs_ok"] = (0.9 * nominal) <= eff <= (1.15 * nominal)
+            emit("acq_health", health)
+
+            if not health["fs_ok"] and eff > 0 and not warned_fs:
+                warned_fs = True
+                self.mark_event("low_sampling_rate", {"effective_fs": eff, "nominal_fs": nominal})
+            elif health["fs_ok"]:
+                warned_fs = False
+
+    # ------------------------------------------------------------------
+    # Save
+    # ------------------------------------------------------------------
+    def save_data(self):
+        """
+        Data is already on disk; this just forces a flush and reports where it
+        lives. Kept as a command so the existing UI button still works.
+        """
+        if not self.session_dir:
+            emit("save_error", {"error": "No session open yet. Connect and run Setup first."})
             return
-        try:
-            df = pd.DataFrame(self.data_log)
-            ts = datetime.now().strftime("%Y%m%d_%H%M%S")
-            filename = f"eeg_data_{ts}.csv"
-            filepath = os.path.join(self.user_folder, filename)
-            df.to_csv(filepath, index=False)
-            emit("save_done", {"rows": len(df), "filepath": filepath})
-        except Exception as exc:
-            emit("save_error", {"error": str(exc)})
+        with self._writer_lock:
+            rows = self.raw_csv.rows_written if self.raw_csv else 0
+            for w in (self.raw_csv, self.filt_csv, self.events_csv, self.trials_csv):
+                if w:
+                    w.flush()
+        self._write_session_meta()
+        if rows == 0:
+            emit("save_error", {"error": "No samples recorded yet. Check the AURA connection."})
+            return
+        emit("save_done", {"rows": int(rows), "filepath": self.session_dir})
 
 
 # ─────────────────────────────────────────────────────────────────────
@@ -549,7 +896,10 @@ def main():
             continue
 
         cmd = msg.get("cmd", "")
-        bridge_log("command_received", {"cmd": cmd})
+        # clock_ping fires many times per sync round; keep it out of the log.
+        if cmd != "clock_ping":
+            bridge_log("command_received", {"cmd": cmd})
+
         if cmd == "connect":
             bridge.connect()
         elif cmd == "disconnect":
@@ -575,6 +925,14 @@ def main():
             bridge.ecological_start(msg.get("modality", ""))
         elif cmd == "ecological_stop":
             bridge.ecological_stop()
+        elif cmd == "clock_ping":
+            bridge.clock_ping(msg)
+        elif cmd == "clock_offset":
+            bridge.set_clock_offset(msg)
+        elif cmd == "stroop_trial":
+            bridge.stroop_trial(msg)
+        elif cmd == "mark":
+            bridge.generic_mark(msg)
 
 
 if __name__ == "__main__":

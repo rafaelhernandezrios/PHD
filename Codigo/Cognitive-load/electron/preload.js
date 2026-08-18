@@ -21,6 +21,12 @@ contextBridge.exposeInMainWorld('electronAPI', {
   scanLSL:          ()       => ipcRenderer.invoke('scan-lsl'),
   logRendererError: (payload) => ipcRenderer.invoke('renderer-log-error', payload),
 
+  // ERP support: clock alignment + behavioural/event logging
+  clockPing:        (payload) => ipcRenderer.invoke('clock-ping', payload),
+  clockOffset:      (payload) => ipcRenderer.invoke('clock-offset', payload),
+  stroopTrial:      (trial)   => ipcRenderer.invoke('stroop-trial', trial),
+  mark:             (payload) => ipcRenderer.invoke('mark', payload),
+
   // Main → Renderer (push events from Python)
   onConnectionStatus: (cb) => ipcRenderer.on('connection-status', (_e, ...a) => cb(...a)),
   onPhaseChanged:     (cb) => ipcRenderer.on('phase-changed',     (_e, ...a) => cb(...a)),
@@ -32,4 +38,10 @@ contextBridge.exposeInMainWorld('electronAPI', {
   onPhaseDurations:   (cb) => ipcRenderer.on('phase-durations',   (_e, ...a) => cb(...a)),
   onEcologicalState:  (cb) => ipcRenderer.on('ecological-state',  (_e, ...a) => cb(...a)),
   onEcologicalError:  (cb) => ipcRenderer.on('ecological-error',  (_e, ...a) => cb(...a)),
+  onClockPong:        (cb) => ipcRenderer.on('clock-pong',        (_e, ...a) => cb(...a)),
+  onClockSyncOk:      (cb) => ipcRenderer.on('clock-sync-ok',     (_e, ...a) => cb(...a)),
+  onAcqHealth:        (cb) => ipcRenderer.on('acq-health',        (_e, ...a) => cb(...a)),
+  onStreamStatus:     (cb) => ipcRenderer.on('stream-status',     (_e, ...a) => cb(...a)),
+  onSessionInfo:      (cb) => ipcRenderer.on('session-info',      (_e, ...a) => cb(...a)),
+  onTrialLogged:      (cb) => ipcRenderer.on('trial-logged',      (_e, ...a) => cb(...a)),
 });

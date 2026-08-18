@@ -42,6 +42,10 @@ const logDir = path.join(__dirname, 'logs');
 fs.mkdirSync(logDir, { recursive: true });
 const mainLogPath = path.join(logDir, 'electron_main.log');
 
+const HIGH_FREQ_EVENTS = new Set([
+  'plot_sample', 'sample_count', 'clock_pong', 'acq_health', 'timer_update',
+]);
+
 function mainLog(message, data = null) {
   const payload = {
     ts: new Date().toISOString(),
@@ -116,7 +120,9 @@ function startPython() {
       mainLog('python_stdout_non_json', { line });
       return;
     }
-    mainLog('python_message', msg);
+    // High-frequency events are skipped: mainLog uses appendFileSync, which
+    // blocks the main process, and plot_sample alone fires ~10x per second.
+    if (!HIGH_FREQ_EVENTS.has(msg.event)) mainLog('python_message', msg);
     if (!mainWindow) return;
     const { event, data } = msg;
     switch (event) {
@@ -144,11 +150,29 @@ function startPython() {
       case 'plot_sample':
         mainWindow.webContents.send('plot-sample', data.raw, data.filtered, data.timestamp);
         break;
+      case 'clock_pong':
+        mainWindow.webContents.send('clock-pong', data);
+        break;
+      case 'clock_sync_ok':
+        mainWindow.webContents.send('clock-sync-ok', data);
+        break;
+      case 'acq_health':
+        mainWindow.webContents.send('acq-health', data);
+        break;
+      case 'stream_status':
+        mainWindow.webContents.send('stream-status', data);
+        break;
+      case 'session_info':
+        mainWindow.webContents.send('session-info', data);
+        break;
+      case 'trial_logged':
+        mainWindow.webContents.send('trial-logged', data);
+        break;
       case 'save_done':
         dialog.showMessageBox(mainWindow, {
           type: 'info',
           title: 'Data Saved',
-          message: `Saved ${data.rows} rows to:\n${data.filepath}`,
+          message: `Recorded ${data.rows} samples.\nSession folder:\n${data.filepath}`,
         });
         break;
       case 'save_error':
@@ -181,7 +205,7 @@ function stopPython() {
 }
 
 function sendToPython(cmd, payload = {}) {
-  mainLog('send_to_python', { cmd, payload });
+  if (cmd !== 'clock_ping') mainLog('send_to_python', { cmd, payload });
   if (!pyShell) {
     console.warn('[main] Python not running — command ignored:', cmd);
     return;
@@ -249,4 +273,24 @@ ipcMain.handle('scan-lsl', async () => {
 
 ipcMain.handle('renderer-log-error', async (_event, payload) => {
   mainLog('renderer_error', payload || {});
+});
+
+// ── ERP support ───────────────────────────────────────────────────────
+// Clock alignment: the renderer times stimuli with performance.now(), the EEG
+// is timestamped on the LSL clock. These round trips let the renderer map one
+// onto the other, which is what makes stimulus-locked epoching possible.
+ipcMain.handle('clock-ping', async (_event, payload) => {
+  sendToPython('clock_ping', payload || {});
+});
+
+ipcMain.handle('clock-offset', async (_event, payload) => {
+  sendToPython('clock_offset', payload || {});
+});
+
+ipcMain.handle('stroop-trial', async (_event, trial) => {
+  sendToPython('stroop_trial', { trial: trial || {} });
+});
+
+ipcMain.handle('mark', async (_event, payload) => {
+  sendToPython('mark', payload || {});
 });
