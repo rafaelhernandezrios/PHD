@@ -1,0 +1,462 @@
+<meta charset="utf-8">
+<title>El Lazo Cerrado</title>
+<style>
+  :root{
+    --ground:#0A1622; --surface:#102234; --surface2:#16304A; --edge:#1F3D5A;
+    --ink:#E7F0F6; --muted:#9DB4C6; --dim:#6A879C;
+    --signal:#35C4E8; --signal-dim:#1E7E99;
+    --ok:#4FB98A; --warn:#E3A544; --alert:#E8756B;
+    --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+    --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+    --mono:ui-monospace,"SF Mono",SFMono-Regular,Menlo,Consolas,monospace;
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0; background:var(--ground); color:var(--ink); font-family:var(--sans);
+    overflow:hidden; -webkit-font-smoothing:antialiased}
+
+  #viewport{position:fixed; inset:0; display:grid; place-items:center}
+  #stage{width:1280px; height:720px; position:relative; transform-origin:center center}
+  .slide{position:absolute; inset:0; padding:62px 78px 66px; display:none; flex-direction:column}
+  .slide.on{display:flex; animation:in .34s ease both}
+  @keyframes in{from{opacity:0; transform:translateY(7px)}to{opacity:1;transform:none}}
+  @media (prefers-reduced-motion:reduce){.slide.on{animation:none}}
+
+  .eyebrow{font-family:var(--mono); font-size:11px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--signal); margin-bottom:14px}
+  h1{font-family:var(--serif); font-weight:600; font-size:54px; line-height:1.1;
+    margin:0 0 18px; text-wrap:balance; letter-spacing:-.015em; max-width:20ch}
+  h2{font-family:var(--serif); font-weight:600; font-size:38px; line-height:1.14;
+    margin:0 0 26px; text-wrap:balance; letter-spacing:-.01em; max-width:26ch}
+  h3{font-size:19px; font-weight:650; margin:0 0 9px; line-height:1.28}
+  p{margin:0 0 16px; font-size:17.5px; line-height:1.62; color:var(--muted); max-width:64ch}
+  p strong,strong{color:var(--ink); font-weight:650}
+  p:last-child{margin-bottom:0}
+  .big{font-size:22px; line-height:1.55; color:var(--ink); max-width:56ch}
+  .quiet{color:var(--dim)}
+  .num{font-family:var(--mono); font-variant-numeric:tabular-nums; letter-spacing:-.02em; color:var(--signal)}
+
+  .body{flex:1; min-height:0; display:flex; flex-direction:column; justify-content:center; gap:26px}
+  .split{display:grid; grid-template-columns:1fr 1fr; gap:52px; align-items:center}
+  .split.wide{grid-template-columns:1.15fr .85fr}
+  .split.narrow{grid-template-columns:.8fr 1.2fr}
+  .three{display:grid; grid-template-columns:repeat(3,1fr); gap:26px}
+  .stack{display:flex; flex-direction:column; gap:22px}
+
+  .card{background:var(--surface); border:1px solid var(--edge); border-radius:12px; padding:24px 26px}
+  .card p{font-size:15.5px; line-height:1.55; margin:0}
+  .card.sig{background:#0E2833; border-color:#215B70}
+  .card.ok{background:#0E2620; border-color:#1F5943}
+  .card.alert{background:#2A1917; border-color:#5E332E}
+
+  .step{display:grid; grid-template-columns:58px 1fr; gap:20px; align-items:start}
+  .step .i{font-family:var(--mono); font-size:13px; color:var(--signal); padding-top:5px;
+    border-top:1px solid var(--signal-dim); white-space:nowrap}
+  .step h3{margin-bottom:6px}
+  .step p{font-size:16px; margin:0}
+
+  .photo{border-radius:12px; overflow:hidden; border:1px solid var(--edge)}
+  .photo img{display:block; width:100%; height:auto}
+  .caption{font-size:12.5px; color:var(--dim); line-height:1.45; margin-top:10px}
+
+  .lead-in{font-family:var(--serif); font-size:26px; line-height:1.4; color:var(--ink);
+    max-width:34ch; font-style:italic}
+  .pull{font-family:var(--serif); font-size:30px; line-height:1.32; color:var(--ink); max-width:24ch}
+
+  .chips{display:flex; gap:10px; flex-wrap:wrap}
+  .chip{font-family:var(--mono); font-size:11px; letter-spacing:.09em; text-transform:uppercase;
+    padding:6px 12px; border-radius:20px; background:rgba(53,196,232,.12); color:var(--signal)}
+  .chip.ok{background:rgba(79,185,138,.15); color:var(--ok)}
+  .chip.warn{background:rgba(227,165,68,.15); color:var(--warn)}
+
+  .cover{justify-content:center}
+  .cover .kicker{font-family:var(--mono); font-size:11.5px; letter-spacing:.18em;
+    text-transform:uppercase; color:var(--dim); margin-bottom:22px}
+  .cover .sub{font-size:20px; color:var(--muted); max-width:52ch; line-height:1.5}
+  .rule{height:1px; background:var(--edge); margin:32px 0 24px; width:300px}
+  .credits{font-size:14.5px; color:var(--muted); line-height:1.75}
+  .credits b{color:var(--ink)}
+
+  footer{position:absolute; left:78px; right:78px; bottom:24px; display:flex;
+    justify-content:space-between; font-family:var(--mono); font-size:10.5px;
+    letter-spacing:.08em; color:#4E6B82}
+  #ticks{position:fixed; left:0; right:0; bottom:0; height:3px; display:flex; gap:2px; padding:0 2px 2px}
+  #ticks i{flex:1; height:3px; background:#16304A; border-radius:2px; transition:background .2s}
+  #ticks i.done{background:var(--signal-dim)} #ticks i.now{background:var(--signal)}
+  #hint{position:fixed; right:14px; bottom:12px; font-family:var(--mono); font-size:10px;
+    letter-spacing:.08em; color:#3F5B71; transition:opacity .4s}
+  #grid{position:fixed; inset:0; background:#070F18; overflow:auto; padding:28px; display:none;
+    grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; align-content:start}
+  #grid.on{display:grid}
+  .thumb{background:var(--surface); border:1px solid var(--edge); border-radius:10px;
+    padding:14px 15px; cursor:pointer; text-align:left; color:var(--ink); font-family:var(--sans)}
+  .thumb:hover,.thumb:focus-visible{border-color:var(--signal); outline:none}
+  .thumb .n{display:block; font-family:var(--mono); font-size:10px; color:var(--signal); letter-spacing:.1em}
+  .thumb .t{display:block; font-size:13px; margin-top:7px; line-height:1.35; font-weight:600}
+  :focus-visible{outline:2px solid var(--signal); outline-offset:3px}
+</style>
+
+<div id="viewport"><div id="stage">
+
+<!-- 1 -->
+<section class="slide cover">
+  <div class="kicker">Universidad Autónoma del Estado de Hidalgo · Seminario de Tesis III · Agosto 2026</div>
+  <h1>Un simulador quirúrgico que se ajusta al esfuerzo mental de quien entrena</h1>
+  <div class="sub">Dónde va el proyecto, en lenguaje llano</div>
+  <div class="rule"></div>
+  <div class="credits">
+    <b>M. Eng. Edgar Rafael Hernández Ríos</b><br>
+    Director: Dr. Omar Arturo Domínguez Ramírez — UAEH<br>
+    Co-director: Dr. Christian Peñaloza — Mirai Innovation Research Institute, Osaka
+  </div>
+</section>
+
+<!-- 2 · el problema -->
+<section class="slide">
+  <div class="eyebrow">El problema</div>
+  <h2>Un simulador que no se entera de cómo va el aprendiz</h2>
+  <div class="body">
+    <div class="split">
+      <div class="stack">
+        <p>Aprender cirugía robótica exige mucho de la cabeza: manejar dos instrumentos, calcular profundidad en una imagen plana, decidir mientras las manos se mueven.</p>
+        <p>Ese esfuerzo <strong>sube y baja durante la sesión</strong>. Hay momentos en que el aprendiz se satura y deja de aprender, y momentos en que la tarea le queda corta y se desconecta.</p>
+        <p>Los simuladores actuales tienen una dificultad que se elige <strong>antes de empezar</strong> y ya no se mueve. Nadie está mirando si la persona todavía va bien.</p>
+      </div>
+      <div>
+        <svg viewBox="0 0 460 300" width="100%" height="auto" role="img" aria-label="Curva de rendimiento contra esfuerzo mental con tres zonas">
+          <defs>
+            <linearGradient id="gz" x1="0" x2="1">
+              <stop offset="0" stop-color="#35C4E8" stop-opacity=".05"/>
+              <stop offset="0.5" stop-color="#4FB98A" stop-opacity=".18"/>
+              <stop offset="1" stop-color="#E8756B" stop-opacity=".08"/>
+            </linearGradient>
+          </defs>
+          <rect x="40" y="20" width="390" height="215" fill="url(#gz)" rx="6"/>
+          <path d="M40 212 C 122 206, 168 74, 235 72 C 302 74, 348 206, 430 212"
+                fill="none" stroke="#35C4E8" stroke-width="2.5" stroke-linecap="round"/>
+          <line x1="235" y1="72" x2="235" y2="235" stroke="#4FB98A" stroke-width="1" stroke-dasharray="4 4" opacity=".6"/>
+          <line x1="40" y1="235" x2="430" y2="235" stroke="#1F3D5A" stroke-width="1"/>
+          <line x1="40" y1="20" x2="40" y2="235" stroke="#1F3D5A" stroke-width="1"/>
+          <text x="90" y="262" fill="#9DB4C6" font-size="13" font-family="ui-monospace,Menlo,monospace">se aburre</text>
+          <text x="196" y="262" fill="#4FB98A" font-size="13" font-family="ui-monospace,Menlo,monospace">aprende</text>
+          <text x="330" y="262" fill="#E8756B" font-size="13" font-family="ui-monospace,Menlo,monospace">se satura</text>
+          <text x="40" y="288" fill="#6A879C" font-size="12" font-family="ui-monospace,Menlo,monospace">esfuerzo mental →</text>
+          <text x="14" y="140" fill="#6A879C" font-size="12" font-family="ui-monospace,Menlo,monospace" transform="rotate(-90 14 140)">aprendizaje</text>
+        </svg>
+        <p class="caption">La relación entre esfuerzo y aprendizaje tiene forma de campana. El objetivo del sistema es mantener a la persona en la parte de arriba.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 3 · la idea -->
+<section class="slide">
+  <div class="eyebrow">La idea</div>
+  <h2>Que el simulador escuche al cerebro y se acomode solo</h2>
+  <div class="body">
+    <p class="big" style="margin-bottom:8px">Una diadema lee la actividad cerebral mientras la persona opera. Un modelo estima cuánto esfuerzo está haciendo. Y el simulador ajusta la dificultad y la fuerza que siente en las manos, sin que nadie intervenga.</p>
+    <svg viewBox="0 34 1120 158" width="100%" height="auto" role="img" aria-label="Diagrama del lazo cerrado: diadema, modelo, simulador, aprendiz">
+      <defs>
+        <marker id="ar" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto">
+          <path d="M0 0 L10 5 L0 10 z" fill="#1E7E99"/>
+        </marker>
+      </defs>
+      <g font-family="-apple-system,Segoe UI,Helvetica,Arial,sans-serif">
+        <rect x="10" y="46" width="215" height="96" rx="11" fill="#102234" stroke="#1F3D5A"/>
+        <text x="34" y="82" fill="#35C4E8" font-size="15" font-weight="600">1 · La diadema</text>
+        <text x="34" y="106" fill="#9DB4C6" font-size="13.5">Ocho electrodos leen</text>
+        <text x="34" y="125" fill="#9DB4C6" font-size="13.5">la señal cerebral.</text>
+
+        <rect x="253" y="46" width="215" height="96" rx="11" fill="#102234" stroke="#1F3D5A"/>
+        <text x="277" y="82" fill="#35C4E8" font-size="15" font-weight="600">2 · El modelo</text>
+        <text x="277" y="106" fill="#9DB4C6" font-size="13.5">Traduce la señal a</text>
+        <text x="277" y="125" fill="#9DB4C6" font-size="13.5">«va bien / va saturado».</text>
+
+        <rect x="496" y="46" width="215" height="96" rx="11" fill="#102234" stroke="#1F3D5A"/>
+        <text x="520" y="82" fill="#35C4E8" font-size="15" font-weight="600">3 · El controlador</text>
+        <text x="520" y="106" fill="#9DB4C6" font-size="13.5">Decide si conviene</text>
+        <text x="520" y="125" fill="#9DB4C6" font-size="13.5">mover algo, y qué.</text>
+
+        <rect x="739" y="46" width="215" height="96" rx="11" fill="#0E2833" stroke="#215B70"/>
+        <text x="763" y="82" fill="#35C4E8" font-size="15" font-weight="600">4 · El simulador</text>
+        <text x="763" y="106" fill="#9DB4C6" font-size="13.5">Cambia dificultad y</text>
+        <text x="763" y="125" fill="#9DB4C6" font-size="13.5">fuerza en las manos.</text>
+
+        <rect x="982" y="46" width="128" height="96" rx="11" fill="#16304A" stroke="#25507A"/>
+        <text x="1006" y="82" fill="#E7F0F6" font-size="15" font-weight="600">5 · Quien</text>
+        <text x="1006" y="102" fill="#E7F0F6" font-size="15" font-weight="600">entrena</text>
+
+        <line x1="229" y1="94" x2="248" y2="94" stroke="#1E7E99" stroke-width="1.6" marker-end="url(#ar)"/>
+        <line x1="472" y1="94" x2="491" y2="94" stroke="#1E7E99" stroke-width="1.6" marker-end="url(#ar)"/>
+        <line x1="715" y1="94" x2="734" y2="94" stroke="#1E7E99" stroke-width="1.6" marker-end="url(#ar)"/>
+        <line x1="958" y1="94" x2="977" y2="94" stroke="#1E7E99" stroke-width="1.6" marker-end="url(#ar)"/>
+        <path d="M1046 146 L1046 182 L117 182 L117 148" fill="none" stroke="#1E7E99" stroke-width="1.6"
+              stroke-dasharray="5 5" marker-end="url(#ar)"/>
+        <text x="540" y="176" fill="#6A879C" font-size="12.5" font-family="ui-monospace,Menlo,monospace">y vuelve a empezar</text>
+      </g>
+    </svg>
+  </div>
+</section>
+
+<!-- 4 · cómo se mide -->
+<section class="slide">
+  <div class="eyebrow">Cómo se mide el esfuerzo</div>
+  <h2>El cerebro cambia de ritmo cuando la tarea cuesta</h2>
+  <div class="body">
+    <div class="split wide">
+      <div class="stack">
+        <p>La señal cerebral tiene ritmos de distinta velocidad. Cuando una tarea exige concentración, unos ritmos se refuerzan y otros se apagan. Es un patrón conocido desde hace décadas y se puede seguir en tiempo real.</p>
+        <p>El problema es que <strong>cada cabeza es distinta</strong>: la señal de una persona relajada puede parecerse a la de otra bajo presión. Comparar entre personas no funciona.</p>
+        <p>La solución que adopté es sencilla de explicar: antes de empezar se graba medio minuto de reposo y todo se mide <strong>respecto a esa referencia propia</strong>. Es tarar una báscula a cero antes de pesar.</p>
+      </div>
+      <div class="stack">
+        <div class="card sig">
+          <h3>Qué aportó esa decisión</h3>
+          <p>Calibrar contra el propio reposo fue lo que más mejoró el sistema — más que cambiar de modelo o de algoritmo. Es el hallazgo metodológico central del año.</p>
+        </div>
+        <div class="card">
+          <h3>Y se probó a la mala, a propósito</h3>
+          <p>El modelo se evalúa siempre con personas que <strong>nunca vio antes</strong>. Es más exigente que lo habitual en la literatura, y por eso los números son creíbles fuera del laboratorio.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 5 · dónde estaba / dónde estoy -->
+<section class="slide">
+  <div class="eyebrow">Dónde estoy</div>
+  <h2>El proyecto tiene tres piezas: dos ya funcionan</h2>
+  <div class="body">
+    <div class="three">
+      <div class="card">
+        <div class="chips" style="margin-bottom:14px"><span class="chip ok">Listo</span></div>
+        <h3>Medir el esfuerzo</h3>
+        <p>El estimador está construido y validado con datos de <span class="num">51</span> personas y dos equipos de registro distintos. Sabe distinguir descanso de trabajo mental.</p>
+      </div>
+      <div class="card">
+        <div class="chips" style="margin-bottom:14px"><span class="chip ok">Listo</span></div>
+        <h3>El simulador quirúrgico</h3>
+        <p>Entrenador de sutura en realidad virtual, con dos instrumentos teleoperados y fuerza real en la mano. Cinco ejercicios de dificultad creciente.</p>
+      </div>
+      <div class="card">
+        <div class="chips" style="margin-bottom:14px"><span class="chip warn">En curso</span></div>
+        <h3>Cerrar el lazo</h3>
+        <p>El controlador que une ambas piezas ya está escrito y probado en simulación. Falta el paso decisivo: <strong>una persona con la diadema puesta mientras el lazo corre</strong>.</p>
+      </div>
+    </div>
+    <p class="quiet" style="text-align:center; max-width:none">En el Seminario II presenté la primera pieza. Este año se construyeron las otras dos.</p>
+  </div>
+</section>
+
+<!-- 6 · el simulador -->
+<section class="slide">
+  <div class="eyebrow">Lo que se construyó · Primera pieza</div>
+  <h2>Un entrenador de sutura que se siente en las manos</h2>
+  <div class="body">
+    <div class="split narrow">
+      <div>
+        <div class="photo"><img src="data:image/jpeg;base64,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" alt="Vista del campo quirúrgico virtual con dos instrumentos y una herida"></div>
+        <p class="caption">Lo que ve quien entrena: dos instrumentos entrando por sus puertos, el tejido y la aguja con su hilo.</p>
+      </div>
+      <div class="stack">
+        <p>El aprendiz se pone un visor y maneja dos instrumentos como en una consola quirúrgica real: el movimiento de su mano se traduce a un movimiento más pequeño y preciso del instrumento.</p>
+        <p>La diferencia con un simulador común es que <strong>uno de los instrumentos tiene fuerza de verdad</strong>. Un brazo háptico empuja de vuelta contra la mano cuando la aguja toca el tejido o cuando el instrumento fuerza el punto de entrada.</p>
+        <p>Eso importa para la tesis por una razón concreta: la fuerza es una <strong>magnitud física que el sistema puede subir o bajar</strong>. No es un aviso, es una ayuda real que se puede dosificar según cómo vaya la persona.</p>
+        <div class="chips">
+          <span class="chip">Cinco ejercicios</span><span class="chip">Aguja e hilo simulados</span><span class="chip">Registra cada error</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 7 · el controlador -->
+<section class="slide">
+  <div class="eyebrow">Lo que se construyó · Segunda pieza</div>
+  <h2>Un controlador con paciencia</h2>
+  <div class="body">
+    <p class="big">La lectura del cerebro es inquieta: cambia cada pocos segundos. Si el simulador obedeciera cada lectura, estaría reconfigurándose sin parar y sería imposible entrenar. Buena parte del trabajo fue enseñarle a <strong>no reaccionar de más</strong>.</p>
+    <div class="three">
+      <div class="card">
+        <h3>Espera antes de creerlo</h3>
+        <p>Una lectura suelta no cuenta. El cambio tiene que sostenerse varios segundos para que el sistema lo tome en serio.</p>
+      </div>
+      <div class="card">
+        <h3>Da tiempo a responder</h3>
+        <p>Después de cada ajuste, el sistema se calla un rato: primero hay que ver si el cambio sirvió.</p>
+      </div>
+      <div class="card">
+        <h3>Alivia rápido, exige despacio</h3>
+        <p>Si la persona parece saturada, la ayuda llega pronto. Si parece sobrada, la exigencia sube poco a poco.</p>
+      </div>
+    </div>
+    <p>También hay una regla de sentido común sobre <strong>qué se puede cambiar y cuándo</strong>: la ayuda en las manos se ajusta al vuelo, pero las reglas con las que se califica un ejercicio solo cambian entre ejercicios. Mover la vara de medir a media sutura haría incomparable el resultado.</p>
+  </div>
+</section>
+
+<!-- 8 · qué aprendí probándolo -->
+<section class="slide">
+  <div class="eyebrow">Qué pasó al probarlo</div>
+  <h2>El lazo se probó con grabaciones reales antes de ponérselo a nadie</h2>
+  <div class="body">
+    <div class="stack">
+      <p class="big" style="margin-bottom:4px">Se alimentó el controlador con horas de señal cerebral ya grabada, como si fuera una sesión en vivo, para ver cómo se comporta antes de exponer a una persona.</p>
+      <div class="three">
+        <div class="step">
+          <span class="i">01</span>
+          <div><h3>Las reglas de paciencia funcionan</h3>
+          <p>Sin ellas el simulador se reconfiguraba cada pocos segundos. Con ellas, cada minuto y medio más o menos — y sin perder puntería.</p></div>
+        </div>
+        <div class="step">
+          <span class="i">02</span>
+          <div><h3>La computadora no es el problema</h3>
+          <p>Todo el cálculo tarda una fracción mínima del tiempo disponible. Lo que se percibe como demora viene de esperar a estar seguro, no de procesar.</p></div>
+        </div>
+        <div class="step">
+          <span class="i">03</span>
+          <div><h3>Reconoce bien la calma, mal la saturación</h3>
+          <p>Detecta con fiabilidad cuándo alguien está tranquilo. Cuándo alguien está desbordado, todavía se equivoca casi la mitad de las veces.</p></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 9 · correcciones de rumbo -->
+<section class="slide">
+  <div class="eyebrow">Dos correcciones de rumbo</div>
+  <h2>Lo que salió distinto a lo esperado</h2>
+  <div class="body">
+    <div class="split">
+      <div class="card alert">
+        <h3 style="color:var(--alert)">El índice no mide lo que se creía</h3>
+        <p>El indicador de carga que uso es un cociente entre dos ritmos cerebrales, y la literatura atribuye su subida al ritmo de arriba. En mis datos —dos equipos distintos, 51 personas— <strong>el de arriba no se mueve</strong>: todo el efecto viene del de abajo, que se apaga bajo esfuerzo.</p>
+        <p style="margin-top:12px">El indicador sirve igual, pero significa otra cosa. Y eso cambia dónde conviene poner los electrodos.</p>
+      </div>
+      <div class="card sig">
+        <h3 style="color:var(--signal)">El lazo necesita dos fuentes, no una</h3>
+        <p>Como el cerebro delata bien la calma pero mal la saturación, seguir afinando el mismo estimador tiene poco recorrido.</p>
+        <p style="margin-top:12px">La solución de diseño: <strong>que cada dirección la gobierne una fuente distinta</strong>. El EEG decide cuándo subir la exigencia, y los errores que el propio simulador ya registra —punciones fuera de sitio, tirones al hilo— deciden cuándo aliviar.</p>
+      </div>
+    </div>
+    <p class="quiet">Ninguna de las dos se buscaba. Las dos salieron de medir en serio, y las dos mejoran el diseño del sistema final.</p>
+  </div>
+</section>
+
+<!-- 10 · qué sigue -->
+<section class="slide">
+  <div class="eyebrow">Qué sigue</div>
+  <h2>De la simulación a una persona real</h2>
+  <div class="body">
+    <div class="stack">
+      <div class="step">
+        <span class="i">Ahora</span>
+        <div><h3>Conectar las dos piezas en vivo</h3>
+        <p>Enlazar el proceso que lee el cerebro con el simulador y correr un primer piloto interno, con pocos usuarios, ya con la diadema puesta.</p></div>
+      </div>
+      <div class="step">
+        <span class="i">Luego</span>
+        <div><h3>Volver a grabar datos propios, bien</h3>
+        <p>Al revisar nuestras grabaciones descubrí que buena parte se tomó a una velocidad de muestreo demasiado baja para ver los ritmos que interesan. Se repiten con el criterio técnico incorporado al protocolo.</p></div>
+      </div>
+      <div class="step">
+        <span class="i">Año 3</span>
+        <div><h3>El experimento que responde la pregunta</h3>
+        <p>Comparar dos grupos —simulador fijo contra simulador adaptativo— y ver si quien entrena con el sistema que se acomoda aprende mejor. Es la validación que justifica toda la tesis.</p></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 11 · cierre -->
+<section class="slide">
+  <div class="eyebrow">En una frase</div>
+  <div class="body">
+    <div class="split wide">
+      <div>
+        <p class="pull">El sistema completo ya existe y ya se midió. Lo que falta no es construirlo: es ponérselo a alguien y comprobar que enseña mejor.</p>
+      </div>
+      <div class="stack">
+        <div class="card ok">
+          <h3 style="color:var(--ok)">Producción de este año</h3>
+          <p>Un artículo presentado en congreso IEEE, otro en revisión en revista, y dos borradores completos: uno del método y otro del sistema. Cuatro capítulos de tesis avanzados.</p>
+        </div>
+        <div class="card">
+          <h3>Y algo que vale la pena decir</h3>
+          <p>Los dos hallazgos más útiles del año fueron cosas que salieron mal. Reportarlos, en vez de esconderlos, es lo que le da solidez al diseño que estoy defendiendo.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+</div></div>
+
+<div id="ticks" aria-hidden="true"></div>
+<div id="hint">← → navegar · G índice</div>
+<div id="grid" role="dialog" aria-label="Índice de láminas"></div>
+
+<script>
+(function(){
+  var slides = Array.prototype.slice.call(document.querySelectorAll('.slide'));
+  var stage = document.getElementById('stage');
+  var ticks = document.getElementById('ticks');
+  var grid  = document.getElementById('grid');
+  var hint  = document.getElementById('hint');
+  var i = 0, total = slides.length;
+
+  slides.forEach(function(s, k){
+    if (k > 0){
+      var f = document.createElement('footer');
+      f.innerHTML = '<span>Seminario de Tesis III · E. Rafael Hernández Ríos</span><span>' +
+        String(k+1).padStart(2,'0') + ' / ' + String(total).padStart(2,'0') + '</span>';
+      s.appendChild(f);
+    }
+    ticks.appendChild(document.createElement('i'));
+    var t = s.querySelector('h2') || s.querySelector('h1');
+    var b = document.createElement('button');
+    b.className = 'thumb';
+    b.innerHTML = '<span class="n">' + String(k+1).padStart(2,'0') + '</span><span class="t">' +
+      (t ? t.textContent : 'Portada') + '</span>';
+    b.addEventListener('click', function(){ go(k); toggleGrid(false); });
+    grid.appendChild(b);
+  });
+
+  function fit(){
+    stage.style.transform = 'scale(' + Math.min(innerWidth/1280, innerHeight/720) + ')';
+  }
+  function paint(){
+    slides.forEach(function(s,k){ s.classList.toggle('on', k === i); });
+    Array.prototype.forEach.call(ticks.children, function(b,k){
+      b.className = k < i ? 'done' : (k === i ? 'now' : '');
+    });
+  }
+  function go(n){ i = Math.max(0, Math.min(total-1, n)); paint(); }
+  function toggleGrid(on){
+    grid.classList.toggle('on', on === undefined ? !grid.classList.contains('on') : on);
+  }
+  document.addEventListener('keydown', function(e){
+    var k = e.key;
+    if (k==='ArrowRight'||k==='PageDown'||k===' '){ e.preventDefault(); go(i+1); }
+    else if (k==='ArrowLeft'||k==='PageUp'){ e.preventDefault(); go(i-1); }
+    else if (k==='Home'){ go(0); } else if (k==='End'){ go(total-1); }
+    else if (k==='g'||k==='G'){ toggleGrid(); } else if (k==='Escape'){ toggleGrid(false); }
+  });
+  document.getElementById('viewport').addEventListener('click', function(e){
+    if (grid.classList.contains('on')) return;
+    go(e.clientX < innerWidth*0.32 ? i-1 : i+1);
+  });
+  var tx = null;
+  document.addEventListener('touchstart', function(e){ tx = e.changedTouches[0].clientX; }, {passive:true});
+  document.addEventListener('touchend', function(e){
+    if (tx === null) return;
+    var d = e.changedTouches[0].clientX - tx;
+    if (Math.abs(d) > 45) go(d < 0 ? i+1 : i-1);
+    tx = null;
+  }, {passive:true});
+  addEventListener('resize', fit);
+  fit(); paint();
+  setTimeout(function(){ hint.style.opacity = '0'; }, 5000);
+})();
+</script>
