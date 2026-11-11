@@ -1,0 +1,273 @@
+{
+  "csv": "csv/eeg_window_features.csv",
+  "note": "file-level split (not LOSO), legacy 656-col CSV -- reproduces main.tex Table I 'File-level split (legacy)' row and the Design Log's classifier comparison. Not the protocol the paper's headline numbers use.",
+  "results": {
+    "load_3": {
+      "n_features": 648,
+      "train_files": 48,
+      "test_files": 12,
+      "train_windows_after_smote": 6096,
+      "test_windows": 1151,
+      "models": {
+        "RandomForest": {
+          "acc": 0.38835794960903564,
+          "macro_f1": 0.33236475352604383,
+          "recall_by_label": {
+            "high": 0.5257410296411856,
+            "low": 0.0,
+            "normal": 0.40145985401459855
+          },
+          "top_feature_importances": [
+            {
+              "feature": "v5_bp_alpha",
+              "importance": 0.00823563964727195
+            },
+            {
+              "feature": "v6_bp_alpha",
+              "importance": 0.007985457260148203
+            },
+            {
+              "feature": "v17_bp_beta",
+              "importance": 0.007603117851439019
+            },
+            {
+              "feature": "v8_bp_alpha",
+              "importance": 0.007373774094264516
+            },
+            {
+              "feature": "v7_beta_alpha_ratio",
+              "importance": 0.007328621465159927
+            },
+            {
+              "feature": "v1_theta_alpha_ratio",
+              "importance": 0.006469860183172453
+            },
+            {
+              "feature": "v2_rel_bp_alpha",
+              "importance": 0.006356963760454746
+            },
+            {
+              "feature": "v7_rel_bp_alpha",
+              "importance": 0.006341056482132477
+            },
+            {
+              "feature": "v5_rel_bp_alpha",
+              "importance": 0.006337116502021026
+            },
+            {
+              "feature": "v5_hjorth_complexity",
+              "importance": 0.006256248712024432
+            },
+            {
+              "feature": "v1_load_index",
+              "importance": 0.005892560361069083
+            },
+            {
+              "feature": "v14_bp_total",
+              "importance": 0.005388106371725867
+            },
+            {
+              "feature": "v14_abs_mean",
+              "importance": 0.005379162549483574
+            },
+            {
+              "feature": "v6_theta_alpha_ratio",
+              "importance": 0.005367238515687321
+            },
+            {
+              "feature": "v2_load_index",
+              "importance": 0.005333210870940003
+            },
+            {
+              "feature": "v8_rel_bp_alpha",
+              "importance": 0.0053193812480960825
+            },
+            {
+              "feature": "v6_load_index",
+              "importance": 0.005297707656234758
+            },
+            {
+              "feature": "v8_beta_alpha_ratio",
+              "importance": 0.005154810835890621
+            },
+            {
+              "feature": "v8_bp_gamma",
+              "importance": 0.00513324315568821
+            },
+            {
+              "feature": "v5_load_index",
+              "importance": 0.005086136468925801
+            }
+          ]
+        },
+        "HistGradientBoosting": {
+          "acc": 0.3788010425716768,
+          "macro_f1": 0.3257391204070748,
+          "recall_by_label": {
+            "high": 0.5273010920436817,
+            "low": 0.0,
+            "normal": 0.35766423357664234
+          }
+        },
+        "SVM_RBF": {
+          "acc": 0.21980886185925283,
+          "macro_f1": 0.24559049280702813,
+          "recall_by_label": {
+            "high": 0.24492979719188768,
+            "low": 0.025423728813559324,
+            "normal": 0.3284671532846715
+          }
+        },
+        "LogisticRegression": {
+          "acc": 0.16941789748045177,
+          "macro_f1": 0.19413252495070396,
+          "recall_by_label": {
+            "high": 0.15912636505460218,
+            "low": 0.1059322033898305,
+            "normal": 0.24817518248175183
+          }
+        },
+        "MLP": {
+          "acc": 0.39009556907037357,
+          "macro_f1": 0.3312548798047686,
+          "recall_by_label": {
+            "high": 0.5366614664586583,
+            "low": 0.012711864406779662,
+            "normal": 0.3722627737226277
+          }
+        }
+      }
+    },
+    "load_2": {
+      "n_features": 648,
+      "train_files": 48,
+      "test_files": 12,
+      "train_windows_after_smote": 5762,
+      "test_windows": 1090,
+      "models": {
+        "RandomForest": {
+          "acc": 0.7770642201834862,
+          "macro_f1": 0.664695628396623,
+          "recall_by_label": {
+            "alta": 0.9056372549019608,
+            "normal": 0.39416058394160586
+          },
+          "top_feature_importances": [
+            {
+              "feature": "v13_rel_bp_beta",
+              "importance": 0.014083069207018895
+            },
+            {
+              "feature": "v5_bp_alpha",
+              "importance": 0.013125080052249716
+            },
+            {
+              "feature": "v8_bp_alpha",
+              "importance": 0.013111303758709381
+            },
+            {
+              "feature": "v13_engagement",
+              "importance": 0.01248435274590353
+            },
+            {
+              "feature": "v17_bp_beta",
+              "importance": 0.011891413979781901
+            },
+            {
+              "feature": "v13_bp_beta",
+              "importance": 0.011732603916033334
+            },
+            {
+              "feature": "v5_theta_alpha_ratio",
+              "importance": 0.011598489791520707
+            },
+            {
+              "feature": "v3_bp_alpha",
+              "importance": 0.01135965935303105
+            },
+            {
+              "feature": "v4_rel_bp_alpha",
+              "importance": 0.010386077166850513
+            },
+            {
+              "feature": "asym_alpha_v3_v20",
+              "importance": 0.010370874452077282
+            },
+            {
+              "feature": "v5_load_index",
+              "importance": 0.009478956433492816
+            },
+            {
+              "feature": "asym_alpha_v6_v17",
+              "importance": 0.009350296501496672
+            },
+            {
+              "feature": "v5_rel_bp_alpha",
+              "importance": 0.00821745971465188
+            },
+            {
+              "feature": "asym_alpha_v4_v19",
+              "importance": 0.007582802909314015
+            },
+            {
+              "feature": "v2_load_index",
+              "importance": 0.007521508286629356
+            },
+            {
+              "feature": "v7_rel_bp_alpha",
+              "importance": 0.007425602932477779
+            },
+            {
+              "feature": "v4_bp_alpha",
+              "importance": 0.007328866825583565
+            },
+            {
+              "feature": "v8_rel_bp_alpha",
+              "importance": 0.007323101156109403
+            },
+            {
+              "feature": "v15_bp_beta",
+              "importance": 0.007081592187847141
+            },
+            {
+              "feature": "v2_rel_bp_alpha",
+              "importance": 0.007039601382103722
+            }
+          ]
+        },
+        "HistGradientBoosting": {
+          "acc": 0.8091743119266055,
+          "macro_f1": 0.6739230486008836,
+          "recall_by_label": {
+            "alta": 0.9705882352941176,
+            "normal": 0.3284671532846715
+          }
+        },
+        "SVM_RBF": {
+          "acc": 0.7908256880733945,
+          "macro_f1": 0.6613356881214024,
+          "recall_by_label": {
+            "alta": 0.9411764705882353,
+            "normal": 0.34306569343065696
+          }
+        },
+        "LogisticRegression": {
+          "acc": 0.7348623853211009,
+          "macro_f1": 0.594695960855306,
+          "recall_by_label": {
+            "alta": 0.883578431372549,
+            "normal": 0.291970802919708
+          }
+        },
+        "MLP": {
+          "acc": 0.789908256880734,
+          "macro_f1": 0.6501018392747754,
+          "recall_by_label": {
+            "alta": 0.9497549019607843,
+            "normal": 0.31386861313868614
+          }
+        }
+      }
+    }
+  }
+}

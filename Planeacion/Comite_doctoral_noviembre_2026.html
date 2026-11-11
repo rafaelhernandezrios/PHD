@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Comité doctoral · Plataforma neuroadaptativa · noviembre 2026</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Atkinson+Hyperlegible:ital,wght@0,400;0,700;1,400&family=Fraunces:ital,opsz,wght@0,9..144,520;0,9..144,640;1,9..144,520&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+/* ===========================================
+   FIXED 16:9 STAGE: MANDATORY BASE STYLES
+   =========================================== */
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--stage-bg, #000); }
+.deck-viewport { position: fixed; inset: 0; overflow: hidden; background: var(--stage-bg, #000); }
+.deck-stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; transform-origin: 0 0; background: var(--slide-bg, #fff); }
+.slide { position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: hidden; display: block; visibility: hidden; opacity: 0; pointer-events: none; background: var(--slide-bg, #fff); }
+.slide.active, .slide.visible { visibility: visible; opacity: 1; pointer-events: auto; z-index: 1; }
+img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+.deck-controls { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 1000; }
+@media print {
+  html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+  .deck-viewport { position: static; overflow: visible; background: #fff; }
+  .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+  .slide { position: relative; display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; width: 1920px; height: 1080px; break-after: page; page-break-after: always; }
+  .slide:last-child { break-after: auto; page-break-after: auto; }
+  .deck-controls, .progress, .edit-hotzone, .edit-toggle, .hint, .notes-overlay { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+  .reveal { opacity: 1 !important; transform: none !important; }
+}
+
+/* === DOS CASAS: UAEH + MIRAI === */
+:root {
+  --stage-bg: #1a1412;
+  --slide-bg: #f6f1e8;
+  --paper: #f6f1e8;
+  --ink: #2a1c16;
+  --muted: #6b5348;
+  --line: #e4d5c6;
+  --uaeh: #c04020;
+  --uaeh-deep: #702010;
+  --sand: #d09060;
+  --mirai: #00a0d0;
+  --mirai-deep: #007090;
+  --mirai-ink: #08343f;
+  --card: #fffaf4;
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+.slide {
+  background: var(--paper);
+  color: var(--ink);
+  font-family: "Atkinson Hyperlegible", sans-serif;
+}
+.stripe {
+  position: absolute; top: 0; left: 0; right: 0; height: 10px;
+  background: linear-gradient(90deg, var(--uaeh-deep) 0 28%, var(--uaeh) 28% 50%, var(--mirai-deep) 50% 72%, var(--mirai) 72% 100%);
+}
+.top {
+  position: absolute; top: 28px; left: 64px; right: 64px;
+  display: flex; justify-content: space-between; align-items: baseline;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 15px; letter-spacing: 0.14em; text-transform: uppercase;
+}
+.house-u { color: var(--uaeh-deep); font-weight: 500; }
+.house-m { color: var(--mirai-deep); font-weight: 500; }
+.crumb { color: var(--muted); }
+h1.slide-title {
+  position: absolute; top: 78px; left: 64px; right: 64px;
+  margin: 0;
+  font-family: "Fraunces", serif;
+  font-weight: 520; font-size: 46px; line-height: 1.08; letter-spacing: -0.02em;
+}
+h1.slide-title em { font-style: italic; color: var(--uaeh-deep); }
+.foot {
+  position: absolute; left: 64px; right: 64px; bottom: 28px;
+  display: flex; justify-content: space-between;
+  border-top: 1px solid var(--line); padding-top: 12px;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 14px; letter-spacing: 0.06em; color: var(--muted);
+}
+.zone { position: absolute; top: 200px; left: 64px; right: 64px; bottom: 78px; }
+
+/* === CARDS, TABLES, CHIPS === */
+.grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; height: 100%; }
+.grid3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 18px; height: 100%; }
+.grid4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 16px; }
+.card {
+  background: var(--card);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 22px 24px;
+  box-sizing: border-box;
+}
+.card h3 {
+  margin: 0 0 8px;
+  font-family: "Fraunces", serif;
+  font-weight: 560; font-size: 26px; letter-spacing: -0.02em;
+}
+.card p, .card li { margin: 0; font-size: 20px; line-height: 1.38; color: var(--ink); }
+.card ul { margin: 8px 0 0; padding-left: 18px; }
+.card li + li { margin-top: 6px; }
+.k { font-family: "IBM Plex Mono", monospace; font-size: 13px; letter-spacing: 0.12em; text-transform: uppercase; color: var(--mirai-deep); margin-bottom: 8px; }
+.k.earth { color: var(--uaeh); }
+.num {
+  font-family: "Fraunces", serif; font-weight: 560;
+  font-size: 54px; line-height: 1; letter-spacing: -0.03em; color: var(--mirai-deep);
+}
+.num.earth { color: var(--uaeh-deep); }
+.num small { font-size: 22px; color: var(--muted); margin-left: 4px; }
+.chip {
+  display: inline-block;
+  font-family: "IBM Plex Mono", monospace;
+  font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase;
+  border: 1px solid; border-radius: 999px; padding: 3px 10px;
+}
+.chip.ok { color: var(--mirai-deep); border-color: var(--mirai-deep); }
+.chip.sim { color: #8a5a20; border-color: #c4903a; }
+.chip.wait { color: var(--uaeh); border-color: var(--uaeh); }
+table.sheet { width: 100%; border-collapse: collapse; font-size: 20px; }
+table.sheet th {
+  text-align: left; font-family: "IBM Plex Mono", monospace;
+  font-size: 13px; letter-spacing: 0.1em; text-transform: uppercase;
+  color: var(--muted); font-weight: 500;
+  padding: 0 12px 10px; border-bottom: 1.5px solid var(--ink);
+}
+table.sheet td { padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top; line-height: 1.3; }
+table.sheet tr:last-child td { border-bottom: none; }
+.lead { font-size: 22px; line-height: 1.4; margin: 0 0 16px; }
+
+/* === SECTION DIVIDER === */
+.slide.section { background: var(--mirai-ink); color: #f4efe6; }
+.slide.section .stripe { height: 10px; }
+.slide.section .sec-k {
+  position: absolute; top: 120px; left: 80px;
+  font-family: "IBM Plex Mono", monospace; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--mirai); font-size: 18px;
+}
+.slide.section h1 {
+  position: absolute; top: 200px; left: 76px; right: 760px; margin: 0;
+  font-family: "Fraunces", serif; font-weight: 520; font-size: 78px; line-height: 1.02; letter-spacing: -0.03em;
+}
+.slide.section h1 em { font-style: italic; color: var(--sand); }
+.slide.section .sec-side {
+  position: absolute; top: 140px; right: 72px; width: 560px; bottom: 120px;
+  border-left: 1px solid rgba(0,160,208,0.35); padding-left: 36px;
+  display: flex; flex-direction: column; justify-content: center; gap: 22px;
+}
+.slide.section .sec-side p { margin: 0; font-size: 24px; line-height: 1.4; color: #e7f6fb; }
+.slide.section .foot { color: rgba(244,239,230,0.65); border-top-color: rgba(0,160,208,0.3); }
+
+/* === TITLE === */
+.slide.title { background: var(--paper); }
+.title-copy { position: absolute; top: 150px; left: 72px; width: 1120px; }
+.title-copy .eyebrow {
+  font-family: "IBM Plex Mono", monospace; font-size: 16px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--uaeh); margin-bottom: 22px;
+}
+.title-copy h1 {
+  margin: 0; font-family: "Fraunces", serif; font-weight: 520;
+  font-size: 68px; line-height: 0.98; letter-spacing: -0.03em;
+}
+.title-copy h1 em { font-style: italic; color: var(--uaeh-deep); }
+.title-copy .sub { margin: 28px 0 0; font-size: 24px; line-height: 1.4; color: var(--muted); max-width: 900px; }
+.title-panel {
+  position: absolute; top: 10px; right: 0; bottom: 0; width: 560px;
+  background: var(--mirai-ink); color: #f3fafc; padding: 120px 48px 80px;
+  box-sizing: border-box;
+}
+.title-panel .plab {
+  font-family: "IBM Plex Mono", monospace; font-size: 14px; letter-spacing: 0.16em;
+  text-transform: uppercase; color: var(--mirai); margin-bottom: 28px;
+}
+.title-panel .row { padding: 18px 0; border-top: 1px solid rgba(0,160,208,0.35); }
+.title-panel .row strong { display: block; font-family: "Fraunces", serif; font-size: 32px; font-weight: 520; }
+.title-panel .row span { display: block; margin-top: 4px; color: #9fd4e6; font-size: 18px; }
+.title-meta {
+  position: absolute; left: 72px; bottom: 48px; width: 1100px;
+  font-size: 20px; line-height: 1.45;
+}
+.title-meta b { font-weight: 700; }
+
+/* === REVEAL === */
+.reveal { opacity: 0; transform: translateY(14px); }
+.slide.active .reveal {
+  opacity: 1; transform: none;
+  transition: opacity 0.6s var(--ease), transform 0.6s var(--ease);
+}
+.d1 { transition-delay: 0.04s; }
+.d2 { transition-delay: 0.12s; }
+.d3 { transition-delay: 0.2s; }
+.d4 { transition-delay: 0.28s; }
+.d5 { transition-delay: 0.36s; }
+.speaker-note { display: none; }
+
+/* === CHROME OUTSIDE THE STAGE === */
+.progress { position: fixed; top: 0; left: 0; height: 4px; width: 0; background: var(--uaeh); z-index: 1002; }
+.hint {
+  position: fixed; right: 22px; bottom: 18px; z-index: 1000;
+  font-family: "IBM Plex Mono", monospace; font-size: 12px; letter-spacing: 0.08em;
+  color: rgba(255,255,255,0.7);
+}
+.edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+.edit-toggle {
+  position: fixed; top: 16px; left: 16px; z-index: 10001;
+  opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+  border: 0; border-radius: 999px; padding: 8px 12px;
+  background: var(--uaeh-deep); color: #fff; font-family: "IBM Plex Mono", monospace; font-size: 12px; cursor: pointer;
+}
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+body.editing .t { outline: 1px dashed rgba(192,64,32,0.55); outline-offset: 3px; }
+.notes-overlay {
+  display: none; position: fixed; left: 16px; right: 16px; bottom: 56px; z-index: 1003;
+  background: rgba(8, 52, 63, 0.94); color: #f4efe6;
+  font-family: "Atkinson Hyperlegible", sans-serif; font-size: 16px; line-height: 1.4;
+  padding: 14px 18px; border-radius: 12px; max-height: 22vh; overflow: auto;
+}
+body.notes-on .notes-overlay { display: block; }
+</style>
+</head>
+<body>
+<div class="progress" id="progress"></div>
+<div class="edit-hotzone" id="editHotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Editar (E)">Editar</button>
+<div class="hint" id="hint">← → espacio · N notas · E editar</div>
+<div class="notes-overlay" id="notesOverlay"></div>
+
+<div class="deck-viewport">
+<main class="deck-stage" id="deckStage">
+
+<!-- === 01 PORTADA === -->
+<section class="slide title active">
+  <div class="stripe"></div>
+  <div class="title-copy">
+    <div class="eyebrow t">Comité doctoral · noviembre 2026</div>
+    <h1 class="t">Plataforma <em>neuroadaptativa</em> basada en EEG para el entrenamiento en cirugía robótica</h1>
+    <p class="sub t">Avance de tesis. Lo que ya está construido, lo que ya se midió y lo que todavía no puede afirmarse.</p>
+  </div>
+  <aside class="title-panel">
+    <div class="plab t">Corte del sistema</div>
+    <div class="row"><strong class="t">Estimador EEG</strong><span class="t">Listo · 51 sujetos, evaluación honesta</span></div>
+    <div class="row"><strong class="t">Consola de sutura</strong><span class="t">Lista · Quest 3, dos instrumentos, háptico</span></div>
+    <div class="row"><strong class="t">Lazo con personas</strong><span class="t">Pendiente · el diseño ya está escrito</span></div>
+  </aside>
+  <div class="title-meta t"><b>E. Rafael Hernández-Ríos</b><br>Director: Dr. Omar Arturo Domínguez Ramírez · UAEH<br>Co-director: Dr. Christian Peñaloza · Mirai Innovation, Osaka<br>Doctorado en Ciencias Computacionales</div>
+  <div class="speaker-note">Abrir con la frase del panel derecho: tres piezas, y la tercera es el hueco. No prometer eficacia del entrenamiento. Las cifras de esta sesión son del corte del 5 de octubre de 2026.</div>
+</section>
+
+<!-- === 02 MAPA === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">Sesión</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Seis movimientos, en este orden</h1>
+  <div class="zone">
+    <div class="grid3" style="grid-template-rows: 1fr 1fr;">
+      <article class="card reveal d1"><div class="k">01</div><h3 class="t">Problema e hipótesis</h3><p class="t">Qué se quiere demostrar, y cuáles hipótesis ya tienen evidencia y cuáles esperan usuarios.</p></article>
+      <article class="card reveal d2"><div class="k">02</div><h3 class="t">Arquitectura y corte</h3><p class="t">Los ocho bloques, las tres piezas de software y el único hueco de la ruta crítica.</p></article>
+      <article class="card reveal d3"><div class="k">03</div><h3 class="t">Índice propio</h3><p class="t">Capítulo 3. Corpus AURA, paradigma controlado y ecológico, con su heterogeneidad.</p></article>
+      <article class="card reveal d4"><div class="k">04</div><h3 class="t">Estimador</h3><p class="t">Capítulo 5. 51 sujetos, dos equipos, evaluación sin mezclar personas. Y su límite.</p></article>
+      <article class="card reveal d5"><div class="k">05</div><h3 class="t">Consola y lazo</h3><p class="t">Capítulo 4. Entrenador, controlador y la decisión de usar dos fuentes de información.</p></article>
+      <article class="card reveal d5"><div class="k earth">06</div><h3 class="t">Lo que falta</h3><p class="t">Productos, capítulo 6 sin datos, plan de cierre y las decisiones de esta sesión.</p></article>
+    </div>
+  </div>
+  <footer class="foot"><span class="t">Cifras con corte al 5 de octubre de 2026</span><span>02 / 25</span></footer>
+  <div class="speaker-note">Pedir que el comité lea el color: cian es Mirai y lo que ya corre; terracota es UAEH y lo que sigue abierto. Avisar que H1 no se reclama hoy.</div>
+</section>
+
+<!-- === 03 PROBLEMA === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">01 · Problema</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">El simulador mide la mano. No mide si el aprendiz cabe en la tarea.</h1>
+  <div class="zone">
+    <div class="grid3">
+      <article class="card reveal d1">
+        <div class="k earth">Vacío pedagógico</div>
+        <h3 class="t">Dificultad fija</h3>
+        <p class="t">La mayoría de los simuladores de cirugía robótica enseña igual a todos. El novato se satura; quien ya domina la tarea se aburre. Ninguno de los dos está en la zona donde se retiene la habilidad.</p>
+      </article>
+      <article class="card reveal d2">
+        <div class="k earth">Vacío de señal</div>
+        <h3 class="t">Desempeño ≠ estado</h3>
+        <p class="t">Hay EEG, fNIRS y seguimiento ocular para medir carga, pero casi ninguna plataforma los cierra en un lazo. La IA actual comenta el resultado motor. No responde al estado mental.</p>
+      </article>
+      <article class="card reveal d3">
+        <div class="k">Tarea de referencia</div>
+        <h3 class="t">Sutura intracorpórea</h3>
+        <p class="t">Bimanual, en realidad virtual, con fuerza. Es un indicador temprano de destreza en cirugía mínimamente invasiva y exige justo el esfuerzo que el índice pretende ver: coordinación fina bajo presión.</p>
+      </article>
+    </div>
+  </div>
+  <footer class="foot"><span>Capítulo 1</span><span>03 / 25</span></footer>
+  <div class="speaker-note">No recorrer la literatura. Tres vacíos y la tarea. La pregunta de investigación viene en la siguiente lámina.</div>
+</section>
+
+<!-- === 04 HIPOTESIS === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">01 · Hipótesis</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">La pregunta está cerrada. La eficacia, no.</h1>
+  <div class="zone">
+    <p class="lead t reveal d1">¿Cómo diseñar una consola que, con EEG e IA, detecte la carga y modifique en tiempo real el entorno de realidad virtual para el aprendizaje quirúrgico?</p>
+    <table class="sheet reveal d2">
+      <thead><tr><th>Hipótesis</th><th>Qué afirma</th><th>Dónde está</th></tr></thead>
+      <tbody>
+        <tr><td class="t"><b>H1</b> Eficacia</td><td class="t">El lazo cerrado mejora precisión, tiempo y retención frente a dificultad fija.</td><td><span class="chip wait t">Pendiente de usuarios</span></td></tr>
+        <tr><td class="t"><b>H2</b> Zona óptima</td><td class="t">Más tiempo con el índice regional en rango intermedio, y menos varianza.</td><td><span class="chip wait t">Pendiente de usuarios</span></td></tr>
+        <tr><td class="t"><b>H3</b> Técnica</td><td class="t">Menor error de trayectoria, menos errores, menos jerk y menos fuerza pico.</td><td><span class="chip wait t">Pendiente de usuarios</span></td></tr>
+        <tr><td class="t"><b>H4</b> NASA-TLX</td><td class="t">Menor carga subjetiva en la condición adaptativa.</td><td><span class="chip wait t">Pendiente de usuarios</span></td></tr>
+        <tr><td class="t"><b>H5</b> Acoplamiento</td><td class="t">El ajuste del entorno precede a una caída medible del índice.</td><td><span class="chip wait t">Pendiente de usuarios</span></td></tr>
+        <tr><td class="t"><b>H6</b> Doble fuente</td><td class="t">El EEG decide cuándo exigir más. La telemetría de errores decide cuándo aliviar.</td><td><span class="chip sim t">Medida en software</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <footer class="foot"><span class="t">H1–H5 se contrastan en el capítulo 6. H6 ya tiene evidencia de lazo, no de aprendizaje.</span><span>04 / 25</span></footer>
+  <div class="speaker-note">Esta lámina protege la sesión. Si preguntan si el sistema ya enseña mejor, la respuesta es no: eso es H1 y no hay usuarios. H6 es la única con evidencia, y es de dinámica del controlador.</div>
+</section>
+
+<!-- === 05 OBJETIVOS === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">01 · Objetivos</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Objetivo general y en qué punto está cada pieza</h1>
+  <div class="zone">
+    <p class="lead t reveal d1">Diseñar, implementar y evaluar una consola maestra EEG–IA–VR que ajuste el entorno según el estado mental estimado.</p>
+    <table class="sheet reveal d2">
+      <thead><tr><th></th><th>Objetivo específico</th><th>Corte</th></tr></thead>
+      <tbody>
+        <tr><td class="t">1</td><td class="t">Analizar EEG de carga y atención en la tarea quirúrgica simulada.</td><td class="t">Parcial. Hay corpus propio de escritorio y exergaming; falta la tarea de sutura, y parte del AURA no sirve por muestreo.</td></tr>
+        <tr><td class="t">2</td><td class="t">Clasificar la carga en tiempo real, con modelos interpretables.</td><td class="t">Hecho sobre dos conjuntos públicos. No está probado en manipulación VR.</td></tr>
+        <tr><td class="t">3</td><td class="t">Modular dificultad, ritmo y ayuda según el estado.</td><td class="t">Especificado y medido en software. Sin personas en el lazo.</td></tr>
+        <tr><td class="t">4</td><td class="t">Integrar EEG, IA y VR en una arquitectura cerrada.</td><td class="t">Las tres piezas existen. Falta pasar la puntuación de UDP a LSL y sincronizar marcadores.</td></tr>
+        <tr><td class="t">5</td><td class="t">Validar con usuarios: fijo contra neuroadaptativo.</td><td class="t">Diseño escrito. Ética en pausa. Cero sesiones con la diadema y el lazo juntos.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <footer class="foot"><span>Capítulo 1 · corte 5 de octubre de 2026</span><span>05 / 25</span></footer>
+  <div class="speaker-note">Leer la columna de corte, no los objetivos. El comité necesita el mapa de honestidad antes de los resultados.</div>
+</section>
+
+<!-- === 06 ARQUITECTURA === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">02 · Arquitectura</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Un lazo, dos mitades: percibir y actuar</h1>
+  <div class="zone">
+    <div class="grid2">
+      <article class="card reveal d1">
+        <div class="k">Percepción · capítulos 3 y 5</div>
+        <h3 class="t">Del cuero cabelludo a una puntuación</h3>
+        <ul>
+          <li class="t"><b>B1.</b> EEG portátil, pensado para entrar por Lab Streaming Layer.</li>
+          <li class="t"><b>B2.</b> Filtro 1–40 Hz y potencias theta, alfa y beta.</li>
+          <li class="t"><b>B3.</b> Dos salidas cada 4 s: una etiqueta baja / óptima / alta y una puntuación continua 0–3. El lazo obedece a la continua, porque la etiqueta intermedia se cae.</li>
+        </ul>
+      </article>
+      <article class="card reveal d2">
+        <div class="k earth">Actuación · capítulo 4</div>
+        <h3 class="t">De la puntuación al instrumento</h3>
+        <ul>
+          <li class="t"><b>B4–B6.</b> Entorno en Unity, retroalimentación y consola con dos instrumentos por trócar.</li>
+          <li class="t"><b>Controlador.</b> Traduce la puntuación en dificultad. El capítulo 4 lo numera como B7; en el capítulo 1 ese número es el usuario. Aquí se nombra por función.</li>
+          <li class="t"><b>B8.</b> Registro de EEG, etiquetas y desempeño.</li>
+          <li class="t"><b>Lazo e.</b> Los errores del entrenador ya no son un accesorio: gobiernan cuándo aliviar.</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+  <footer class="foot"><span class="t">Lazos a–i en el capítulo 1. El lazo e es el que cambió de papel con la evidencia.</span><span>06 / 25</span></footer>
+  <div class="speaker-note">Mencionar el choque de numeración antes de que lo noten. B7 es el usuario en el cap. 1 y el controlador en el cap. 4. La lámina usa la función.</div>
+</section>
+
+<!-- === 07 CORTE === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">02 · Corte</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Las tres piezas de software existen. Falta una persona dentro.</h1>
+  <div class="zone">
+    <div class="grid3">
+      <article class="card reveal d1">
+        <div class="k">Listo</div>
+        <div class="num">EEG</div>
+        <h3 class="t" style="margin-top:14px">Estimador</h3>
+        <p class="t">Ventanas de 4 s, 218 rasgos fisiológicos, calibración contra el reposo de cada quien, bosque aleatorio. 51 sujetos en dos equipos. Extracción: 10.7 ms por ventana.</p>
+      </article>
+      <article class="card reveal d2">
+        <div class="k">Listo</div>
+        <div class="num">VR</div>
+        <h3 class="t" style="margin-top:14px">Entrenador</h3>
+        <p class="t">Unity 6 y Quest 3. Dos instrumentos teleoperados por trócares, cinco ejercicios y fuerza real en el estilete 3D Systems Touch, con techo de 3.3 N.</p>
+      </article>
+      <article class="card reveal d3">
+        <div class="k earth">En simulación</div>
+        <div class="num earth">Lazo</div>
+        <h3 class="t" style="margin-top:14px">Controlador</h3>
+        <p class="t">Guardas, pasos asimétricos y gate de desempeño. Probado reinyectando 5 369 puntuaciones reales. Nadie ha entrenado todavía con la diadema puesta y el lazo corriendo.</p>
+      </article>
+    </div>
+  </div>
+  <footer class="foot"><span class="t">La validación intra-sujeto está escrita. El protocolo de ética está en pausa.</span><span>07 / 25</span></footer>
+  <div class="speaker-note">Esta es la lámina de estado. Repetir: listo no significa validado con cirujanos ni con estudiantes. Significa que el software está y la dinámica se midió fuera de línea.</div>
+</section>
+
+<!-- === 08 SECCION INDICE === -->
+<section class="slide section">
+  <div class="stripe"></div>
+  <div class="sec-k t">Capítulo 3 · evidencia 1 de 3</div>
+  <h1 class="t">El índice<br>en registros <em>propios</em></h1>
+  <div class="sec-side">
+    <p class="t">Antes de construir el clasificador sobre datos públicos, se preguntó si un cociente theta/alfa regional se mueve cuando la tarea cuesta más, con la diadema que el laboratorio realmente tiene.</p>
+    <p class="t">La respuesta es sí a nivel de ventana, no de forma pareja entre personas, y el canal único Fz/Pz no alcanza.</p>
+  </div>
+  <footer class="foot"><span>AURA · 8 canales</span><span>08 / 25</span></footer>
+  <div class="speaker-note">Transición. No vender el capítulo 3 como una validación clínica. Es una prueba del índice en dos paradigmas, con n chico y señal irregular.</div>
+</section>
+
+<!-- === 09 DISENO CAP3 === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">03 · Corpus propio</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Qué se registró, y a quién se dejó entrar al análisis</h1>
+  <div class="zone">
+    <div class="grid2">
+      <article class="card reveal d1">
+        <div class="k">Definición</div>
+        <h3 class="t">Índice regional, en logaritmo</h3>
+        <p class="t">log CLI = media de log θ en F3, Fz y F4, menos media de log α en P3, Pz y P4. Sube cuando hay más theta frontal o menos alfa parietal. Se normaliza, cuando toca, contra la línea base de la misma persona.</p>
+        <p class="t" style="margin-top:12px">Diadema inalámbrica de 8 canales, tipo AURA. Ventanas de 2 s en este capítulo, distintas de las de 4 s del estimador.</p>
+      </article>
+      <article class="card reveal d2">
+        <div class="k earth">Muestra que sobrevivió el filtro</div>
+        <h3 class="t">17 reclutados, 8 en el análisis primario</h3>
+        <ul>
+          <li class="t">Controlado: lectura (carga baja) contra Stroop (carga alta). Entraron S01–S08: muestreo ≥ 45 Hz, artefactos ≤ 30 % y al menos 60 ventanas válidas por fase.</li>
+          <li class="t">Ecológico: exergaming. Ocho sesiones con segmento de tarea identificable. No son ocho personas distintas.</li>
+          <li class="t">Control positivo: efecto Berger, ojos cerrados contra ojos abiertos.</li>
+          <li class="t">9 de 16 sesiones del corpus AURA quedan por debajo de Nyquist para alfa. Por eso el método publicado usa conjuntos públicos, y este corpus se tiene que volver a adquirir.</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+  <footer class="foot"><span>Capítulo 3</span><span>09 / 25</span></footer>
+  <div class="speaker-note">Si preguntan por el tamaño, decir 8 de 17 antes de decir el p-valor. Y separar 2 s de este capítulo y 4 s del estimador.</div>
+</section>
+
+<!-- === 10 RESULTADOS CAP3 === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">03 · Resultados del índice</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Hay efecto en las ventanas. No en todas las personas.</h1>
+  <div class="zone">
+    <div class="grid4" style="margin-bottom:16px">
+      <article class="card reveal d1"><div class="k">LMM, Alta − Baja</div><div class="num">+0.111</div><p class="t" style="margin-top:8px">p = 0.001 · IC 95 % [0.044, 0.179] · 4 105 ventanas · 8 sujetos</p></article>
+      <article class="card reveal d2"><div class="k">Efecto Berger</div><div class="num">−0.770</div><p class="t" style="margin-top:8px">Ojos cerrados respecto a carga baja, p &lt; 0.001. El pipeline espectral ve el alfa cuando debe verlo.</p></article>
+      <article class="card reveal d3"><div class="k earth">A nivel de sujeto</div><div class="num earth">0.47</div><p class="t" style="margin-top:8px">Wilcoxon, n = 7. d<sub>z</sub> = 0.39. Solo 4 de 7 siguen la dirección esperada.</p></article>
+      <article class="card reveal d4"><div class="k">Fz / Pz solo</div><div class="num">0.322</div><p class="t" style="margin-top:8px">β = +0.045, no significativo. El promedio regional sí aporta frente al par único.</p></article>
+    </div>
+    <article class="card reveal d5" style="padding:16px 22px">
+      <p class="t"><b>Ecológico.</b> En 6 de 8 sesiones el índice normalizado por la línea base superó 1 (el umbral fijado de antemano era 60 %). Los valores van de 1.87 a 7.85, y dos sesiones quedan por debajo (0.71 y 0.33). Sensible, y muy desigual.</p>
+    </article>
+  </div>
+  <footer class="foot"><span class="t">El contraste centrado intra-sujeto repite el efecto: β = +0.112, p = 0.001. No es un artefacto de la escala absoluta.</span><span>10 / 25</span></footer>
+  <div class="speaker-note">Leer primero el 0.47, no el 0.001. El modelo de ventanas tiene miles de observaciones de pocas cabezas. La unidad que importa para un entrenador es la persona, y ahí el efecto es chico e inconsistente.</div>
+</section>
+
+<!-- === 11 SECCION ESTIMADOR === -->
+<section class="slide section">
+  <div class="stripe"></div>
+  <div class="sec-k t">Capítulo 5 · evidencia 2 de 3</div>
+  <h1 class="t">Un estimador <em>honesto</em> de carga</h1>
+  <div class="sec-side">
+    <p class="t">La literatura de esta tarea suele reportar 95–99 % porque entrena y prueba con trozos de la misma persona.</p>
+    <p class="t">Aquí cada modelo se prueba en alguien que no vio. Con esa regla, lo realista está entre 0.75 y 0.82. Ahí caen estos números.</p>
+  </div>
+  <footer class="foot"><span>51 sujetos · dos sistemas de registro</span><span>11 / 25</span></footer>
+  <div class="speaker-note">La frase de los 95 % es el gancho. Dejar claro que no se está pidiendo disculpas por un número bajo: se está rechazando un protocolo inflado.</div>
+</section>
+
+<!-- === 12 PROTOCOLO === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">04 · Protocolo</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Cinco decisiones que hacen el número creíble</h1>
+  <div class="zone">
+    <div class="grid3" style="grid-template-rows: 1fr 1fr;">
+      <article class="card reveal d1"><div class="k">01</div><h3 class="t">Ventana</h3><p class="t">4 s, con 50 % de solape: una decisión cada 2 s. Filtro 1–40 Hz y rechazo de la línea eléctrica.</p></article>
+      <article class="card reveal d2"><div class="k">02</div><h3 class="t">Rasgos con literatura</h3><p class="t">218 medidas de potencia y cocientes. Se quitó la asimetría frontal: habla de emoción, no de carga, y no aportaba.</p></article>
+      <article class="card reveal d3"><div class="k">03</div><h3 class="t">Calibrar a la persona</h3><p class="t">Un tramo de reposo propio pone el cero. Cada cerebro se lee contra sí mismo, no contra el promedio del grupo.</p></article>
+      <article class="card reveal d4"><div class="k">04</div><h3 class="t">Dejar a alguien fuera</h3><p class="t">Leave-one-subject-out. El reposo de calibración no se cuela en la prueba.</p></article>
+      <article class="card reveal d5"><div class="k">05</div><h3 class="t">Un modelo, no seis</h3><p class="t">Se compararon bosque aleatorio, boosting, SVM, logística, MLP y una CNN-LSTM. Se conserva el bosque aleatorio.</p></article>
+      <article class="card reveal d5"><div class="k earth">Lectura</div><h3 class="t">La palanca es el protocolo</h3><p class="t">Calibrar contra el reposo propio movió más el resultado que cambiar de modelo.</p></article>
+    </div>
+  </div>
+  <footer class="foot"><span>Capítulo 5</span><span>12 / 25</span></footer>
+  <div class="speaker-note">Si piden el modelo ganador: Random Forest. No abrir la caja de hiperparámetros salvo que insistan. El mensaje es que el protocolo pesa más que la arquitectura.</div>
+</section>
+
+<!-- === 13 BINARIO === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">04 · Reposo contra tarea</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Distingue la tarea. Transfiere a otro equipo.</h1>
+  <div class="zone">
+    <div class="grid2">
+      <article class="card reveal d1">
+        <div class="k">Aritmética / Stroop · n = 15</div>
+        <div class="num">0.82</div>
+        <p class="t" style="margin-top:12px">Diadema de 8 canales: Fp1, Fp2, F3, Fz, F4, P3, Pz, P4. Exactitud leave-one-subject-out con calibración.</p>
+        <p class="t" style="margin-top:10px"><b>No es simétrico.</b> La tarea se reconoce el 93 % de las veces. El reposo, el 56 %. El sistema detecta actividad mejor que calma.</p>
+      </article>
+      <article class="card reveal d2">
+        <div class="k">PhysioNet eegmat · n = 36</div>
+        <div class="num">0.76</div>
+        <p class="t" style="margin-top:12px">Restas mentales, 19 canales, otro hardware. Misma lógica: línea base reservada y sujeto nunca visto.</p>
+        <p class="t" style="margin-top:10px">El método no está pegado a una diadema. Esa transferencia es la razón para no depender de un solo corpus.</p>
+      </article>
+    </div>
+  </div>
+  <footer class="foot"><span class="t">Exactitud binaria. No es todavía una escala de cuánto le cuesta la tarea.</span><span>13 / 25</span></footer>
+  <div class="speaker-note">Subrayar 93 contra 56. Un comité puede oír 0.82 y creer que ambas clases están bien. No lo están.</div>
+</section>
+
+<!-- === 14 LIMITE DE GRADO === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">04 · El límite</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Sabe si hay tarea. No sabe cuánto cuesta.</h1>
+  <div class="zone">
+    <table class="sheet reveal d1">
+      <thead><tr><th>Pregunta</th><th>Resultado</th><th>Cómo leerlo</th></tr></thead>
+      <tbody>
+        <tr><td class="t">Reposo contra tarea</td><td class="t"><b>0.82</b></td><td class="t">Detecta actividad. El reposo se le escapa la mitad de las veces.</td></tr>
+        <tr><td class="t">Tres niveles: baja, óptima, alta</td><td class="t"><b>0.51</b></td><td class="t">La clase mayoritaria ya vale 0.39. La carga alta se reconoce solo entre 4 % y 30 %.</td></tr>
+        <tr><td class="t">Sobrecarga, dentro del lazo</td><td class="t"><b>0.40</b> de precisión</td><td class="t">Justo la dirección que más necesita un controlador que quiera bajar la dificultad.</td></tr>
+        <tr><td class="t">Calma, dentro del lazo</td><td class="t"><b>0.90</b> de precisión</td><td class="t">15 de 15 sujetos. El EEG sí sirve para decidir cuándo subir la exigencia.</td></tr>
+      </tbody>
+    </table>
+    <p class="lead t reveal d2" style="margin-top:18px">No se lee como un fallo del modelo. Las etiquetas marcan la dificultad impuesta, no la carga sentida; las tareas son de escritorio, no de manipulación en el visor; y los rasgos son espectrales de una sola ventana.</p>
+  </div>
+  <footer class="foot"><span class="t">Por eso el lazo no se gobierna con la clase «alta». Se gobierna con la puntuación continua y con otra fuente.</span><span>14 / 25</span></footer>
+  <div class="speaker-note">Esta es la lámina más importante del estimador. No suavizar el 0.40. De aquí sale la arquitectura de doble fuente.</div>
+</section>
+
+<!-- === 15 MONTAJE === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">04 · Montaje y mecanismo</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Menos electrodos bastan. Y el cociente no es lo que parece.</h1>
+  <div class="zone">
+    <div class="grid2">
+      <article class="card reveal d1">
+        <div class="k">De 19 canales a un par</div>
+        <h3 class="t">Un montaje que se puede poner</h3>
+        <ul>
+          <li class="t">Ocho canales frontales y parietales no pierden nada medible frente a diecinueve.</li>
+          <li class="t">El par Fz–Pz queda a menos de 4 puntos, con 89 % menos rasgos.</li>
+          <li class="t">En el corpus propio, en cambio, Fz/Pz solo no alcanzó significancia. El promedio de la región sigue haciendo falta cuando la señal es corta y ruidosa.</li>
+        </ul>
+      </article>
+      <article class="card reveal d2">
+        <div class="k earth">Hallazgo de mecanismo</div>
+        <h3 class="t">El índice mide la caída del alfa</h3>
+        <p class="t">En los dos conjuntos públicos, θ(Fz) / α(Pz) sube <b>1.93×</b> de reposo a tarea. El numerador theta está plano. Todo el ascenso viene de la supresión de alfa parietal.</p>
+        <p class="t" style="margin-top:12px">Cambia dónde poner el electrodo que no se puede perder, y cambia la frase con la que se explica el índice: no es «sube la theta de esfuerzo»; es «cae el alfa parietal».</p>
+      </article>
+    </div>
+  </div>
+  <footer class="foot"><span class="t">CLI interpretable = theta(Fz) / alfa(Pz), normalizado al reposo. Por sí solo sigue la carga casi como el modelo completo.</span><span>15 / 25</span></footer>
+  <div class="speaker-note">Dos mensajes: el dispositivo puede ser barato, y la interpretación fisiológica se corrigió. No decir que theta no importa en la literatura; decir que en estos datos el efecto observado es alfa.</div>
+</section>
+
+<!-- === 16 SECCION CONSOLA === -->
+<section class="slide section">
+  <div class="stripe"></div>
+  <div class="sec-k t">Capítulo 4 · evidencia 3 de 3</div>
+  <h1 class="t">La consola y el <em>lazo</em> que no oscila</h1>
+  <div class="sec-side">
+    <p class="t">La literatura suele decir «y entonces la dificultad se adapta». Este capítulo fija qué parámetro se mueve, cuánto, cada cuánto, qué impide la oscilación y qué pasa cuando el EEG se equivoca.</p>
+    <p class="t">Se midió en software, con puntuaciones reales reinyectadas. No con un aprendiz.</p>
+  </div>
+  <footer class="foot"><span>Unity 6 · Quest 3 · estilete háptico</span><span>16 / 25</span></footer>
+  <div class="speaker-note">Prometer especificidad, no eficacia. El capítulo 4 es una contribución de ingeniería de control, no un ensayo de aprendizaje.</div>
+</section>
+
+<!-- === 17 ENTRENADOR === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">05 · Entrenador</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Una consola estilo da Vinci, en un visor autónomo</h1>
+  <div class="zone">
+    <div class="grid3">
+      <article class="card reveal d1">
+        <div class="k">Teleoperación</div>
+        <h3 class="t">El trócar es la perilla</h3>
+        <p class="t">Dos instrumentos esclavos pivotan sobre un punto fijo. La punta sigue a la mano con un factor de escala: menos escala, más precisión exigida. Un embrague permite reacomodar la mano sin mover la herramienta.</p>
+      </article>
+      <article class="card reveal d2">
+        <div class="k">Ejercicios</div>
+        <h3 class="t">Cinco niveles de sutura</h3>
+        <p class="t">Dificultad creciente sobre el mismo gesto. La telemetría guarda errores tipificados, tensión del hilo y precisión. Esa telemetría es la segunda entrada del controlador.</p>
+      </article>
+      <article class="card reveal d3">
+        <div class="k earth">Fuerza</div>
+        <h3 class="t">3.3 N de techo</h3>
+        <p class="t">El instrumento derecho puede manejarse con el estilete 3D Systems Touch. Hay fuerza real, no una vibración simbólica. El tope de 3.3 N acota lo que el tejido virtual puede devolver.</p>
+      </article>
+    </div>
+  </div>
+  <footer class="foot"><span class="t">Entrada alternativa: los mandos del Quest 3. La escena de calibración dentro del visor todavía no está.</span><span>17 / 25</span></footer>
+  <div class="speaker-note">Si preguntan por el hardware háptico, nombrar 3D Systems Touch y 3.3 N. No inventar grados de libertad que no estén en el texto.</div>
+</section>
+
+<!-- === 18 CONTROLADOR === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">05 · Controlador</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Cuatro reglas para que el entrenador no se reconfigure solo</h1>
+  <div class="zone">
+    <div class="grid2">
+      <article class="card reveal d1">
+        <div class="k">De la puntuación a la zona</div>
+        <h3 class="t">Continua, no una etiqueta frágil</h3>
+        <p class="t">Entra la puntuación ordinal 0–3, una cada 2 s. Se mapea a zona baja, óptima o alta. Actuar sobre la ventana cruda cambia de zona <b>11.9 veces por minuto</b>: el entrenador se reacomodaría cada nueve segundos. Impracticable.</p>
+      </article>
+      <article class="card reveal d2">
+        <div class="k">Qué se puede mover</div>
+        <h3 class="t">Alcance separado del puntaje</h3>
+        <p class="t">No todo parámetro es legal en medio de un intento. Separar qué puede cambiar durante la sutura y qué solo entre intentos mantiene comparable la puntuación de un ensayo contra otro.</p>
+      </article>
+      <article class="card reveal d3">
+        <div class="k">Guardas</div>
+        <h3 class="t">Cada guarda corta cerca de la mitad</h3>
+        <p class="t">Juntas bajan el cambio de zona a <b>1.0 por minuto</b> y las acciones de dificultad a <b>0.57 por minuto</b>, una cada 105 s. La concordancia de zona no cae: se espacia el acto, no se miente la lectura.</p>
+      </article>
+      <article class="card reveal d4">
+        <div class="k earth">Gate de desempeño</div>
+        <h3 class="t">No aliviar a ciegas</h3>
+        <p class="t">Si el EEG dice sobrecarga pero la telemetría muestra que la persona sostiene la tarea, el controlador no baja la dificultad. Esa es la respuesta de diseño al 0.40 de precisión en saturación.</p>
+      </article>
+    </div>
+  </div>
+  <footer class="foot"><span>Capítulo 4 · evaluación software-in-the-loop</span><span>18 / 25</span></footer>
+  <div class="speaker-note">Los dos números que hay que dejar dichos: 11.9 por minuto sin guardas, 0.57 acciones de dificultad por minuto con guardas. Y que la concordancia se mantiene.</div>
+</section>
+
+<!-- === 19 ASIMETRIA === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">05 · Doble fuente</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Cada dirección del lazo tiene dueño distinto</h1>
+  <div class="zone">
+    <div class="grid2" style="grid-template-rows: auto 1fr; height:auto; margin-bottom:16px">
+      <article class="card reveal d1">
+        <div class="k">Subir la exigencia</div>
+        <div class="num">0.90</div>
+        <p class="t" style="margin-top:8px">Precisión para la calma, en los 15 sujetos. El EEG autoriza hacer la tarea más difícil.</p>
+      </article>
+      <article class="card reveal d2">
+        <div class="k earth">Aliviar</div>
+        <div class="num earth">0.40</div>
+        <p class="t" style="margin-top:8px">Precisión para la saturación. Aliviar se decide con los errores del simulador y el EEG solo corrobora.</p>
+      </article>
+    </div>
+    <article class="card reveal d3">
+      <p class="t"><b>Cómo se probó.</b> 5 369 puntuaciones de 15 sujetos, cada una de un regresor que no entrenó con esa persona. No es una sesión real: el orden de archivos no es el tiempo de la grabación. Se armó, por sujeto, una rampa reposo → bajo → medio → alto → reposo. Dura en promedio 12 minutos. Mide si el controlador sigue un perfil conocido. No mide si alguien aprende.</p>
+    </article>
+  </div>
+  <footer class="foot"><span class="t">H6 queda formulada desde esta evidencia y se contrasta con usuarios en el capítulo 6.</span><span>19 / 25</span></footer>
+  <div class="speaker-note">Insistir en que la rampa está impuesta. Si alguien dice que ya se validó el lazo con datos reales, corregir: los valores dentro de cada bloque son reales; el calendario no.</div>
+</section>
+
+<!-- === 20 PRODUCTOS === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">06 · Productos</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Dónde está escrito, y qué falta de cada texto</h1>
+  <div class="zone">
+    <table class="sheet reveal d1">
+      <thead><tr><th>Producto</th><th>Qué cubre</th><th>Estado al 5 de octubre</th></tr></thead>
+      <tbody>
+        <tr><td class="t">IEEE ISIE 2026, Nagoya</td><td class="t">Índice θ/α con corpus propio, paradigma controlado y ecológico.</td><td><span class="chip ok t">Presentado</span></td></tr>
+        <tr><td class="t">COMRob 2026, artículo 87</td><td class="t">Entrenador de sutura y controlador adaptativo.</td><td><span class="chip ok t">Versión final subida</span></td></tr>
+        <tr><td class="t">IEEE/SICE SII 2027</td><td class="t">Método del módulo de percepción.</td><td><span class="chip sim t">Falta corregir la Tabla I</span></td></tr>
+        <tr><td class="t">Wiley, Adv. in HCI</td><td class="t">Índice compacto θ/α (Fz/Pz) para interfaces.</td><td><span class="chip wait t">Rechazo inválido; reenviar</span></td></tr>
+        <tr><td class="t">Revisión PRISMA</td><td class="t">Neuroergonomía quirúrgica.</td><td><span class="chip wait t">Pausada</span></td></tr>
+        <tr><td class="t">Tesis</td><td class="t">Capítulos 1 a 5 con resultados. Capítulo 6 con diseño y sin datos.</td><td><span class="chip sim t">Faltan conclusiones</span></td></tr>
+      </tbody>
+    </table>
+  </div>
+  <footer class="foot"><span class="t">Si alguno de estos estados cambió en el último mes, esta lámina se corrige antes de la sesión.</span><span>20 / 25</span></footer>
+  <div class="speaker-note">No defender el rechazo de Wiley en detalle. Decir que se revisa con el Dr. Omar y se reenvía. SII: la tabla de las 218 features está desactualizada.</div>
+</section>
+
+<!-- === 21 LIMITES === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">06 · Límites</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Lo que esta sesión no debe dejar implícito</h1>
+  <div class="zone">
+    <div class="grid2">
+      <article class="card reveal d1">
+        <div class="k earth">Del estimador</div>
+        <ul>
+          <li class="t">No gradúa la carga. Graduar es el trabajo que sigue, con otros conjuntos y otros rasgos.</li>
+          <li class="t">Las etiquetas públicas son dificultad de la tarea, no NASA-TLX ni error del gesto.</li>
+          <li class="t">Escritorio no es sutura en un visor. El cambio de dominio está señalado y no está medido.</li>
+          <li class="t">El corpus AURA propio no está en condiciones de sostener un artículo de método.</li>
+        </ul>
+      </article>
+      <article class="card reveal d2">
+        <div class="k earth">Del sistema</div>
+        <ul>
+          <li class="t">Nadie ha usado la diadema con el lazo cerrado.</li>
+          <li class="t">La prueba del controlador reordena el tiempo. No es una sesión.</li>
+          <li class="t">H1, el beneficio de aprender, no tiene dato.</li>
+          <li class="t">La ética del estudio con personas está en pausa. Sin eso no hay capítulo 6 empírico.</li>
+        </ul>
+      </article>
+    </div>
+  </div>
+  <footer class="foot"><span>Estas cuatro frases son las que el comité puede hacer sin esta lámina. Mejor decirlas primero.</span><span>21 / 25</span></footer>
+  <div class="speaker-note">Leer casi textual. Es la lámina que compra credibilidad para pedir el cierre del proyecto.</div>
+</section>
+
+<!-- === 22 CAP 6 === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">06 · Capítulo 6</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">El estudio está diseñado. No está corrido.</h1>
+  <div class="zone">
+    <div class="grid3">
+      <article class="card reveal d1">
+        <div class="k">Diseño</div>
+        <h3 class="t">Intra-sujeto, AB / BA</h3>
+        <p class="t">24 a 30 novatos, 20 a 35 años, de la UAEH y de instituciones ligadas a Mirai. Potencia pensada para d<sub>z</sub> = 0.5. Familiarización 5 min y dos bloques de 5 a 7 min: dificultad fija contra neuroadaptativo.</p>
+      </article>
+      <article class="card reveal d2">
+        <div class="k">Tarea y registro</div>
+        <h3 class="t">Sutura, EEG y fuerza</h3>
+        <p class="t">Misma sutura intracorpórea. Se registran EEG, trayectoria, errores, fuerza y NASA-TLX. El éxito pide efecto en al menos dos de: error de trayectoria, tiempo y NASA-TLX, más tiempo en zona y un acople ajuste–índice en menos de 5 s.</p>
+      </article>
+      <article class="card reveal d3">
+        <div class="k earth">Si el gate falla</div>
+        <h3 class="t">No se tira la adaptación</h3>
+        <p class="t">Si la telemetría no cubre los episodios de zona alta, se vuelve a un controlador de una sola fuente y se acepta aliviar de más. Subentrenar a quien sí sostenía la tarea es el costo explícito de esa retirada.</p>
+      </article>
+    </div>
+  </div>
+  <footer class="foot"><span class="t">Riesgo mínimo declarado. Ética en pausa. Sin ese dictamen el calendario del capítulo 6 no arranca.</span><span>22 / 25</span></footer>
+  <div class="speaker-note">No negociar el n en voz alta salvo que pregunten. El punto es que el protocolo existe y el freno actual es ético y de señal, no de idea.</div>
+</section>
+
+<!-- === 23 PLAN === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">06 · Cierre</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">El orden en que conviene cerrar, y por qué</h1>
+  <div class="zone">
+    <table class="sheet reveal d1">
+      <thead><tr><th></th><th>Paso</th><th>Para qué</th></tr></thead>
+      <tbody>
+        <tr><td class="t">1</td><td class="t"><b>Banco de validación.</b> Un comando con protocolos fijos, y las grabaciones reproducidas por LSL a tiempo real.</td><td class="t">Saber latencia, estabilidad y oscilación antes de sentar a nadie.</td></tr>
+        <tr><td class="t">2</td><td class="t"><b>Re-adquirir AURA.</b> Batería corta: reposo y n-back 0–3, por encima de Nyquist.</td><td class="t">El corpus propio vuelve a ser usable y sirve de puente al visor.</td></tr>
+        <tr><td class="t">3</td><td class="t"><b>Graduar la carga.</b> Otros conjuntos, rasgos de covarianza, contexto de varias ventanas, regresión ordinal.</td><td class="t">Atacar el 0.51 y el 0.40, no cambiar el bosque por cambiarlo.</td></tr>
+        <tr><td class="t">4</td><td class="t"><b>Plataforma.</b> Puntuación y telemetría por LSL, calibración dentro del visor, sesión fijo contra adaptativo.</td><td class="t">Responder el cambio de dominio escritorio → VR que ya marcaron los revisores.</td></tr>
+        <tr><td class="t">5</td><td class="t"><b>Usuarios y un artículo nuevo.</b> El capítulo 6, y un texto de carga graduada en varios conjuntos.</td><td class="t">H1 solo existe después de este paso. El artículo tiene que citar SII y decir qué añade.</td></tr>
+      </tbody>
+    </table>
+  </div>
+  <footer class="foot"><span class="t">En paralelo, corto: reenviar Wiley, corregir la Tabla I de SII, y subir el PDF de la tesis.</span><span>23 / 25</span></footer>
+  <div class="speaker-note">Defender el orden: no saltar a usuarios con una diadema que en 9 de 16 sesiones no ve el alfa, ni con un lazo cuya latencia no se ha medido en streaming.</div>
+</section>
+
+<!-- === 24 DECISIONES === -->
+<section class="slide">
+  <div class="stripe"></div>
+  <header class="top"><span class="house-u">UAEH</span><span class="crumb">06 · Esta sesión</span><span class="house-m">Mirai Innovation</span></header>
+  <h1 class="slide-title t">Tres decisiones que esta sesión puede destrabar</h1>
+  <div class="zone">
+    <div class="grid3">
+      <article class="card reveal d1">
+        <div class="k earth">1</div>
+        <h3 class="t">¿Se entra a usuarios con este estimador?</h3>
+        <p class="t">Sabiendo que no gradúa la carga, el alivio lo gobierna la telemetría. La alternativa es esperar un estimador de tres niveles que estos rasgos espectrales no han dado.</p>
+      </article>
+      <article class="card reveal d2">
+        <div class="k earth">2</div>
+        <h3 class="t">¿Qué corpus se adquiere primero?</h3>
+        <p class="t">Una batería corta de reposo y n-back, para recuperar el AURA, o esperar a que el propio estudio de sutura sea la re-adquisición. La primera separa la recuperación de la señal y el dictamen de ética.</p>
+      </article>
+      <article class="card reveal d3">
+        <div class="k earth">3</div>
+        <h3 class="t">¿Qué texto cierra el año?</h3>
+        <p class="t">Reenvío de Wiley y la tabla de SII son semanas. El artículo de carga graduada es el que puede ser de revista. Conviene no presentarlos como si fueran el mismo trabajo.</p>
+      </article>
+    </div>
+  </div>
+  <footer class="foot"><span class="t">H1 no se pide por aprobada. Se pide acuerdo sobre el corte y sobre el siguiente experimento.</span><span>24 / 25</span></footer>
+  <div class="speaker-note">Cerrar la exposición aquí si el tiempo aprieta, y dejar la última lámina como silencio. No responder las tres preguntas uno mismo: ofrecer la recomendación y callar.</div>
+</section>
+
+<!-- === 25 CIERRE === -->
+<section class="slide title">
+  <div class="stripe"></div>
+  <div class="title-copy">
+    <div class="eyebrow t">Para llevarse</div>
+    <h1 class="t">El sistema está <em>armado</em>.<br>El aprendizaje todavía no está medido.</h1>
+    <p class="sub t">Hay un índice con efecto de ventana y mucha diferencia entre personas, un estimador que ve la tarea en quien no vio y no ve el grado de carga, y un controlador que ya no confía en el EEG para aliviar. El experimento que falta es el que puede hablar de eficacia.</p>
+  </div>
+  <aside class="title-panel">
+    <div class="plab t">Siguiente puerta</div>
+    <div class="row"><strong class="t">Señal usable</strong><span class="t">Re-adquirir AURA por encima de Nyquist</span></div>
+    <div class="row"><strong class="t">Lazo medido en tiempo</strong><span class="t">Streaming por LSL, antes de sentar a alguien</span></div>
+    <div class="row"><strong class="t">Capítulo 6</strong><span class="t">Ética, y entonces fijo contra adaptativo</span></div>
+  </aside>
+  <div class="title-meta t" style="bottom:96px"><b>E. Rafael Hernández-Ríos</b> · UAEH · Mirai Innovation<br>Gracias. Quedo en las tres decisiones.</div>
+  <footer class="foot" style="left:72px; width:1100px"><span>Comité doctoral · noviembre 2026</span><span>25 / 25</span></footer>
+  <div class="speaker-note">No añadir un resultado nuevo en las preguntas. Si no está en estas 25 láminas, es del corte o es futuro.</div>
+</section>
+
+</main>
+</div>
+
+<script>
+/* ===========================================
+   SLIDE PRESENTATION CONTROLLER
+   =========================================== */
+class SlidePresentation {
+  constructor() {
+    this.slides = [...document.querySelectorAll('.slide')];
+    this.current = 0;
+    this.stage = document.getElementById('deckStage');
+    this.lock = false;
+    this.setupScale();
+    this.setupKeys();
+    this.setupWheel();
+    this.setupTouch();
+    this.show(0);
+  }
+  setupScale() {
+    const fit = () => {
+      const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+      const x = (window.innerWidth - 1920 * factor) / 2;
+      const y = (window.innerHeight - 1080 * factor) / 2;
+      this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+    };
+    fit();
+    window.addEventListener('resize', fit);
+  }
+  setupKeys() {
+    document.addEventListener('keydown', (e) => {
+      if (e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true') return;
+      if (['ArrowRight', 'PageDown', ' '].includes(e.key)) { e.preventDefault(); this.show(this.current + 1); }
+      if (['ArrowLeft', 'PageUp', 'Backspace'].includes(e.key)) { e.preventDefault(); this.show(this.current - 1); }
+      if (e.key === 'Home') this.show(0);
+      if (e.key === 'End') this.show(this.slides.length - 1);
+      if ((e.key === 'n' || e.key === 'N') && !e.metaKey && !e.ctrlKey) {
+        document.body.classList.toggle('notes-on');
+        this.renderNote();
+      }
+    });
+  }
+  setupWheel() {
+    window.addEventListener('wheel', (e) => {
+      if (document.body.classList.contains('editing')) return;
+      if (this.lock) return;
+      if (Math.abs(e.deltaY) < 20) return;
+      this.lock = true;
+      this.show(this.current + (e.deltaY > 0 ? 1 : -1));
+      setTimeout(() => { this.lock = false; }, 700);
+    }, { passive: true });
+  }
+  setupTouch() {
+    let x0 = null;
+    window.addEventListener('touchstart', (e) => { x0 = e.changedTouches[0].clientX; }, { passive: true });
+    window.addEventListener('touchend', (e) => {
+      if (x0 == null) return;
+      const dx = e.changedTouches[0].clientX - x0;
+      if (Math.abs(dx) > 50) this.show(this.current + (dx < 0 ? 1 : -1));
+      x0 = null;
+    }, { passive: true });
+  }
+  show(i) {
+    this.current = Math.max(0, Math.min(i, this.slides.length - 1));
+    this.slides.forEach((sl, n) => {
+      sl.classList.toggle('active', n === this.current);
+      sl.classList.toggle('visible', n === this.current);
+    });
+    const bar = document.getElementById('progress');
+    bar.style.width = ((this.current + 1) / this.slides.length * 100) + '%';
+    this.renderNote();
+    const hint = document.getElementById('hint');
+    if (this.current > 0 && hint) hint.style.display = 'none';
+  }
+  renderNote() {
+    const note = this.slides[this.current].querySelector('.speaker-note');
+    const box = document.getElementById('notesOverlay');
+    box.textContent = note ? note.textContent : '';
+  }
+}
+
+/* ===========================================
+   INLINE EDITING
+   =========================================== */
+class InlineEditor {
+  constructor() {
+    this.isActive = false;
+    this.key = 'comite-doctoral-nov-2026';
+    this.nodes = [...document.querySelectorAll('.t')];
+    this.nodes.forEach((n, i) => n.dataset.k = String(i));
+    this.restore();
+    this.nodes.forEach((n) => n.addEventListener('input', () => this.persist()));
+  }
+  toggle() {
+    this.isActive = !this.isActive;
+    document.body.classList.toggle('editing', this.isActive);
+    this.nodes.forEach((n) => n.setAttribute('contenteditable', this.isActive ? 'true' : 'false'));
+    document.getElementById('editToggle').classList.toggle('active', this.isActive);
+  }
+  persist() {
+    const data = {};
+    this.nodes.forEach((n) => { data[n.dataset.k] = n.innerHTML; });
+    localStorage.setItem(this.key, JSON.stringify(data));
+  }
+  restore() {
+    try {
+      const data = JSON.parse(localStorage.getItem(this.key) || '{}');
+      this.nodes.forEach((n) => { if (data[n.dataset.k] != null) n.innerHTML = data[n.dataset.k]; });
+    } catch (err) { /* keep authored text */ }
+  }
+  download() {
+    this.persist();
+    const blob = new Blob(['<!DOCTYPE html>\n' + document.documentElement.outerHTML], { type: 'text/html' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'Comite_doctoral_noviembre_2026.html';
+    a.click();
+    URL.revokeObjectURL(a.href);
+  }
+}
+
+const deck = new SlidePresentation();
+const editor = new InlineEditor();
+const editToggle = document.getElementById('editToggle');
+const hotzone = document.getElementById('editHotzone');
+let hideTimer = null;
+editToggle.addEventListener('click', () => editor.toggle());
+hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimer); editToggle.classList.add('show'); });
+hotzone.addEventListener('mouseleave', () => {
+  hideTimer = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400);
+});
+editToggle.addEventListener('mouseenter', () => clearTimeout(hideTimer));
+editToggle.addEventListener('mouseleave', () => {
+  hideTimer = setTimeout(() => { if (!editor.isActive) editToggle.classList.remove('show'); }, 400);
+});
+hotzone.addEventListener('click', () => editor.toggle());
+document.addEventListener('keydown', (e) => {
+  if ((e.key === 'e' || e.key === 'E') && !(e.target.getAttribute && e.target.getAttribute('contenteditable') === 'true')) {
+    editor.toggle();
+  }
+  if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+    e.preventDefault();
+    editor.download();
+  }
+});
+</script>
+</body>
+</html>

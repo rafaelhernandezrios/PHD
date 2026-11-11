@@ -1,0 +1,28 @@
+{
+  "user": "session_20260825_131658",
+  "created_at": "2026-08-25T13:21:43.384510",
+  "sample_rate_hz": 250,
+  "n_channels": 8,
+  "line_freq_hz": 60.0,
+  "channel_map": [
+    "Fp1",
+    "Fp2",
+    "F3",
+    "Fz",
+    "F4",
+    "P3",
+    "Pz",
+    "P4"
+  ],
+  "filter_raw": "none (ADC counts as delivered by AURA)",
+  "filter_filtered": "notch 60.0 Hz (Q=30) -> butter bandpass 1-40 Hz order 4, causal",
+  "clock_offset_perf_to_lsl": 2694383.992236666,
+  "clock_rtt_ms": 0.7999999523162842,
+  "phase_durations": {
+    "baseline_eyes_open": 30,
+    "baseline_eyes_closed": 30,
+    "low_load": 90,
+    "high_load": 90
+  },
+  "note": "events.csv is the authoritative source for phase and stimulus boundaries; the phase column in the signal files is chunk-level and can be off by up to one pull (~100 ms)."
+}

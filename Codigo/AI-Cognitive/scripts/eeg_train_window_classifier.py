@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 from typing import List, Tuple
 
@@ -6,7 +7,7 @@ import pandas as pd
 from imblearn.over_sampling import SMOTE
 from sklearn.ensemble import HistGradientBoostingClassifier, RandomForestClassifier
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import classification_report, confusion_matrix
+from sklearn.metrics import classification_report, confusion_matrix, f1_score, recall_score, accuracy_score
 from sklearn.model_selection import train_test_split
 from sklearn.neural_network import MLPClassifier
 from sklearn.preprocessing import StandardScaler
@@ -14,6 +15,8 @@ from sklearn.svm import SVC
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+OUT_PATH = PROJECT_ROOT / "csv" / "classifier_comparison_filelevel_results.json"
+_RESULTS: dict = {}
 
 # load_2 (normal vs alta): peso extra para "normal" → sube recall de normal
 # (más alto = más recall normal, a costa de más falsos "normal" en alta)
@@ -224,6 +227,7 @@ def train_and_evaluate(
         ),
     }
 
+    target_results = {}
     for name, clf in models.items():
         print(f"\n--- Model: {name} ---")
         clf.fit(X_train, y_train)
@@ -236,6 +240,16 @@ def train_and_evaluate(
         print("Confusion matrix:")
         print(confusion_matrix(y_test, y_pred, labels=labels))
 
+        recall_by_label = {
+            lab: float(recall_score(y_test, y_pred, labels=[lab], average="micro", zero_division=0))
+            for lab in labels
+        }
+        target_results[name] = {
+            "acc": float(accuracy_score(y_test, y_pred)),
+            "macro_f1": float(f1_score(y_test, y_pred, average="macro", zero_division=0)),
+            "recall_by_label": recall_by_label,
+        }
+
         # Feature importance only for models that expose it
         if hasattr(clf, "feature_importances_"):
             importances = clf.feature_importances_
@@ -243,9 +257,21 @@ def train_and_evaluate(
             top_k = min(20, len(feature_cols))
 
             print("\nTop feature importances:")
+            top_feats = []
             for i in range(top_k):
                 idx = idx_sorted[i]
                 print(f"{i+1:2d}. {feature_cols[idx]}: {importances[idx]:.4f}")
+                top_feats.append({"feature": feature_cols[idx], "importance": float(importances[idx])})
+            target_results[name]["top_feature_importances"] = top_feats
+
+    _RESULTS[target_col] = {
+        "n_features": len(feature_cols),
+        "train_files": int(df_train["file_name"].nunique()),
+        "test_files": int(df_test["file_name"].nunique()),
+        "train_windows_after_smote": int(len(X_train)),
+        "test_windows": int(len(X_test)),
+        "models": target_results,
+    }
 
 
 def main() -> None:
@@ -256,6 +282,14 @@ def main() -> None:
 
     # Binario: normal vs alta (load_2)
     train_and_evaluate(df, target_col="load_2")
+
+    out = {"csv": "csv/eeg_window_features.csv",
+           "note": "file-level split (not LOSO), legacy 656-col CSV -- reproduces main.tex "
+                   "Table I 'File-level split (legacy)' row and the Design Log's classifier "
+                   "comparison. Not the protocol the paper's headline numbers use.",
+           "results": _RESULTS}
+    OUT_PATH.write_text(json.dumps(out, indent=2))
+    print("\nSaved ->", OUT_PATH)
 
 
 if __name__ == "__main__":

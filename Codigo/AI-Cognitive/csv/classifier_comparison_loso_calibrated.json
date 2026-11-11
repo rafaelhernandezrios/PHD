@@ -1,0 +1,46 @@
+{
+  "n_features": 218,
+  "protocol": "LOSO + per-subject calibration, load_2, aura CSV (real montage)",
+  "models": {
+    "RandomForest": {
+      "acc": 0.8172844105047495,
+      "macro_f1": 0.7658689881558444,
+      "recall_normal": 0.5598086124401914,
+      "recall_alta": 0.9337300513930213,
+      "subj_acc_mean": 0.8240598855231839,
+      "subj_acc_std": 0.06189445664819113
+    },
+    "HistGradientBoosting": {
+      "acc": 0.7373812628049916,
+      "macro_f1": 0.7083092386214906,
+      "recall_normal": 0.6770334928229665,
+      "recall_alta": 0.7646740600486881,
+      "subj_acc_mean": 0.7512307632441897,
+      "subj_acc_std": 0.13247966565544977
+    },
+    "SVM_RBF": {
+      "acc": 0.6755447941888619,
+      "macro_f1": 0.6656638151853462,
+      "recall_normal": 0.8086124401913876,
+      "recall_alta": 0.615363808493373,
+      "subj_acc_mean": 0.6864722452641796,
+      "subj_acc_std": 0.1570705824178372
+    },
+    "LogisticRegression": {
+      "acc": 0.595269137642019,
+      "macro_f1": 0.5925823956608564,
+      "recall_normal": 0.8253588516746412,
+      "recall_alta": 0.49120908845009464,
+      "subj_acc_mean": 0.5999497268417098,
+      "subj_acc_std": 0.16148039669471817
+    },
+    "MLP": {
+      "acc": 0.7006891413671075,
+      "macro_f1": 0.6804883974806231,
+      "recall_normal": 0.7212918660287081,
+      "recall_alta": 0.6913713822017852,
+      "subj_acc_mean": 0.7109331960039197,
+      "subj_acc_std": 0.11441645783399078
+    }
+  }
+}

@@ -1,0 +1,24 @@
+{
+  "alpha": 0.001,
+  "conf_thresh": 0.95,
+  "note": "static row reproduces main.tex Table I 'LOSO + per-subject calibration' scenario in spirit (per-subject calibrated RF, legacy 656-col CSV); online row is the '+online recalibration' row.",
+  "datasets": {
+    "Arithmetic/Stroop": {
+      "csv": "csv/eeg_window_features.csv",
+      "static": {
+        "acc_mean": 0.8761965419869602,
+        "acc_std": 0.0929462689381852,
+        "macro_f1_mean": 0.8127390054575441,
+        "macro_f1_std": 0.08961904829973456
+      },
+      "online": {
+        "acc_mean": 0.903484506351717,
+        "acc_std": 0.10159483515696385,
+        "macro_f1_mean": 0.8579709775848792,
+        "macro_f1_std": 0.10197535062759303
+      },
+      "delta_acc_mean": 0.02728796436475692,
+      "delta_macro_f1_mean": 0.04523197212733518
+    }
+  }
+}

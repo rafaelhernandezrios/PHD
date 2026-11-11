@@ -1,4 +1,13 @@
-"""Leave-One-Subject-Out evaluation to detect subject leakage."""
+"""Leave-One-Subject-Out evaluation to detect subject leakage.
+
+NOTE: reads the legacy csv/eeg_window_features.csv (656 raw columns,
+includes accelerometer/battery/status channels) -- this is deliberate:
+it reproduces the paper's Table I "LOSO, no calibration" row (main.tex),
+which was computed on this same file. Do not silently repoint this at
+eeg_window_features_aura.csv without also updating what Table I claims.
+"""
+import json
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from collections import Counter
@@ -7,6 +16,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix, f1_score, recall_score
 
 CSV = "csv/eeg_window_features.csv"
+OUT = Path("csv/loso_eval_results.json")
 META = {"file_name", "subject_id", "task_type", "condition_4", "load_3", "load_2", "timestamp"}
 
 
@@ -49,18 +59,38 @@ def loso(df, target):
     labels = sorted(set(all_y))
     print(labels)
     print(confusion_matrix(all_y, all_pred, labels=labels))
-    print(f"\nMean per-subject acc: {np.mean([p[3] for p in per_subj]):.3f}  "
-          f"std: {np.std([p[3] for p in per_subj]):.3f}")
-    print(f"Mean per-subject macro-f1: {np.mean([p[2] for p in per_subj]):.3f}")
+    accs = np.array([p[3] for p in per_subj])
+    f1s = np.array([p[2] for p in per_subj])
+    print(f"\nMean per-subject acc: {accs.mean():.3f}  std: {accs.std():.3f}")
+    print(f"Mean per-subject macro-f1: {f1s.mean():.3f}")
+
+    pooled_acc = float(np.mean(np.array(all_y) == np.array(all_pred)))
+    rec = {}
+    for lab in labels:
+        rec[lab] = float(recall_score(all_y, all_pred, labels=[lab], average="micro", zero_division=0))
+    return {
+        "target": target,
+        "pooled_acc": pooled_acc,
+        "macro_f1_pooled": float(f1_score(all_y, all_pred, average="macro", zero_division=0)),
+        "recall_by_label": rec,
+        "subj_acc_mean": float(accs.mean()),
+        "subj_acc_std": float(accs.std()),
+        "subj_macro_f1_mean": float(f1s.mean()),
+    }
 
 
 def main():
     df = pd.read_csv(CSV)
     print("Loaded:", df.shape, "subjects:", df.subject_id.nunique())
     print("\n###### LOSO load_2 ######")
-    loso(df, "load_2")
+    r2 = loso(df, "load_2")
     print("\n###### LOSO load_3 ######")
-    loso(df, "load_3")
+    r3 = loso(df, "load_3")
+
+    out = {"csv": CSV, "note": "no calibration -- reproduces main.tex Table I 'LOSO, no calibration' row",
+           "load_2": r2, "load_3": r3}
+    OUT.write_text(json.dumps(out, indent=2))
+    print("\nSaved ->", OUT)
 
 
 if __name__ == "__main__":

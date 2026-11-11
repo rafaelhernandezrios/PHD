@@ -1,0 +1,68 @@
+{
+  "csv": "csv/eeg_window_features_aura.csv",
+  "n_features": 218,
+  "rows": {
+    "none": {
+      "acc": 0.7781709815608121,
+      "macro_f1": 0.6934937783274728,
+      "recall_normal": 0.4055023923444976,
+      "recall_alta": 0.9467135515282662,
+      "subj_acc_mean": 0.7799861265750548,
+      "subj_acc_std": 0.08851881520852768
+    },
+    "full": {
+      "acc": 0.8180294281989198,
+      "macro_f1": 0.7674463876695242,
+      "recall_normal": 0.5645933014354066,
+      "recall_alta": 0.9326480930484177,
+      "subj_acc_mean": 0.8248213223390188,
+      "subj_acc_std": 0.06217454422044574
+    },
+    "reserved": {
+      "acc": 0.8641076549746305,
+      "macro_f1": 0.7598187498279706,
+      "recall_normal": 0.55622009569378,
+      "recall_alta": 0.9337300513930213,
+      "subj_acc_mean": 0.8692560366429446,
+      "subj_acc_std": 0.0634600205878342,
+      "subj_f1_mean": 0.7688922350982266,
+      "subj_f1_std": 0.07946555840213484
+    }
+  },
+  "online": {
+    "conservative (0.001, 0.95)": {
+      "csv": "/Users/rafael/Documents/Proyectos Personales/Doctorado/PHD/Codigo/AI-Cognitive/csv/eeg_window_features_aura.csv",
+      "static": {
+        "acc_mean": 0.8691430052036141,
+        "acc_std": 0.06507435292507636,
+        "macro_f1_mean": 0.7687931340889327,
+        "macro_f1_std": 0.0828505476968217
+      },
+      "online": {
+        "acc_mean": 0.9031280754927445,
+        "acc_std": 0.04461022240143078,
+        "macro_f1_mean": 0.8093026394644287,
+        "macro_f1_std": 0.063843250681224
+      },
+      "delta_acc_mean": 0.03398507028913044,
+      "delta_macro_f1_mean": 0.04050950537549611
+    },
+    "relaxed (0.02, 0.75)": {
+      "csv": "/Users/rafael/Documents/Proyectos Personales/Doctorado/PHD/Codigo/AI-Cognitive/csv/eeg_window_features_aura.csv",
+      "static": {
+        "acc_mean": 0.8691430052036141,
+        "acc_std": 0.06507435292507636,
+        "macro_f1_mean": 0.7687931340889327,
+        "macro_f1_std": 0.0828505476968217
+      },
+      "online": {
+        "acc_mean": 0.8920118769808557,
+        "acc_std": 0.057656439721220386,
+        "macro_f1_mean": 0.7813346308949222,
+        "macro_f1_std": 0.08341801602227616
+      },
+      "delta_acc_mean": 0.022868871777241735,
+      "delta_macro_f1_mean": 0.012541496805989549
+    }
+  }
+}

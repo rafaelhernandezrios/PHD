@@ -1,0 +1,22 @@
+{
+  "csv": "csv/eeg_window_features.csv",
+  "note": "calibrated on the legacy 656-col CSV -- NOT the source of main.tex Table I's 0.82 row, see module docstring. Kept for comparison.",
+  "load_2": {
+    "target": "load_2",
+    "pooled_acc": 0.8519277332836654,
+    "macro_f1_pooled": 0.8237734893229365,
+    "subj_acc_mean": 0.8568717576402763,
+    "subj_acc_std": 0.07575710373943483,
+    "subj_macro_f1_mean": 0.827946372768945,
+    "subj_macro_f1_std": 0.06639693569157373
+  },
+  "load_3": {
+    "target": "load_3",
+    "pooled_acc": 0.6481653939281058,
+    "macro_f1_pooled": 0.47698870771417495,
+    "subj_acc_mean": 0.6530602422552944,
+    "subj_acc_std": 0.07262992357514503,
+    "subj_macro_f1_mean": 0.4823594158218441,
+    "subj_macro_f1_std": 0.05986987376754077
+  }
+}

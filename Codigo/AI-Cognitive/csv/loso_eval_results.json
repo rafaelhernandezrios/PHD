@@ -1,0 +1,29 @@
+{
+  "csv": "csv/eeg_window_features.csv",
+  "note": "no calibration -- reproduces main.tex Table I 'LOSO, no calibration' row",
+  "load_2": {
+    "target": "load_2",
+    "pooled_acc": 0.7681132426895139,
+    "macro_f1_pooled": 0.6926789612461031,
+    "recall_by_label": {
+      "alta": 0.9175006762239654,
+      "normal": 0.43779904306220097
+    },
+    "subj_acc_mean": 0.7776280758140106,
+    "subj_acc_std": 0.13896729836975813,
+    "subj_macro_f1_mean": 0.671940153541186
+  },
+  "load_3": {
+    "target": "load_3",
+    "pooled_acc": 0.61426708884336,
+    "macro_f1_pooled": 0.4443806609931351,
+    "recall_by_label": {
+      "high": 0.8627010849233071,
+      "low": 0.0,
+      "normal": 0.5933014354066986
+    },
+    "subj_acc_mean": 0.6153377815438474,
+    "subj_acc_std": 0.0722394871192206,
+    "subj_macro_f1_mean": 0.4151673885973096
+  }
+}

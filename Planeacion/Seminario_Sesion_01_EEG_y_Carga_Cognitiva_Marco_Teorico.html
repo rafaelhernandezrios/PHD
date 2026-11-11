@@ -1,0 +1,1354 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>EEG y carga cognitiva: fundamentos y marco teórico — Sesión 01/12</title>
+
+<!-- Fonts: Cormorant Garamond (display serif + italics), Source Serif 4 (body serif), JetBrains Mono (labels/data) -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500;1,600&family=Source+Serif+4:ital,wght@0,400;0,500;0,600;1,400&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet" />
+
+<style>
+/* ===========================================================
+   CSS CUSTOM PROPERTIES — PAPER & INK THEME
+   One accent per "family" thread runs through the whole deck:
+   crimson = fisiológico/EEG (the thesis's chosen method),
+   ink     = conductual / estructura neutra / EEG genérico,
+   gold    = subjetivo / carga germana (esfuerzo productivo)
+   =========================================================== */
+:root {
+    --bg-cream: #faf9f7;
+    --bg-cream-2: #f2efe7;
+    --paper-line: #e4e0d6;
+    --paper-line-strong: #d2ccbb;
+    --text-primary: #1a1a1a;
+    --text-secondary: #55524a;
+    --text-tertiary: #918c7c;
+
+    --accent-crimson: #c41e3a;
+    --accent-crimson-soft: rgba(196, 30, 58, 0.08);
+    --accent-crimson-mid: rgba(196, 30, 58, 0.32);
+    --accent-ink: #2b3a55;
+    --accent-ink-soft: rgba(43, 58, 85, 0.07);
+    --accent-ink-mid: rgba(43, 58, 85, 0.32);
+    --accent-gold: #a9793a;
+    --accent-gold-soft: rgba(169, 121, 58, 0.09);
+    --accent-gold-mid: rgba(169, 121, 58, 0.34);
+
+    --font-serif: 'Cormorant Garamond', serif;
+    --font-body: 'Source Serif 4', serif;
+    --font-mono: 'JetBrains Mono', monospace;
+
+    --ease-out-expo: cubic-bezier(0.16, 1, 0.3, 1);
+    --duration-normal: 0.65s;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body { --stage-bg: #2a2823; --slide-bg: var(--bg-cream); }
+
+/* ===========================================================
+   VIEWPORT-BASE.CSS — MANDATORY FIXED 16:9 STAGE (verbatim)
+   =========================================================== */
+html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: var(--stage-bg, #000); }
+.deck-viewport { position: fixed; inset: 0; overflow: hidden; background: var(--stage-bg, #000); }
+.deck-stage { position: absolute; left: 0; top: 0; width: 1920px; height: 1080px; overflow: hidden; transform-origin: 0 0; background: var(--slide-bg, #fff); }
+.slide { position: absolute; inset: 0; width: 1920px; height: 1080px; overflow: hidden; display: block; visibility: hidden; opacity: 0; pointer-events: none; background: var(--slide-bg, #fff); }
+.slide.active, .slide.visible { visibility: visible; opacity: 1; pointer-events: auto; z-index: 1; }
+img, video, canvas, svg { max-width: 100%; max-height: 100%; }
+.deck-controls { position: fixed; left: 50%; bottom: 22px; transform: translateX(-50%); z-index: 1000; }
+@media print {
+    html, body { width: 1920px; height: auto; overflow: visible; background: #fff; }
+    .deck-viewport { position: static; overflow: visible; background: #fff; }
+    .deck-stage { position: static; width: auto; height: auto; transform: none !important; background: none; }
+    .slide { position: relative; display: block !important; visibility: visible !important; opacity: 1 !important; pointer-events: auto !important; width: 1920px; height: 1080px; break-after: page; page-break-after: always; }
+    .slide:last-child { break-after: auto; page-break-after: auto; }
+    .deck-controls { display: none !important; }
+}
+@media (prefers-reduced-motion: reduce) {
+    *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.2s !important; }
+}
+
+/* ===========================================================
+   ENTRANCE ANIMATIONS — staggered fade/slide on .visible
+   =========================================================== */
+.reveal {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity var(--duration-normal) var(--ease-out-expo),
+                transform var(--duration-normal) var(--ease-out-expo);
+}
+.slide.visible .reveal { opacity: 1; transform: translateY(0); }
+.reveal.r1 { transition-delay: 0.05s; }
+.reveal.r2 { transition-delay: 0.15s; }
+.reveal.r3 { transition-delay: 0.25s; }
+.reveal.r4 { transition-delay: 0.35s; }
+.reveal.r5 { transition-delay: 0.45s; }
+.reveal.r6 { transition-delay: 0.55s; }
+
+.reveal-scale { opacity: 0; transform: scale(0.94); transition: opacity var(--duration-normal) var(--ease-out-expo), transform var(--duration-normal) var(--ease-out-expo); }
+.slide.visible .reveal-scale { opacity: 1; transform: scale(1); }
+
+/* ===========================================================
+   SHARED SLIDE SHELL — paper texture, eyebrow row, footer
+   =========================================================== */
+.slide-inner {
+    position: relative;
+    height: 100%;
+    padding: 88px 130px 96px;
+    font-family: var(--font-body);
+    color: var(--text-primary);
+}
+.slide-inner::before {
+    content: "";
+    position: absolute; inset: 0;
+    background-image: repeating-linear-gradient(0deg, transparent, transparent 63px, rgba(26,26,26,0.018) 64px);
+    pointer-events: none;
+}
+
+.eyebrow-row {
+    display: flex; align-items: center; gap: 22px;
+    font-family: var(--font-mono);
+    font-size: 16px; letter-spacing: 0.14em; text-transform: uppercase;
+    color: var(--accent-crimson);
+    margin-bottom: 44px;
+}
+.eyebrow-row .rule { flex: 1; height: 1px; background: var(--paper-line); }
+.eyebrow-row .num { color: var(--text-tertiary); font-weight: 500; letter-spacing: 0.06em; }
+.eyebrow-row.ink { color: var(--accent-ink); }
+
+.page-footer {
+    position: absolute; left: 130px; right: 130px; bottom: 40px;
+    display: flex; justify-content: space-between; align-items: center;
+    font-family: var(--font-mono); font-size: 14px; letter-spacing: 0.05em;
+    color: var(--text-tertiary);
+    border-top: 1px solid var(--paper-line);
+    padding-top: 16px;
+}
+
+h1, h2, h3 { font-family: var(--font-serif); color: var(--text-primary); }
+em.hl { font-style: italic; color: var(--accent-crimson); font-weight: 500; }
+em.hl-ink { font-style: italic; color: var(--accent-ink); font-weight: 500; }
+em.hl-gold { font-style: italic; color: var(--accent-gold); font-weight: 500; }
+
+/* generic small tag pill */
+.tag {
+    display: inline-flex; align-items: center; gap: 8px;
+    font-family: var(--font-mono); font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase;
+    padding: 7px 16px; border-radius: 3px;
+}
+.tag.crimson { background: var(--accent-crimson-soft); color: var(--accent-crimson); border: 1px solid var(--accent-crimson-mid); }
+.tag.ink { background: var(--accent-ink-soft); color: var(--accent-ink); border: 1px solid var(--accent-ink-mid); }
+.tag.gold { background: var(--accent-gold-soft); color: var(--accent-gold); border: 1px solid var(--accent-gold-mid); }
+
+/* reusable session thread (title + closing slides) */
+.thread { display: flex; align-items: center; gap: 0; }
+.thread-item { display: flex; flex-direction: column; gap: 9px; padding-right: 38px; }
+.thread-item .n { font-family: var(--font-mono); font-size: 14px; color: var(--text-tertiary); letter-spacing: 0.08em; }
+.thread-item .t { font-size: 20px; color: var(--text-secondary); }
+.thread-item.current .n { color: var(--accent-crimson); font-weight: 600; }
+.thread-item.current .t { font-weight: 600; color: var(--text-primary); }
+.thread-connector { width: 60px; height: 1px; background: var(--paper-line); position: relative; top: -13px; }
+.thread-more { font-family: var(--font-mono); font-size: 20px; color: var(--text-tertiary); padding-left: 10px; }
+
+/* ===========================================================
+   SLIDE 1 — TITLE / PORTADA
+   =========================================================== */
+.s1 .title-block { max-width: 1300px; }
+.s1 h1.title {
+    font-weight: 600; font-size: 100px; line-height: 1.05; letter-spacing: -0.01em;
+    margin: 0 0 28px;
+}
+.s1 p.subtitle {
+    font-family: var(--font-serif); font-style: italic; font-size: 34px; color: var(--text-secondary);
+    max-width: 1020px; line-height: 1.35; margin: 0 0 64px;
+}
+.s1 .footer-row {
+    position: absolute; left: 130px; right: 130px; bottom: 88px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    border-top: 1px solid var(--paper-line); padding-top: 24px;
+}
+.s1 .footer-row .author { font-size: 20px; }
+.s1 .footer-row .author .role { display: block; font-size: 15px; color: var(--text-secondary); margin-top: 4px; }
+.s1 .footer-row .inst { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.08em; color: var(--text-secondary); text-align: right; text-transform: uppercase; }
+
+/* ===========================================================
+   SLIDE 2 — HOJA DE RUTA / AGENDA
+   =========================================================== */
+.s2 h2 { font-weight: 600; font-size: 70px; line-height: 1.08; margin-bottom: 16px; max-width: 1300px; }
+.s2 p.lead { font-family: var(--font-serif); font-style: italic; font-size: 28px; color: var(--text-secondary); margin-bottom: 70px; }
+.roadmap { display: flex; flex-direction: column; max-width: 1500px; }
+.roadmap-row { display: flex; align-items: center; gap: 46px; padding: 30px 0; border-top: 1px solid var(--paper-line); }
+.roadmap-row:last-child { border-bottom: 1px solid var(--paper-line); }
+.roadmap-row .rnum { font-family: var(--font-serif); font-style: italic; font-size: 52px; color: var(--accent-crimson); width: 90px; flex-shrink: 0; }
+.roadmap-row .rtxt { font-size: 27px; color: var(--text-primary); }
+.roadmap-row .rtag { margin-left: auto; }
+
+/* ===========================================================
+   SLIDES 3 & 5 — FUNDAMENTOS DE EEG (texto + ilustración)
+   =========================================================== */
+.eeg-layout { display: flex; gap: 90px; height: 100%; align-items: flex-start; }
+.eeg-layout .left-col { flex: 1.25; }
+.eeg-layout .right-col { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 6px; }
+.eeg-layout h2 { font-weight: 600; font-size: 62px; line-height: 1.1; margin-bottom: 30px; max-width: 900px; }
+
+.def-card {
+    background: var(--bg-cream-2); border: 1px solid var(--paper-line); border-left: 3px solid var(--accent-ink);
+    padding: 30px 36px; margin-bottom: 28px;
+}
+.def-card .term { font-family: var(--font-mono); font-size: 14px; text-transform: uppercase; letter-spacing: 0.1em; color: var(--accent-ink); margin-bottom: 12px; }
+.def-card p { font-family: var(--font-serif); font-size: 26px; line-height: 1.42; color: var(--text-primary); }
+.def-card .cite { display: block; margin-top: 14px; font-family: var(--font-mono); font-size: 13px; color: var(--text-tertiary); }
+
+.analogy-line { display: flex; gap: 16px; align-items: baseline; margin-bottom: 34px; max-width: 900px; }
+.analogy-line .arrow { font-family: var(--font-serif); font-style: italic; font-size: 26px; color: var(--accent-crimson); flex-shrink: 0; }
+.analogy-line p { font-size: 20px; line-height: 1.5; color: var(--text-secondary); }
+
+.fact-tags { display: flex; gap: 14px; flex-wrap: wrap; }
+
+.illustration-caption { font-family: var(--font-mono); font-size: 13px; color: var(--text-tertiary); text-align: center; margin-top: 22px; letter-spacing: 0.03em; max-width: 380px; }
+
+/* electrode montage legend under slide 5 illustration */
+.montage-legend { display: flex; gap: 26px; margin-top: 18px; }
+.montage-legend .lg { display: flex; align-items: center; gap: 9px; font-family: var(--font-mono); font-size: 13px; color: var(--text-secondary); }
+.montage-legend .dot { width: 10px; height: 10px; border-radius: 50%; }
+.montage-legend .dot.fz { background: var(--accent-crimson); }
+.montage-legend .dot.pz { background: var(--accent-ink); }
+.montage-legend .dot.other { background: var(--paper-line-strong); }
+
+.site-pair { display: flex; gap: 30px; margin-bottom: 34px; }
+.site-def { flex: 1; padding: 18px 22px; background: var(--bg-cream-2); border-top: 3px solid; }
+.site-def.fz { border-color: var(--accent-crimson); }
+.site-def.pz { border-color: var(--accent-ink); }
+.site-def .site-name { font-family: var(--font-serif); font-style: italic; font-size: 28px; margin-bottom: 8px; }
+.site-def.fz .site-name { color: var(--accent-crimson); }
+.site-def.pz .site-name { color: var(--accent-ink); }
+.site-def .site-desc { font-size: 16px; color: var(--text-secondary); line-height: 1.4; }
+
+.bridge-box {
+    display: flex; align-items: center; gap: 34px;
+    padding: 30px 40px; background: var(--bg-cream-2); border-left: 3px solid var(--accent-crimson);
+    max-width: 1500px;
+}
+.bridge-box .ratio { font-family: var(--font-serif); font-style: italic; font-size: 50px; color: var(--accent-crimson); white-space: nowrap; }
+.bridge-box .q { font-size: 22px; color: var(--text-primary); line-height: 1.45; }
+.bridge-box .q .small { display: block; font-family: var(--font-mono); font-size: 13px; color: var(--text-tertiary); margin-top: 10px; letter-spacing: 0.03em; }
+
+/* ===========================================================
+   SLIDE 4 — BANDAS DE FRECUENCIA
+   =========================================================== */
+.s4 h2 { font-weight: 600; font-size: 62px; line-height: 1.08; margin-bottom: 18px; max-width: 1300px; }
+.s4 p.lead { font-size: 23px; color: var(--text-secondary); max-width: 1200px; margin-bottom: 50px; line-height: 1.5; }
+.band-strip { display: flex; gap: 3px; margin-bottom: 22px; }
+.band-cell {
+    flex: 1; padding: 26px 18px; background: var(--bg-cream-2); border: 1px solid var(--paper-line);
+    display: flex; flex-direction: column; gap: 8px;
+}
+.band-cell .band-name { font-family: var(--font-serif); font-style: italic; font-size: 30px; }
+.band-cell .band-hz { font-family: var(--font-mono); font-size: 14px; color: var(--text-tertiary); }
+.band-cell .band-state { font-size: 16px; color: var(--text-secondary); }
+.band-cell.theta { border-color: var(--accent-crimson-mid); background: var(--accent-crimson-soft); }
+.band-cell.alpha { border-color: var(--accent-ink-mid); background: var(--accent-ink-soft); }
+.recap-caption { font-family: var(--font-mono); font-size: 14px; color: var(--text-tertiary); letter-spacing: 0.04em; }
+
+/* ===========================================================
+   SLIDE 6 — QUÉ ES LA CARGA COGNITIVA
+   =========================================================== */
+.s6 .layout { display: flex; gap: 90px; height: 100%; align-items: flex-start; }
+.s6 .left-col { flex: 1.35; }
+.s6 h2 { font-weight: 600; font-size: 60px; line-height: 1.1; margin-bottom: 30px; max-width: 900px; }
+.why-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 22px 30px; }
+.why-item { display: flex; gap: 18px; align-items: flex-start; padding-top: 22px; border-top: 1px solid var(--paper-line); }
+.why-item .icon-wrap { width: 46px; height: 46px; flex-shrink: 0; }
+.why-item .why-title { font-family: var(--font-body); font-weight: 600; font-size: 19px; margin-bottom: 6px; }
+.why-item .why-desc { font-size: 16px; color: var(--text-secondary); line-height: 1.4; }
+
+.s6 .right-col { flex: 1; display: flex; flex-direction: column; align-items: center; padding-top: 14px; }
+.gauge-label { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-tertiary); margin-bottom: 20px; text-align: center; }
+.gauge {
+    width: 150px; height: 340px; border-radius: 12px; border: 1px solid var(--paper-line-strong);
+    background: linear-gradient(0deg, var(--accent-ink) 0%, var(--accent-ink) 30%, var(--accent-gold) 30%, var(--accent-gold) 65%, var(--accent-crimson) 65%, var(--accent-crimson) 100%);
+    opacity: 0.88;
+    position: relative;
+}
+.gauge-marks { position: absolute; inset: 0; display: flex; flex-direction: column-reverse; justify-content: space-between; padding: 6px 0; }
+.gauge-mark { display: flex; align-items: center; gap: 10px; position: absolute; right: -186px; font-family: var(--font-mono); font-size: 14px; color: var(--text-secondary); white-space: nowrap; }
+.gauge-mark.low { bottom: 12%; }
+.gauge-mark.opt { bottom: 46%; }
+.gauge-mark.over { bottom: 80%; }
+.gauge-mark::before { content: ""; width: 22px; height: 1px; background: var(--paper-line-strong); }
+.gauge-analogy { margin-top: 26px; font-family: var(--font-serif); font-style: italic; font-size: 17px; color: var(--text-tertiary); text-align: center; max-width: 260px; }
+
+/* ===========================================================
+   SLIDE 7 — COGNITIVE LOAD THEORY (SWELLER)
+   =========================================================== */
+.s7 .top-row { display: flex; align-items: center; gap: 28px; margin-bottom: 34px; }
+.s7 h2 { font-weight: 600; font-size: 64px; line-height: 1.08; max-width: 1150px; margin-bottom: 26px; }
+.s7 p.lead { font-size: 22px; color: var(--text-secondary); max-width: 1250px; line-height: 1.5; margin-bottom: 48px; }
+.premise-list { display: flex; flex-direction: column; gap: 0; max-width: 1500px; margin-bottom: 46px; }
+.premise-row { display: flex; gap: 40px; align-items: baseline; padding: 22px 0; border-top: 1px solid var(--paper-line); }
+.premise-row .pnum { font-family: var(--font-serif); font-style: italic; font-size: 38px; color: var(--accent-ink); width: 70px; flex-shrink: 0; }
+.premise-row .ptxt { font-size: 21px; line-height: 1.45; color: var(--text-primary); }
+.premise-row .ptxt .analogy { color: var(--text-secondary); }
+.s7 .bridge-line { display: flex; align-items: baseline; gap: 16px; }
+.s7 .bridge-line .arrow { font-family: var(--font-serif); font-style: italic; font-size: 28px; color: var(--accent-crimson); }
+.s7 .bridge-line p { font-family: var(--font-serif); font-style: italic; font-size: 27px; color: var(--text-primary); }
+
+/* ===========================================================
+   SLIDE 8 — LOS 3 TIPOS DE CARGA
+   =========================================================== */
+.s8 h2 { font-weight: 600; font-size: 60px; line-height: 1.1; margin-bottom: 12px; max-width: 1100px; }
+.s8 .cap-note { font-family: var(--font-mono); font-size: 15px; color: var(--text-tertiary); margin-bottom: 40px; }
+.stack-bar { display: flex; height: 88px; border-radius: 4px; overflow: hidden; margin-bottom: 6px; border: 1px solid var(--paper-line-strong); }
+.stack-seg { display: flex; align-items: center; justify-content: center; font-family: var(--font-mono); font-size: 15px; letter-spacing: 0.08em; text-transform: uppercase; color: #faf9f7; }
+.stack-seg.intrinseca { flex: 40; background: var(--accent-ink); }
+.stack-seg.extrana { flex: 25; background: var(--accent-crimson); }
+.stack-seg.germana { flex: 35; background: var(--accent-gold); }
+.stack-bracket { display: flex; justify-content: center; margin-bottom: 40px; }
+.stack-bracket span { font-family: var(--font-mono); font-size: 14px; color: var(--text-tertiary); }
+.type-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 34px; }
+.type-card { border-top: 4px solid; padding-top: 20px; }
+.type-card.intrinseca { border-color: var(--accent-ink); }
+.type-card.extrana { border-color: var(--accent-crimson); }
+.type-card.germana { border-color: var(--accent-gold); }
+.type-card .type-name { font-family: var(--font-serif); font-style: italic; font-size: 30px; margin-bottom: 12px; }
+.type-card.intrinseca .type-name { color: var(--accent-ink); }
+.type-card.extrana .type-name { color: var(--accent-crimson); }
+.type-card.germana .type-name { color: var(--accent-gold); }
+.type-card .type-def { font-size: 18px; color: var(--text-primary); line-height: 1.4; margin-bottom: 12px; }
+.type-card .type-ex { font-size: 15px; color: var(--text-secondary); line-height: 1.45; margin-bottom: 12px; }
+.type-card .type-goal { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.03em; padding-top: 10px; border-top: 1px solid var(--paper-line); color: var(--text-tertiary); }
+
+/* ===========================================================
+   SLIDE 9 — PANORAMA DE MEDICIÓN (3 FAMILIAS)
+   =========================================================== */
+.s9 h2 { font-weight: 600; font-size: 60px; margin-bottom: 12px; }
+.s9 p.lead { font-size: 22px; color: var(--text-secondary); margin-bottom: 48px; max-width: 1200px; }
+.family-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 30px; }
+.family-card { background: var(--bg-cream-2); border: 1px solid var(--paper-line); padding: 30px 32px; display: flex; flex-direction: column; gap: 14px; height: 100%; }
+.family-card .family-icon { width: 52px; height: 52px; }
+.family-card .fam-def { font-size: 18px; color: var(--text-primary); line-height: 1.45; }
+.family-card .fam-row { display: flex; justify-content: space-between; gap: 10px; padding-top: 14px; border-top: 1px solid var(--paper-line); font-size: 15px; }
+.family-card .fam-row .k { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); }
+.family-card .fam-row .v { color: var(--text-secondary); text-align: right; max-width: 62%; }
+
+/* ===========================================================
+   SLIDE 10 — SUBJETIVO Y CONDUCTUAL (DETALLE)
+   =========================================================== */
+.s10 h2 { font-weight: 600; font-size: 56px; margin-bottom: 42px; }
+.split-panels { display: flex; gap: 0; height: 700px; }
+.panel { flex: 1; padding: 0 40px; display: flex; flex-direction: column; }
+.panel:first-child { padding-left: 0; border-right: 1px solid var(--paper-line); padding-right: 44px; }
+.panel:last-child { padding-right: 0; }
+.panel .panel-head { display: flex; align-items: center; gap: 16px; margin-bottom: 24px; }
+.panel .panel-method { font-family: var(--font-serif); font-style: italic; font-size: 30px; margin-bottom: 18px; }
+.subscale-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px 14px; margin-bottom: 26px; }
+.subscale { font-family: var(--font-mono); font-size: 13px; text-align: center; padding: 10px 8px; background: var(--accent-gold-soft); border: 1px solid var(--accent-gold-mid); color: var(--accent-gold); border-radius: 2px; }
+.panel p.desc { font-size: 17px; line-height: 1.5; color: var(--text-primary); margin-bottom: 22px; }
+.pro-con { margin-top: auto; display: flex; flex-direction: column; gap: 10px; }
+.pro-con .row { display: flex; gap: 14px; font-size: 16px; line-height: 1.42; }
+.pro-con .row .lbl { font-family: var(--font-mono); font-size: 12px; text-transform: uppercase; letter-spacing: 0.06em; padding-top: 3px; width: 92px; flex-shrink: 0; }
+.pro-con .row.pro .lbl { color: var(--accent-ink); }
+.pro-con .row.con .lbl { color: var(--accent-crimson); }
+.pro-con .row span.txt { color: var(--text-secondary); }
+.metric-tags { display: flex; gap: 12px; margin-bottom: 22px; flex-wrap: wrap; }
+
+/* ===========================================================
+   SLIDE 11 — MÉTODOS FISIOLÓGICOS (DETALLE)
+   =========================================================== */
+.s11 h2 { font-weight: 600; font-size: 58px; margin-bottom: 46px; }
+.phys-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0 30px; margin-bottom: 40px; }
+.phys-card { display: flex; flex-direction: column; gap: 18px; }
+.phys-card .glyph { width: 100%; height: 120px; }
+.phys-card .phys-name { font-family: var(--font-serif); font-style: italic; font-size: 30px; }
+.phys-card .phys-desc { font-size: 17px; line-height: 1.48; color: var(--text-primary); }
+.phys-card .phys-corr { font-family: var(--font-mono); font-size: 13.5px; color: var(--text-tertiary); padding-top: 14px; border-top: 1px solid var(--paper-line); line-height: 1.5; }
+.s11 .note-box { padding: 24px 34px; background: var(--bg-cream-2); border-left: 3px solid var(--accent-crimson); max-width: 1500px; }
+.s11 .note-box p { font-family: var(--font-serif); font-style: italic; font-size: 23px; color: var(--text-primary); }
+
+/* ===========================================================
+   SLIDE 12 — VENTAJAS: MATRIZ COMPARATIVA
+   =========================================================== */
+.s12 h2 { font-weight: 600; font-size: 56px; margin-bottom: 38px; max-width: 1300px; }
+.matrix { width: 100%; border-collapse: collapse; margin-bottom: 32px; }
+.matrix th, .matrix td { padding: 17px 20px; text-align: left; border-bottom: 1px solid var(--paper-line); }
+.matrix thead th { font-family: var(--font-mono); font-size: 14px; text-transform: uppercase; letter-spacing: 0.06em; color: var(--text-tertiary); font-weight: 500; border-bottom: 2px solid var(--paper-line-strong); }
+.matrix thead th.criteria-col { color: var(--text-secondary); }
+.matrix tbody th { font-size: 19px; font-weight: 400; color: var(--text-primary); font-family: var(--font-body); width: 30%; }
+.matrix td { text-align: center; }
+.dotscale { display: inline-flex; gap: 7px; }
+.dot { width: 15px; height: 15px; border-radius: 50%; border: 1.5px solid var(--paper-line-strong); }
+.dot.filled.crimson { background: var(--accent-crimson); border-color: var(--accent-crimson); }
+.dot.filled.ink { background: var(--accent-ink); border-color: var(--accent-ink); }
+.dot.filled.gold { background: var(--accent-gold); border-color: var(--accent-gold); }
+.matrix thead th.col-crimson { color: var(--accent-crimson); }
+.matrix thead th.col-ink { color: var(--accent-ink); }
+.matrix thead th.col-gold { color: var(--accent-gold); }
+.s12 .takeaway { font-family: var(--font-serif); font-style: italic; font-size: 25px; color: var(--text-primary); max-width: 1550px; line-height: 1.4; }
+.s12 .takeaway em { color: var(--accent-crimson); font-style: italic; }
+
+/* ===========================================================
+   SLIDE 13 — REFERENCIAS BIBLIOGRÁFICAS
+   =========================================================== */
+.s13 h2 { font-weight: 600; font-size: 58px; margin-bottom: 44px; }
+.refs-list { columns: 2; column-gap: 70px; max-width: 1660px; }
+.ref-item { break-inside: avoid; font-size: 17px; line-height: 1.55; color: var(--text-primary); padding-left: 34px; text-indent: -34px; margin-bottom: 26px; }
+.ref-item .ref-authors { font-weight: 600; }
+.ref-item em { font-style: italic; }
+.ref-item .ref-year { color: var(--text-secondary); }
+
+/* ===========================================================
+   SLIDE 14 — CIERRE / PUENTE A SESIÓN 02
+   =========================================================== */
+.s14 .layout { display: flex; gap: 100px; align-items: center; height: 100%; padding-top: 10px; }
+.s14 .left-col { flex: 1.2; }
+.s14 h2 { font-weight: 600; font-size: 68px; line-height: 1.08; margin-bottom: 26px; }
+.s14 p.recap { font-size: 21px; color: var(--text-secondary); line-height: 1.55; max-width: 780px; margin-bottom: 42px; }
+.eq-box { display: inline-flex; align-items: baseline; gap: 16px; padding: 22px 32px; background: var(--accent-crimson-soft); border: 1px solid var(--accent-crimson-mid); margin-bottom: 44px; }
+.eq-box .eq-label { font-family: var(--font-mono); font-size: 13px; text-transform: uppercase; letter-spacing: 0.08em; color: var(--text-tertiary); }
+.eq-box .eq { font-family: var(--font-serif); font-style: italic; font-size: 38px; color: var(--accent-crimson); }
+
+.s14 .right-col { flex: 1; display: flex; flex-direction: column; align-items: center; }
+.head-diagram { width: 380px; height: 380px; position: relative; }
+.head-diagram svg { width: 100%; height: 100%; }
+.head-caption { font-family: var(--font-mono); font-size: 13px; color: var(--text-tertiary); text-align: center; margin-top: 18px; letter-spacing: 0.03em; }
+
+.s14 .footer-row {
+    position: absolute; left: 130px; right: 130px; bottom: 88px;
+    display: flex; justify-content: space-between; align-items: flex-end;
+    border-top: 1px solid var(--paper-line); padding-top: 24px;
+}
+.s14 .footer-row .thanks { font-family: var(--font-serif); font-style: italic; font-size: 22px; color: var(--text-primary); }
+.s14 .footer-row .inst { font-family: var(--font-mono); font-size: 13px; letter-spacing: 0.08em; color: var(--text-secondary); text-align: right; text-transform: uppercase; }
+
+/* ===========================================================
+   DECK CONTROLS (outside stage) + EDIT AFFORDANCE
+   =========================================================== */
+.deck-controls {
+    display: flex; align-items: center; gap: 18px;
+    padding: 10px 20px; background: rgba(26,26,26,0.82); border-radius: 30px;
+    backdrop-filter: blur(6px);
+    font-family: var(--font-mono);
+}
+.nav-btn {
+    width: 34px; height: 34px; border-radius: 50%; border: none;
+    background: rgba(255,255,255,0.08); color: #faf9f7; font-size: 18px; cursor: pointer;
+    display: flex; align-items: center; justify-content: center;
+    transition: background 0.2s ease;
+}
+.nav-btn:hover { background: rgba(196,30,58,0.55); }
+.progress-dots { display: flex; gap: 6px; flex-wrap: wrap; max-width: 320px; }
+.progress-dots .pdot { width: 6px; height: 6px; border-radius: 50%; background: rgba(255,255,255,0.25); cursor: pointer; transition: background 0.2s ease, transform 0.2s ease; }
+.progress-dots .pdot.active { background: var(--accent-crimson); transform: scale(1.3); }
+.slide-counter { color: #d8d4c8; font-size: 13px; letter-spacing: 0.05em; min-width: 58px; text-align: center; }
+
+.edit-hotzone { position: fixed; top: 0; left: 0; width: 80px; height: 80px; z-index: 10000; cursor: pointer; }
+.edit-toggle {
+    position: fixed; top: 18px; left: 18px; z-index: 10001;
+    width: 40px; height: 40px; border-radius: 50%; border: none;
+    background: rgba(26,26,26,0.85); color: #fff; font-size: 17px; cursor: pointer;
+    opacity: 0; pointer-events: none; transition: opacity 0.3s ease;
+    display: flex; align-items: center; justify-content: center;
+}
+.edit-toggle.show, .edit-toggle.active { opacity: 1; pointer-events: auto; }
+.edit-toggle.active { background: var(--accent-crimson); }
+body.edit-mode [contenteditable="true"] { outline: 1.5px dashed var(--accent-crimson-mid); outline-offset: 4px; cursor: text; }
+.save-toast {
+    position: fixed; bottom: 76px; left: 50%; transform: translateX(-50%) translateY(10px);
+    background: rgba(26,26,26,0.9); color: #fff; font-family: var(--font-mono); font-size: 13px;
+    padding: 9px 18px; border-radius: 20px; opacity: 0; pointer-events: none; transition: opacity 0.25s ease, transform 0.25s ease;
+    z-index: 10002;
+}
+.save-toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<div class="deck-viewport">
+    <main class="deck-stage" id="deckStage">
+
+        <!-- ============================================================
+             SLIDE 1 — PORTADA
+             ============================================================ -->
+        <section class="slide active s1" data-index="0">
+            <div class="slide-inner">
+                <div class="eyebrow-row reveal r1">
+                    <span class="num">01 / 12</span>
+                    <span>Seminario de Tesis — Sistemas Neuroadaptativos</span>
+                    <span class="rule"></span>
+                </div>
+                <div class="title-block">
+                    <h1 class="title reveal r2" data-editable>EEG y <em class="hl">carga cognitiva</em>:<br />fundamentos y marco teórico</h1>
+                    <p class="subtitle reveal r3" data-editable>Cómo leer la actividad eléctrica del cerebro para nombrar — y después medir — el esfuerzo mental.</p>
+                </div>
+                <div class="thread reveal r4">
+                    <div class="thread-item current">
+                        <span class="n">SESIÓN 01</span>
+                        <span class="t">Fundamentos de EEG y carga cognitiva</span>
+                    </div>
+                    <div class="thread-connector"></div>
+                    <div class="thread-item">
+                        <span class="n">SESIÓN 02</span>
+                        <span class="t">Índice θ/α en profundidad</span>
+                    </div>
+                    <div class="thread-connector"></div>
+                    <div class="thread-more">· · ·</div>
+                </div>
+                <div class="footer-row reveal r5">
+                    <div class="author" data-editable>Edgar Rafael Hernández Ríos<span class="role">Doctorado en Ciencias Computacionales</span></div>
+                    <div class="inst">UAEH · Computación y Electrónica</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ============================================================
+             SLIDE 2 — HOJA DE RUTA
+             ============================================================ -->
+        <section class="slide s2" data-index="1">
+            <div class="slide-inner">
+                <div class="eyebrow-row reveal r1">
+                    <span class="num">01 / 12</span>
+                    <span>Hoja de ruta</span>
+                    <span class="rule"></span>
+                </div>
+                <h2 class="reveal r2" data-editable>¿De qué vamos a hablar hoy?</h2>
+                <p class="lead reveal r2" data-editable>Cuatro preguntas, en este orden.</p>
+
+                <div class="roadmap reveal r3">
+                    <div class="roadmap-row">
+                        <span class="rnum">01</span>
+                        <span class="rtxt" data-editable>¿Qué es el EEG y cómo se registra?</span>
+                        <span class="rtag tag ink">Fundamentos</span>
+                    </div>
+                    <div class="roadmap-row">
+                        <span class="rnum">02</span>
+                        <span class="rtxt" data-editable>¿Qué es la carga cognitiva? — marco teórico</span>
+                        <span class="rtag tag ink">Marco teórico</span>
+                    </div>
+                    <div class="roadmap-row">
+                        <span class="rnum">03</span>
+                        <span class="rtxt" data-editable>¿Cómo se mide? — tres familias de métodos</span>
+                        <span class="rtag tag gold">Medición</span>
+                    </div>
+                    <div class="roadmap-row">
+                        <span class="rnum">04</span>
+                        <span class="rtxt" data-editable>¿Por qué el EEG es la vía más adecuada aquí?</span>
+                        <span class="rtag tag crimson">Cierre</span>
+                    </div>
+                </div>
+            </div>
+            <div class="page-footer"><span>EEG y carga cognitiva: fundamentos</span><span>02</span></div>
+        </section>
+
+        <!-- ============================================================
+             SLIDE 3 — QUÉ ES EL EEG
+             ============================================================ -->
+        <section class="slide s3" data-index="2">
+            <div class="slide-inner">
+                <div class="eyebrow-row reveal r1">
+                    <span class="num">01 / 12</span>
+                    <span>Fundamentos de EEG</span>
+                    <span class="rule"></span>
+                </div>
+                <div class="eeg-layout">
+                    <div class="left-col">
+                        <h2 class="reveal r2" data-editable>¿Qué es el EEG?</h2>
+
+                        <div class="def-card reveal r3">
+                            <div class="term">Electroencefalografía</div>
+                            <p data-editable>Registro, mediante electrodos sobre el cuero cabelludo, de la actividad eléctrica que producen millones de neuronas trabajando juntas.</p>
+                        </div>
+
+                        <div class="analogy-line reveal r4">
+                            <span class="arrow">→</span>
+                            <p data-editable>Es como poner un micrófono muy sensible sobre el cráneo para «escuchar» el ruido eléctrico colectivo del cerebro — sin cirugía, sin tocar directamente las neuronas.</p>
+                        </div>
+
+                        <div class="fact-tags reveal r5">
+                            <span class="tag ink">No invasivo</span>
+                            <span class="tag ink">Resolución: milisegundos</span>
+                            <span class="tag ink">Se mide en microvoltios (µV)</span>
+                        </div>
+                    </div>
+
+                    <div class="right-col reveal r5">
+                        <div class="head-diagram" style="width:400px;height:400px;">
+                            <svg viewBox="0 0 400 400" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="200" cy="200" r="165" fill="none" stroke="#2b3a55" stroke-width="2" opacity="0.5"/>
+                                <path d="M200 35 L182 8 L218 8 Z" fill="none" stroke="#2b3a55" stroke-width="2" opacity="0.5"/>
+                                <!-- electrode cap net -->
+                                <g stroke="#2b3a55" stroke-width="1" opacity="0.22" fill="none">
+                                    <path d="M200 55 L120 95 M200 55 L280 95 M200 55 L200 95"/>
+                                    <path d="M120 95 L60 200 M280 95 L340 200 M200 95 L120 95 M200 95 L280 95"/>
+                                    <path d="M60 200 L110 300 M340 200 L290 300 M200 95 L200 200"/>
+                                    <path d="M110 300 L200 345 M290 300 L200 345 M200 200 L110 300 M200 200 L290 300"/>
+                                    <path d="M120 95 L200 200 M280 95 L200 200 M60 200 L200 200 M340 200 L200 200"/>
+                                </g>
+                                <!-- electrode dots -->
+                                <g fill="#2b3a55">
+                                    <circle cx="200" cy="55" r="7"/>
+                                    <circle cx="120" cy="95" r="7"/>
+                                    <circle cx="280" cy="95" r="7"/>
+                                    <circle cx="60" cy="200" r="7"/>
+                                    <circle cx="340" cy="200" r="7"/>
+                                    <circle cx="200" cy="200" r="9" fill="#c41e3a"/>
+                                    <circle cx="110" cy="300" r="7"/>
+                                    <circle cx="290" cy="300" r="7"/>
+                                    <circle cx="200" cy="345" r="7"/>
+                                </g>
+                                <text x="200" y="188" text-anchor="middle" font-family="JetBrains Mono" font-size="13" fill="#faf9f7">Cz</text>
+                            </svg>
+                        </div>
+                        <div class="illustration-caption">Gorro de electrodos — cada punto capta el «ruido» eléctrico de la zona de corteza debajo de él.</div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-footer"><span>EEG y carga cognitiva: fundamentos</span><span>03</span></div>
+        </section>
+
+        <!-- ============================================================
+             SLIDE 4 — BANDAS DE FRECUENCIA
+             ============================================================ -->
+        <section class="slide s4" data-index="3">
+            <div class="slide-inner">
+                <div class="eyebrow-row reveal r1">
+                    <span class="num">01 / 12</span>
+                    <span>Fundamentos de EEG</span>
+                    <span class="rule"></span>
+                </div>
+                <h2 class="reveal r2" data-editable>El lenguaje de las ondas: cinco bandas</h2>
+                <p class="lead reveal r3" data-editable>Esa señal eléctrica no es un solo tono. Al descomponerla aparecen ritmos que se repiten a distintas velocidades — a esos ritmos los llamamos <em class="hl-ink">bandas de frecuencia</em>, y cada una se asocia con un estado mental distinto.</p>
+
+                <div class="band-strip reveal r4">
+                    <div class="band-cell"><span class="band-name">δ Delta</span><span class="band-hz">0.5–4 Hz</span><span class="band-state">Sueño profundo</span></div>
+                    <div class="band-cell theta"><span class="band-name">θ Theta</span><span class="band-hz">4–8 Hz</span><span class="band-state">Esfuerzo mental, carga</span></div>
+                    <div class="band-cell"><span class="band-name">α Alfa</span><span class="band-hz">8–13 Hz</span><span class="band-state">Relajación, reposo</span></div>
+                    <div class="band-cell"><span class="band-name">β Beta</span><span class="band-hz">13–30 Hz</span><span class="band-state">Alerta, atención activa</span></div>
+                    <div class="band-cell"><span class="band-name">γ Gamma</span><span class="band-hz">30+ Hz</span><span class="band-state">Procesamiento complejo</span></div>
+                </div>
+                <p class="recap-caption reveal r5">Dos de estas bandas nos interesan especialmente: theta y alfa — pronto veremos por qué.</p>
+            </div>
+            <div class="page-footer"><span>EEG y carga cognitiva: fundamentos</span><span>04</span></div>
+        </section>
+
+        <!-- ============================================================
+             SLIDE 5 — SITIOS Fz Y Pz + PUENTE
+             ============================================================ -->
+        <section class="slide s5" data-index="4">
+            <div class="slide-inner">
+                <div class="eyebrow-row reveal r1">
+                    <span class="num">01 / 12</span>
+                    <span>Fundamentos de EEG</span>
+                    <span class="rule"></span>
+                </div>
+                <div class="eeg-layout">
+                    <div class="left-col">
+                        <h2 class="reveal r2" data-editable>¿Dónde se coloca el electrodo?</h2>
+                        <p class="lead reveal r2" data-editable style="font-size:20px;color:var(--text-secondary);margin-bottom:26px;max-width:820px;line-height:1.5;" data-plain="true">Los electrodos se ubican siguiendo un mapa estandarizado — el <em class="hl-ink">sistema 10–20</em> — para que cualquier laboratorio del mundo hable el mismo idioma. Esta tesis se enfoca en dos puntos:</p>
+
+                        <div class="site-pair reveal r3">
+                            <div class="site-def fz">
+                                <div class="site-name">Fz</div>
+                                <div class="site-desc" data-editable>Frontal medio — cerca de la corteza prefrontal, ligada al esfuerzo y al control cognitivo.</div>
+                            </div>
+                            <div class="site-def pz">
+                                <div class="site-name">Pz</div>
+                                <div class="site-desc" data-editable>Parietal medio — cerca de regiones asociativas, ligada al reposo y la relajación.</div>
+                            </div>
+                        </div>
+
+                        <div class="bridge-box reveal r4">
+                            <span class="ratio">θ&nbsp;/&nbsp;α</span>
+                            <div class="q" data-editable>Theta en Fz sube con el esfuerzo; alfa en Pz baja. Su cociente será nuestra medida — pero antes: ¿qué es exactamente lo que ese cociente pretende medir?
+                                <span class="small">Ese marco es el tema de la segunda mitad de hoy — la sesión 02 retomará el índice θ/α a fondo.</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="right-col reveal r3">
+                        <div class="head-diagram" style="width:380px;height:380px;">
+                            <svg viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="190" cy="190" r="160" fill="none" stroke="#2b3a55" stroke-width="2" opacity="0.4"/>
+                                <path d="M190 30 L172 4 L208 4 Z" fill="none" stroke="#2b3a55" stroke-width="2" opacity="0.4"/>
+                                <!-- context electrodes, muted -->
+                                <g fill="#d2ccbb">
+                                    <circle cx="150" cy="65" r="6"/><circle cx="230" cy="65" r="6"/>
+                                    <circle cx="80" cy="125" r="6"/><circle cx="140" cy="115" r="6"/><circle cx="240" cy="115" r="6"/><circle cx="300" cy="125" r="6"/>
+                                    <circle cx="45" cy="190" r="6"/><circle cx="135" cy="185" r="6"/><circle cx="245" cy="185" r="6"/><circle cx="335" cy="190" r="6"/>
+                                    <circle cx="80" cy="255" r="6"/><circle cx="140" cy="265" r="6"/><circle cx="240" cy="265" r="6"/><circle cx="300" cy="255" r="6"/>
+                                    <circle cx="150" cy="315" r="6"/><circle cx="230" cy="315" r="6"/>
+                                </g>
+                                <!-- Fz + Pz emphasized -->
+                                <circle cx="190" cy="90" r="10" fill="#c41e3a"/>
+                                <text x="190" y="76" text-anchor="middle" font-family="JetBrains Mono" font-size="16" fill="#c41e3a">Fz</text>
+                                <circle cx="190" cy="290" r="10" fill="#2b3a55"/>
+                                <text x="190" y="316" text-anchor="middle" font-family="JetBrains Mono" font-size="16" fill="#2b3a55">Pz</text>
+                                <line x1="190" y1="100" x2="190" y2="280" stroke="#918c7c" stroke-width="1.2" stroke-dasharray="2 5"/>
+                            </svg>
+                        </div>
+                        <div class="montage-legend">
+                            <span class="lg"><span class="dot fz"></span>Fz</span>
+                            <span class="lg"><span class="dot pz"></span>Pz</span>
+                            <span class="lg"><span class="dot other"></span>otros sitios (10–20)</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-footer"><span>EEG y carga cognitiva: fundamentos</span><span>05</span></div>
+        </section>
+
+        <!-- ============================================================
+             SLIDE 6 — QUÉ ES LA CARGA COGNITIVA
+             ============================================================ -->
+        <section class="slide s6" data-index="5">
+            <div class="slide-inner">
+                <div class="eyebrow-row reveal r1">
+                    <span class="num">01 / 12</span>
+                    <span>Marco teórico</span>
+                    <span class="rule"></span>
+                </div>
+                <div class="layout">
+                    <div class="left-col">
+                        <h2 class="reveal r2" data-editable>¿Qué es la carga cognitiva?</h2>
+
+                        <div class="def-card reveal r3">
+                            <div class="term">Definición</div>
+                            <p data-editable>La cantidad de <em class="hl-ink">memoria de trabajo</em> que una tarea te exige en un momento dado — piénsalo como la RAM de una computadora: limitada, y se puede saturar.</p>
+                            <span class="cite">Sweller, 1988 · Paas &amp; van Merriënboer, 1994</span>
+                        </div>
+
+                        <div class="why-grid reveal r4">
+                            <div class="why-item">
+                                <div class="icon-wrap">
+                                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="8" y="46" width="20" height="10" rx="2" stroke="#2b3a55" stroke-width="3"/>
+                                        <line x1="18" y1="46" x2="18" y2="30" stroke="#2b3a55" stroke-width="3"/>
+                                        <circle cx="18" cy="30" r="4" fill="#2b3a55"/>
+                                        <line x1="18" y1="30" x2="40" y2="18" stroke="#2b3a55" stroke-width="3"/>
+                                        <circle cx="40" cy="18" r="4" fill="#2b3a55"/>
+                                        <path d="M40 18 L52 10 M40 18 L50 26" stroke="#2b3a55" stroke-width="3" stroke-linecap="round"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div class="why-title">Robótica colaborativa</div>
+                                    <div class="why-desc" data-editable>Evitar que el operador se sature en tareas de control compartido humano-robot.</div>
+                                </div>
+                            </div>
+                            <div class="why-item">
+                                <div class="icon-wrap">
+                                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="10" y="34" width="44" height="20" rx="8" stroke="#2b3a55" stroke-width="3"/>
+                                        <line x1="32" y1="34" x2="32" y2="15" stroke="#2b3a55" stroke-width="3"/>
+                                        <circle cx="32" cy="12" r="5" stroke="#2b3a55" stroke-width="3"/>
+                                        <circle cx="20" cy="44" r="3" fill="#2b3a55"/>
+                                        <circle cx="46" cy="44" r="3" fill="#2b3a55"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div class="why-title">Teleoperación</div>
+                                    <div class="why-desc" data-editable>La carga excesiva degrada el tiempo de reacción y compromete la seguridad.</div>
+                                </div>
+                            </div>
+                            <div class="why-item">
+                                <div class="icon-wrap">
+                                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="8" y="22" width="48" height="24" rx="10" stroke="#2b3a55" stroke-width="3"/>
+                                        <circle cx="23" cy="34" r="6" stroke="#2b3a55" stroke-width="3"/>
+                                        <circle cx="41" cy="34" r="6" stroke="#2b3a55" stroke-width="3"/>
+                                        <path d="M8 27 L0 20 M56 27 L64 20" stroke="#2b3a55" stroke-width="3" stroke-linecap="round"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div class="why-title">VR / Exergaming</div>
+                                    <div class="why-desc" data-editable>Ajustar la dificultad en tiempo real según el estado cognitivo del usuario.</div>
+                                </div>
+                            </div>
+                            <div class="why-item">
+                                <div class="icon-wrap">
+                                    <svg viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <rect x="10" y="10" width="36" height="28" rx="3" stroke="#2b3a55" stroke-width="3"/>
+                                        <line x1="10" y1="18" x2="46" y2="18" stroke="#2b3a55" stroke-width="2.5"/>
+                                        <path d="M34 30 L34 54 L40 48 L44 56 L48 54 L44 46 L52 44 Z" fill="#2b3a55"/>
+                                    </svg>
+                                </div>
+                                <div>
+                                    <div class="why-title">Diseño de interfaces</div>
+                                    <div class="why-desc" data-editable>Validar si una interfaz es usable bajo presión cognitiva real, no solo en teoría.</div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="right-col reveal r5">
+                        <div class="gauge-label">Recursos de memoria de trabajo<br />(capacidad limitada)</div>
+                        <div class="gauge">
+                            <div class="gauge-marks">
+                                <span class="gauge-mark over">Sobrecarga</span>
+                                <span class="gauge-mark opt">Carga óptima</span>
+                                <span class="gauge-mark low">Carga baja</span>
+                            </div>
+                        </div>
+                        <div class="gauge-analogy">como la memoria RAM: poca, y se llena rápido</div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-footer"><span>EEG y carga cognitiva: fundamentos</span><span>06</span></div>
+        </section>
+
+        <!-- ============================================================
+             SLIDE 7 — COGNITIVE LOAD THEORY (SWELLER)
+             ============================================================ -->
+        <section class="slide s7" data-index="6">
+            <div class="slide-inner">
+                <div class="eyebrow-row reveal r1">
+                    <span class="num">01 / 12</span>
+                    <span>Marco teórico</span>
+                    <span class="rule"></span>
+                </div>
+                <div class="top-row reveal r2">
+                    <span class="tag ink">Sweller, 1988 · Cognitive Load Theory</span>
+                </div>
+                <h2 class="reveal r2" data-editable>El marco dominante: <em class="hl-ink">Cognitive Load Theory</em></h2>
+                <p class="lead reveal r3" data-editable>Nacida en la psicología del aprendizaje, es hoy la referencia más usada para explicar cómo se distribuyen los recursos de memoria de trabajo durante una tarea — y la base conceptual que este estudio adopta para operacionalizar la carga vía EEG.</p>
+
+                <div class="premise-list reveal r4">
+                    <div class="premise-row">
+                        <span class="pnum">01</span>
+                        <span class="ptxt" data-editable>Tu memoria de trabajo es como un <span class="analogy">escritorio pequeño: cabe poco a la vez.</span></span>
+                    </div>
+                    <div class="premise-row">
+                        <span class="pnum">02</span>
+                        <span class="ptxt" data-editable>Tu memoria a largo plazo es como un <span class="analogy">archivero enorme, casi sin límite, organizado en esquemas.</span></span>
+                    </div>
+                    <div class="premise-row">
+                        <span class="pnum">03</span>
+                        <span class="ptxt" data-editable>El diseño de la tarea o interfaz decide <span class="analogy">cuánto escritorio ocupa — y de qué tipo.</span></span>
+                    </div>
+                </div>
+
+                <div class="bridge-line reveal r5">
+                    <span class="arrow">→</span>
+                    <p data-editable>La carga total no es un bloque uniforme: CLT distingue <em class="hl">tres</em> fuentes distintas.</p>
+                </div>
+            </div>
+            <div class="page-footer"><span>EEG y carga cognitiva: fundamentos</span><span>07</span></div>
+        </section>
+
+        <!-- ============================================================
+             SLIDE 8 — LOS 3 TIPOS DE CARGA
+             ============================================================ -->
+        <section class="slide s8" data-index="7">
+            <div class="slide-inner">
+                <div class="eyebrow-row reveal r1">
+                    <span class="num">01 / 12</span>
+                    <span>Marco teórico</span>
+                    <span class="rule"></span>
+                </div>
+                <h2 class="reveal r2" data-editable>Tres fuentes de carga, una sola capacidad</h2>
+                <p class="cap-note reveal r2">Carga intrínseca + extraña + germana ≤ capacidad de memoria de trabajo</p>
+
+                <div class="stack-bar reveal r3">
+                    <div class="stack-seg intrinseca">Intrínseca</div>
+                    <div class="stack-seg extrana">Extraña</div>
+                    <div class="stack-seg germana">Germana</div>
+                </div>
+                <div class="stack-bracket reveal r3"><span>proporciones ilustrativas — no a escala real</span></div>
+
+                <div class="type-grid reveal r4">
+                    <div class="type-card intrinseca">
+                        <div class="type-name">Intrínseca</div>
+                        <div class="type-def" data-editable>Dificultad inherente a la tarea misma.</div>
+                        <div class="type-ex" data-editable>Ej.: complejidad mecánica de teleoperar un brazo robótico con 6 grados de libertad.</div>
+                        <div class="type-goal">— determinada por la tarea, difícil de eliminar</div>
+                    </div>
+                    <div class="type-card extrana">
+                        <div class="type-name">Extraña</div>
+                        <div class="type-def" data-editable>Impuesta por un diseño deficiente; no aporta valor.</div>
+                        <div class="type-ex" data-editable>Ej.: latencia de la interfaz, retroalimentación confusa, ruido en el entorno VR.</div>
+                        <div class="type-goal">objetivo de diseño: minimizarla</div>
+                    </div>
+                    <div class="type-card germana">
+                        <div class="type-name">Germana</div>
+                        <div class="type-def" data-editable>Esfuerzo que construye esquemas mentales útiles.</div>
+                        <div class="type-ex" data-editable>Ej.: practicar un nuevo esquema de control hasta automatizarlo.</div>
+                        <div class="type-goal">objetivo de diseño: fomentarla</div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-footer"><span>EEG y carga cognitiva: fundamentos</span><span>08</span></div>
+        </section>
+
+        <!-- ============================================================
+             SLIDE 9 — PANORAMA DE MEDICIÓN
+             ============================================================ -->
+        <section class="slide s9" data-index="8">
+            <div class="slide-inner">
+                <div class="eyebrow-row reveal r1">
+                    <span class="num">01 / 12</span>
+                    <span>Medición de la carga cognitiva</span>
+                    <span class="rule"></span>
+                </div>
+                <h2 class="reveal r2" data-editable>¿Cómo se mide la carga cognitiva?</h2>
+                <p class="lead reveal r2" data-editable>Tres familias de métodos, cada una con una relación distinta con la tarea que se está midiendo.</p>
+
+                <div class="family-grid reveal r3">
+                    <div class="family-card" style="border-top: 4px solid var(--accent-gold);">
+                        <svg class="family-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M8 10 h48 a6 6 0 0 1 6 6 v24 a6 6 0 0 1 -6 6 h-30 l-10 10 v-10 h-8 a6 6 0 0 1 -6 -6 v-24 a6 6 0 0 1 6 -6 z" stroke="#a9793a" stroke-width="3" stroke-linejoin="round"/>
+                            <line x1="16" y1="22" x2="48" y2="22" stroke="#a9793a" stroke-width="3" stroke-linecap="round"/>
+                            <line x1="16" y1="30" x2="40" y2="30" stroke="#a9793a" stroke-width="3" stroke-linecap="round"/>
+                        </svg>
+                        <span class="tag gold">Subjetivo</span>
+                        <p class="fam-def" data-editable>Autorreporte de la percepción del propio esfuerzo.</p>
+                        <div class="fam-row"><span class="k">Ejemplo</span><span class="v">NASA-TLX</span></div>
+                        <div class="fam-row"><span class="k">Cuándo</span><span class="v">Después de la tarea</span></div>
+                    </div>
+                    <div class="family-card" style="border-top: 4px solid var(--accent-ink);">
+                        <svg class="family-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="32" cy="36" r="20" stroke="#2b3a55" stroke-width="3"/>
+                            <rect x="26" y="6" width="12" height="7" rx="2" stroke="#2b3a55" stroke-width="3"/>
+                            <line x1="32" y1="13" x2="32" y2="17" stroke="#2b3a55" stroke-width="3"/>
+                            <line x1="32" y1="36" x2="42" y2="27" stroke="#2b3a55" stroke-width="3" stroke-linecap="round"/>
+                            <circle cx="32" cy="36" r="2.5" fill="#2b3a55"/>
+                        </svg>
+                        <span class="tag ink">Conductual</span>
+                        <p class="fam-def" data-editable>Cambios medibles en el desempeño ante la tarea.</p>
+                        <div class="fam-row"><span class="k">Ejemplo</span><span class="v">Tiempo de reacción, tasa de error</span></div>
+                        <div class="fam-row"><span class="k">Cuándo</span><span class="v">Durante la tarea (con tarea secundaria)</span></div>
+                    </div>
+                    <div class="family-card" style="border-top: 4px solid var(--accent-crimson);">
+                        <svg class="family-icon" viewBox="0 0 64 64" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M4 34 Q 12 16 20 34 T 36 34 T 52 34 T 60 34" stroke="#c41e3a" stroke-width="3" fill="none"/>
+                        </svg>
+                        <span class="tag crimson">Fisiológico</span>
+                        <p class="fam-def" data-editable>Señales del cuerpo y el cerebro asociadas al esfuerzo.</p>
+                        <div class="fam-row"><span class="k">Ejemplo</span><span class="v">EEG, frecuencia cardiaca, pupilometría</span></div>
+                        <div class="fam-row"><span class="k">Cuándo</span><span class="v">Continuo, en tiempo real</span></div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-footer"><span>EEG y carga cognitiva: fundamentos</span><span>09</span></div>
+        </section>
+
+        <!-- ============================================================
+             SLIDE 10 — SUBJETIVO Y CONDUCTUAL (DETALLE)
+             ============================================================ -->
+        <section class="slide s10" data-index="9">
+            <div class="slide-inner">
+                <div class="eyebrow-row reveal r1">
+                    <span class="num">01 / 12</span>
+                    <span>Medición de la carga cognitiva</span>
+                    <span class="rule"></span>
+                </div>
+                <h2 class="reveal r2" data-editable>Subjetivo y conductual, de cerca</h2>
+
+                <div class="split-panels reveal r3">
+                    <div class="panel">
+                        <div class="panel-head"><span class="tag gold">Subjetivo</span></div>
+                        <div class="panel-method">NASA-TLX</div>
+                        <p class="desc" data-editable>Escala de 0–100 en seis subdimensiones, completada por el participante justo después de la tarea.</p>
+                        <div class="subscale-grid">
+                            <span class="subscale">Demanda mental</span>
+                            <span class="subscale">Demanda física</span>
+                            <span class="subscale">Demanda temporal</span>
+                            <span class="subscale">Desempeño</span>
+                            <span class="subscale">Esfuerzo</span>
+                            <span class="subscale">Frustración</span>
+                        </div>
+                        <div class="pro-con">
+                            <div class="row pro"><span class="lbl">Ventaja</span><span class="txt">Validado extensamente, fácil de aplicar.</span></div>
+                            <div class="row con"><span class="lbl">Límite</span><span class="txt">Retrospectivo, sesgado por la memoria, interrumpe el flujo de la tarea.</span></div>
+                        </div>
+                    </div>
+                    <div class="panel">
+                        <div class="panel-head"><span class="tag ink">Conductual</span></div>
+                        <div class="panel-method">Paradigma de tarea dual</div>
+                        <p class="desc" data-editable>Se añade una tarea secundaria — por ejemplo, responder a un estímulo — mientras se realiza la tarea principal.</p>
+                        <div class="metric-tags">
+                            <span class="tag ink">Tiempo de reacción ↑</span>
+                            <span class="tag ink">Tasa de error ↓ desempeño</span>
+                        </div>
+                        <div class="pro-con">
+                            <div class="row pro"><span class="lbl">Ventaja</span><span class="txt">Objetivo y cuantificable.</span></div>
+                            <div class="row con"><span class="lbl">Límite</span><span class="txt">La propia tarea secundaria interfiere con la principal; resolución temporal gruesa.</span></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="page-footer"><span>EEG y carga cognitiva: fundamentos</span><span>10</span></div>
+        </section>
+
+        <!-- ============================================================
+             SLIDE 11 — MÉTODOS FISIOLÓGICOS (DETALLE)
+             ============================================================ -->
+        <section class="slide s11" data-index="10">
+            <div class="slide-inner">
+                <div class="eyebrow-row reveal r1">
+                    <span class="num">01 / 12</span>
+                    <span>Medición de la carga cognitiva</span>
+                    <span class="rule"></span>
+                </div>
+                <h2 class="reveal r2" data-editable>Métodos fisiológicos: el cuerpo también reporta</h2>
+
+                <div class="phys-grid reveal r3">
+                    <div class="phys-card">
+                        <svg class="glyph" viewBox="0 0 300 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M0 65 Q 18 20 37 65 T 74 65 T 111 65 T 148 65 T 185 65 T 222 65 T 259 65 T 300 65" stroke="#c41e3a" stroke-width="3" fill="none"/>
+                        </svg>
+                        <div class="phys-name" style="color:var(--accent-crimson);">EEG</div>
+                        <p class="phys-desc" data-editable>Actividad eléctrica cortical registrada en el cuero cabelludo.</p>
+                        <div class="phys-corr">θ/α en Fz–Pz ↑ con la carga cognitiva — el método que desarrolla este estudio.</div>
+                    </div>
+                    <div class="phys-card">
+                        <svg class="glyph" viewBox="0 0 300 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path d="M0 65 L40 65 L55 20 L75 110 L95 65 L135 65 L150 40 L165 90 L185 65 L300 65" stroke="#2b3a55" stroke-width="3" fill="none" stroke-linejoin="round"/>
+                        </svg>
+                        <div class="phys-name" style="color:var(--accent-ink);">Frecuencia cardiaca</div>
+                        <p class="phys-desc" data-editable>Ritmo y variabilidad cardiaca (HRV) medidos de forma continua.</p>
+                        <div class="phys-corr">La variabilidad (HRV) disminuye bajo carga simpática elevada.</div>
+                    </div>
+                    <div class="phys-card">
+                        <svg class="glyph" viewBox="0 0 300 130" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <circle cx="150" cy="65" r="52" stroke="#2b3a55" stroke-width="3" opacity="0.55"/>
+                            <circle cx="150" cy="65" r="24" fill="#2b3a55" opacity="0.85"/>
+                        </svg>
+                        <div class="phys-name" style="color:var(--accent-ink);">Dilatación pupilar</div>
+                        <p class="phys-desc" data-editable>Diámetro de la pupila capturado por eye-tracking.</p>
+                        <div class="phys-corr">El diámetro pupilar crece con el esfuerzo cognitivo (efecto Kahneman).</div>
+                    </div>
+                </div>
+
+                <div class="note-box reveal r4">
+                    <p data-editable>Las tres son continuas — pero difieren en resolución temporal, portabilidad y sensibilidad al movimiento.</p>
+                </div>
+            </div>
+            <div class="page-footer"><span>EEG y carga cognitiva: fundamentos</span><span>11</span></div>
+        </section>
+
+        <!-- ============================================================
+             SLIDE 12 — VENTAJAS: MATRIZ COMPARATIVA
+             ============================================================ -->
+        <section class="slide s12" data-index="11">
+            <div class="slide-inner">
+                <div class="eyebrow-row reveal r1">
+                    <span class="num">01 / 12</span>
+                    <span>Medición de la carga cognitiva</span>
+                    <span class="rule"></span>
+                </div>
+                <h2 class="reveal r2" data-editable>Por qué lo fisiológico — y el EEG en particular</h2>
+
+                <table class="matrix reveal r3">
+                    <thead>
+                        <tr>
+                            <th class="criteria-col">Criterio</th>
+                            <th class="col-gold">Subjetivo</th>
+                            <th class="col-ink">Conductual</th>
+                            <th class="col-crimson">Fisiológico / EEG</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <th>Continuidad en el tiempo</th>
+                            <td><span class="dotscale"><span class="dot filled gold"></span><span class="dot"></span><span class="dot"></span></span></td>
+                            <td><span class="dotscale"><span class="dot filled ink"></span><span class="dot filled ink"></span><span class="dot"></span></span></td>
+                            <td><span class="dotscale"><span class="dot filled crimson"></span><span class="dot filled crimson"></span><span class="dot filled crimson"></span></span></td>
+                        </tr>
+                        <tr>
+                            <th>Objetividad</th>
+                            <td><span class="dotscale"><span class="dot filled gold"></span><span class="dot"></span><span class="dot"></span></span></td>
+                            <td><span class="dotscale"><span class="dot filled ink"></span><span class="dot filled ink"></span><span class="dot"></span></span></td>
+                            <td><span class="dotscale"><span class="dot filled crimson"></span><span class="dot filled crimson"></span><span class="dot filled crimson"></span></span></td>
+                        </tr>
+                        <tr>
+                            <th>No interrumpe la tarea</th>
+                            <td><span class="dotscale"><span class="dot filled gold"></span><span class="dot"></span><span class="dot"></span></span></td>
+                            <td><span class="dotscale"><span class="dot filled ink"></span><span class="dot"></span><span class="dot"></span></span></td>
+                            <td><span class="dotscale"><span class="dot filled crimson"></span><span class="dot filled crimson"></span><span class="dot filled crimson"></span></span></td>
+                        </tr>
+                        <tr>
+                            <th>Resolución temporal</th>
+                            <td><span class="dotscale"><span class="dot filled gold"></span><span class="dot"></span><span class="dot"></span></span></td>
+                            <td><span class="dotscale"><span class="dot filled ink"></span><span class="dot filled ink"></span><span class="dot"></span></span></td>
+                            <td><span class="dotscale"><span class="dot filled crimson"></span><span class="dot filled crimson"></span><span class="dot filled crimson"></span></span></td>
+                        </tr>
+                        <tr>
+                            <th>Portabilidad / costo</th>
+                            <td><span class="dotscale"><span class="dot filled gold"></span><span class="dot filled gold"></span><span class="dot filled gold"></span></span></td>
+                            <td><span class="dotscale"><span class="dot filled ink"></span><span class="dot filled ink"></span><span class="dot"></span></span></td>
+                            <td><span class="dotscale"><span class="dot filled crimson"></span><span class="dot"></span><span class="dot"></span></span></td>
+                        </tr>
+                    </tbody>
+                </table>
+
+                <p class="takeaway reveal r4" data-editable>El EEG es el único método que mide de forma <em>continua, objetiva y sin interrumpir la tarea</em> — al precio de mayor complejidad técnica en su implementación.</p>
+            </div>
+            <div class="page-footer"><span>EEG y carga cognitiva: fundamentos</span><span>12</span></div>
+        </section>
+
+        <!-- ============================================================
+             SLIDE 13 — REFERENCIAS BIBLIOGRÁFICAS
+             ============================================================ -->
+        <section class="slide s13" data-index="12">
+            <div class="slide-inner">
+                <div class="eyebrow-row reveal r1">
+                    <span class="num">01 / 12</span>
+                    <span>Referencias</span>
+                    <span class="rule"></span>
+                </div>
+                <h2 class="reveal r2" data-editable>Referencias</h2>
+
+                <div class="refs-list reveal r3">
+                    <div class="ref-item"><span class="ref-authors">Antonenko, P., Paas, F., Grabner, R., &amp; van Gog, T.</span> <span class="ref-year">(2010)</span>. Using electroencephalography to measure cognitive load. <em>Educational Psychology Review</em>, 22(4), 425–438.</div>
+                    <div class="ref-item"><span class="ref-authors">Hart, S. G., &amp; Staveland, L. E.</span> <span class="ref-year">(1988)</span>. Development of NASA-TLX (Task Load Index): Results of empirical and theoretical research. En <em>Human Mental Workload</em> (pp. 139–183). North-Holland.</div>
+                    <div class="ref-item"><span class="ref-authors">Holm, A., Lukander, K., Korpela, J., Sallinen, M., &amp; Müller, K. M. I.</span> <span class="ref-year">(2009)</span>. Estimating brain load from the EEG. <em>The Scientific World Journal</em>, 9, 639–651.</div>
+                    <div class="ref-item"><span class="ref-authors">Kahneman, D.</span> <span class="ref-year">(1973)</span>. <em>Attention and Effort</em>. Prentice-Hall.</div>
+                    <div class="ref-item"><span class="ref-authors">Klimesch, W.</span> <span class="ref-year">(1999)</span>. EEG alpha and theta oscillations reflect cognitive and memory performance: a review and analysis. <em>Brain Research Reviews</em>, 29(2–3), 169–195.</div>
+                    <div class="ref-item"><span class="ref-authors">Paas, F., &amp; van Merriënboer, J. J. G.</span> <span class="ref-year">(1994)</span>. Instructional control of cognitive load in the training of complex cognitive tasks. <em>Educational Psychology Review</em>, 6(4), 351–371.</div>
+                    <div class="ref-item"><span class="ref-authors">Sweller, J.</span> <span class="ref-year">(1988)</span>. Cognitive load during problem solving: Effects on learning. <em>Cognitive Science</em>, 12(2), 257–285.</div>
+                </div>
+            </div>
+            <div class="page-footer"><span>EEG y carga cognitiva: fundamentos</span><span>13</span></div>
+        </section>
+
+        <!-- ============================================================
+             SLIDE 14 — CIERRE / PUENTE A SESIÓN 02
+             ============================================================ -->
+        <section class="slide s14" data-index="13">
+            <div class="slide-inner">
+                <div class="eyebrow-row reveal r1">
+                    <span class="num">01 / 12</span>
+                    <span>Cierre — hacia la sesión 02</span>
+                    <span class="rule"></span>
+                </div>
+
+                <div class="layout">
+                    <div class="left-col">
+                        <h2 class="reveal r2" data-editable>Hacia una medida operacional: <em class="hl">θ/α</em></h2>
+                        <p class="recap reveal r3" data-editable>Hoy vimos qué es el EEG y cómo se registra, qué es la carga cognitiva según Cognitive Load Theory, y por qué lo fisiológico — en particular el EEG — es la vía más adecuada para medirla en sistemas humano-máquina.</p>
+
+                        <div class="eq-box reveal r4">
+                            <span class="eq-label">Sesión 02</span>
+                            <span class="eq">Índice = θ(Fz) / α(Pz)</span>
+                        </div>
+
+                        <div class="thread reveal r5">
+                            <div class="thread-item">
+                                <span class="n">SESIÓN 01</span>
+                                <span class="t">Fundamentos y marco teórico ✓</span>
+                            </div>
+                            <div class="thread-connector"></div>
+                            <div class="thread-item current">
+                                <span class="n">SESIÓN 02</span>
+                                <span class="t">Índice θ/α en profundidad</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="right-col reveal r4">
+                        <div class="head-diagram">
+                            <svg viewBox="0 0 380 380" xmlns="http://www.w3.org/2000/svg">
+                                <circle cx="190" cy="190" r="150" fill="none" stroke="#d2ccbb" stroke-width="2"/>
+                                <path d="M190 40 L172 12 L208 12 Z" fill="none" stroke="#d2ccbb" stroke-width="2"/>
+                                <circle cx="190" cy="90" r="9" fill="#c41e3a"/>
+                                <line x1="190" y1="90" x2="190" y2="40" stroke="#c41e3a" stroke-width="1.5" stroke-dasharray="3 4"/>
+                                <text x="190" y="30" text-anchor="middle" font-family="JetBrains Mono" font-size="16" fill="#c41e3a">Fz</text>
+                                <text x="248" y="98" font-family="Cormorant Garamond" font-style="italic" font-size="24" fill="#c41e3a">θ ↑</text>
+                                <circle cx="190" cy="290" r="9" fill="#2b3a55"/>
+                                <text x="190" y="352" text-anchor="middle" font-family="JetBrains Mono" font-size="16" fill="#2b3a55">Pz</text>
+                                <text x="248" y="298" font-family="Cormorant Garamond" font-style="italic" font-size="24" fill="#2b3a55">α ↓</text>
+                                <line x1="190" y1="99" x2="190" y2="281" stroke="#918c7c" stroke-width="1.2" stroke-dasharray="2 5"/>
+                            </svg>
+                        </div>
+                        <div class="head-caption">Vista superior — Fz frontal medio, Pz parietal medio</div>
+                    </div>
+                </div>
+
+                <div class="footer-row reveal r6">
+                    <div class="thanks">Gracias — preguntas y comentarios bienvenidos</div>
+                    <div class="inst">Edgar Rafael Hernández Ríos · UAEH</div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+</div>
+
+<!-- Navigation controls, kept outside the slide stage -->
+<div class="deck-controls">
+    <button class="nav-btn" id="prevBtn" aria-label="Diapositiva anterior">‹</button>
+    <div class="progress-dots" id="progressDots"></div>
+    <span class="slide-counter" id="slideCounter">01 / 14</span>
+    <button class="nav-btn" id="nextBtn" aria-label="Diapositiva siguiente">›</button>
+</div>
+
+<!-- Inline editing affordance (hover top-left corner, or press E) -->
+<div class="edit-hotzone" id="editHotzone"></div>
+<button class="edit-toggle" id="editToggle" title="Modo edición (E)">✏️</button>
+<div class="save-toast" id="saveToast">Guardado</div>
+
+<script>
+/* ===========================================================
+   SLIDE PRESENTATION CONTROLLER
+   Handles stage scaling, keyboard/touch/wheel navigation,
+   and the progress-dot indicator outside the fixed stage.
+   =========================================================== */
+class SlidePresentation {
+    constructor() {
+        this.slides = Array.from(document.querySelectorAll('.slide'));
+        this.currentSlide = 0;
+        this.stage = document.getElementById('deckStage');
+        this.dotsContainer = document.getElementById('progressDots');
+        this.counterEl = document.getElementById('slideCounter');
+
+        this.buildDots();
+        this.setupStageScale();
+        this.setupKeyboardNav();
+        this.setupTouchNav();
+        this.setupWheelNav();
+        this.setupButtons();
+        this.showSlide(0);
+    }
+
+    buildDots() {
+        this.slides.forEach((_, i) => {
+            const dot = document.createElement('div');
+            dot.className = 'pdot';
+            dot.addEventListener('click', () => this.showSlide(i));
+            this.dotsContainer.appendChild(dot);
+        });
+        this.dots = Array.from(this.dotsContainer.children);
+    }
+
+    setupStageScale() {
+        const scale = () => {
+            const factor = Math.min(window.innerWidth / 1920, window.innerHeight / 1080);
+            const x = (window.innerWidth - 1920 * factor) / 2;
+            const y = (window.innerHeight - 1080 * factor) / 2;
+            this.stage.style.transform = `translate(${x}px, ${y}px) scale(${factor})`;
+        };
+        scale();
+        window.addEventListener('resize', scale);
+    }
+
+    setupKeyboardNav() {
+        document.addEventListener('keydown', (e) => {
+            if (document.body.classList.contains('edit-mode') && e.target.getAttribute('contenteditable')) return;
+            if (['ArrowRight', 'ArrowDown', ' ', 'PageDown'].includes(e.key)) { e.preventDefault(); this.next(); }
+            if (['ArrowLeft', 'ArrowUp', 'PageUp'].includes(e.key)) { e.preventDefault(); this.prev(); }
+        });
+    }
+
+    setupTouchNav() {
+        let startX = 0;
+        this.stage.addEventListener('touchstart', (e) => { startX = e.touches[0].clientX; }, { passive: true });
+        this.stage.addEventListener('touchend', (e) => {
+            const dx = e.changedTouches[0].clientX - startX;
+            if (Math.abs(dx) > 60) { dx < 0 ? this.next() : this.prev(); }
+        }, { passive: true });
+    }
+
+    setupWheelNav() {
+        let locked = false;
+        window.addEventListener('wheel', (e) => {
+            if (locked) return;
+            if (Math.abs(e.deltaY) < 24) return;
+            locked = true;
+            e.deltaY > 0 ? this.next() : this.prev();
+            setTimeout(() => { locked = false; }, 550);
+        }, { passive: true });
+    }
+
+    setupButtons() {
+        document.getElementById('nextBtn').addEventListener('click', () => this.next());
+        document.getElementById('prevBtn').addEventListener('click', () => this.prev());
+    }
+
+    next() { this.showSlide(this.currentSlide + 1); }
+    prev() { this.showSlide(this.currentSlide - 1); }
+
+    showSlide(index) {
+        this.currentSlide = Math.max(0, Math.min(index, this.slides.length - 1));
+        this.slides.forEach((slide, i) => {
+            slide.classList.toggle('active', i === this.currentSlide);
+            slide.classList.toggle('visible', i === this.currentSlide);
+        });
+        this.dots.forEach((dot, i) => dot.classList.toggle('active', i === this.currentSlide));
+        this.counterEl.textContent = `${String(this.currentSlide + 1).padStart(2, '0')} / ${this.slides.length}`;
+    }
+}
+
+/* ===========================================================
+   INLINE EDITOR — hover-to-reveal toggle, contenteditable,
+   autosave to localStorage keyed by this file's title.
+   =========================================================== */
+class InlineEditor {
+    constructor() {
+        this.isActive = false;
+        this.storageKey = 'frontend-slides:eeg-carga-cognitiva-s01';
+        this.toggle = document.getElementById('editToggle');
+        this.hotzone = document.getElementById('editHotzone');
+        this.toast = document.getElementById('saveToast');
+        this.editableEls = Array.from(document.querySelectorAll('[data-editable]'));
+
+        this.restore();
+        this.bindHotzone();
+        this.bindToggle();
+        this.bindKeyboard();
+        this.bindAutosave();
+    }
+
+    bindHotzone() {
+        let hideTimeout = null;
+        this.hotzone.addEventListener('mouseenter', () => { clearTimeout(hideTimeout); this.toggle.classList.add('show'); });
+        this.hotzone.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!this.isActive) this.toggle.classList.remove('show'); }, 400); });
+        this.toggle.addEventListener('mouseenter', () => clearTimeout(hideTimeout));
+        this.toggle.addEventListener('mouseleave', () => { hideTimeout = setTimeout(() => { if (!this.isActive) this.toggle.classList.remove('show'); }, 400); });
+        this.hotzone.addEventListener('click', () => this.toggleEditMode());
+    }
+
+    bindToggle() { this.toggle.addEventListener('click', () => this.toggleEditMode()); }
+
+    bindKeyboard() {
+        document.addEventListener('keydown', (e) => {
+            if ((e.key === 'e' || e.key === 'E') && !e.target.getAttribute('contenteditable')) this.toggleEditMode();
+            if ((e.metaKey || e.ctrlKey) && e.key === 's') { e.preventDefault(); this.save(); }
+        });
+    }
+
+    toggleEditMode() {
+        this.isActive = !this.isActive;
+        document.body.classList.toggle('edit-mode', this.isActive);
+        this.toggle.classList.toggle('active', this.isActive);
+        this.editableEls.forEach(el => el.setAttribute('contenteditable', this.isActive ? 'true' : 'false'));
+        if (!this.isActive) this.save();
+    }
+
+    bindAutosave() {
+        this.editableEls.forEach(el => el.addEventListener('input', () => this.save()));
+    }
+
+    save() {
+        const data = {};
+        this.editableEls.forEach((el, i) => { data[i] = el.innerHTML; });
+        localStorage.setItem(this.storageKey, JSON.stringify(data));
+        this.toast.classList.add('show');
+        clearTimeout(this._toastTimeout);
+        this._toastTimeout = setTimeout(() => this.toast.classList.remove('show'), 1100);
+    }
+
+    restore() {
+        const raw = localStorage.getItem(this.storageKey);
+        if (!raw) return;
+        try {
+            const data = JSON.parse(raw);
+            this.editableEls.forEach((el, i) => { if (data[i] !== undefined) el.innerHTML = data[i]; });
+        } catch (err) { /* ignore malformed storage */ }
+    }
+}
+
+new SlidePresentation();
+new InlineEditor();
+</script>
+</body>
+</html>

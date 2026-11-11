@@ -1,14 +1,23 @@
 """Channel-montage ablation + physiological Cognitive-Load Index (CLI).
 
-Motivation (literature): frontal-midline theta (Fz) rises and parietal
-alpha (Pz) falls with mental workload; the minimum reliable montage is
-Fz+Pz, and frontal-alpha asymmetry (FAA) reflects affect, not load.
-We therefore (i) drop the FAA asymmetry features, (ii) compare three
-montages, and (iii) report the canonical index CLI = theta(Fz)/alpha(Pz).
+CORRECTED 2026-08-25: this script still had the pre-fix channel names
+(Fp1,Fp2,F3,Fz,F4,P3,Pz,P4 — the lab's own AURA montage). The commit
+49e3786b (2026-08-07) corrected eeg_make_window_features_aura.py to the
+REAL public-dataset montage (Nirabi et al., Data in Brief 60:111477,
+2025): Fp1,Fp2,F7,F3,Fz,F4,F8,C4 — no parietal electrode at all — but
+this script was never updated to match, so re-running it silently used
+133/218 features (missing F7/F8/C4, matching nonexistent P3/Pz/P4
+columns) instead of erroring out. Fixed here: channel list now matches
+the real montage; the fp6/fzpz2 reduced montages are removed because
+they assumed a Pz that never existed (this is exactly why the paper
+evaluates montage-reduction and the CLI index on eegmat instead — see
+Sec. "Montage selection" in main.tex). run_cli() now reads the
+theta_Fz_over_alpha_C4 substitute column that eeg_make_window_features_aura.py
+already computes, instead of a nonexistent Fz/Pz ratio.
 
 Usage:
-    python eeg_channel_ablation.py binary  all8|fp6|fzpz2
-    python eeg_channel_ablation.py hier    all8|fp6|fzpz2
+    python eeg_channel_ablation.py binary  all8
+    python eeg_channel_ablation.py hier    all8
     python eeg_channel_ablation.py cli
 Results are appended to csv/ablation_results.json.
 """
@@ -27,27 +36,25 @@ OUT = ROOT / "csv" / "ablation_results.json"
 META = {"file_name", "subject_id", "task_type", "condition_4",
         "load_3", "load_2", "window_start_idx", "window_end_idx", "y"}
 
-# 8 AURA EEG channels
-ALL_CH = ["Fp1", "Fp2", "F3", "Fz", "F4", "P3", "Pz", "P4"]
-# frontal + parietal, dropping noisy frontopolar Fp1/Fp2
-FP6 = ["Fz", "F3", "F4", "Pz", "P3", "P4"]
-# minimum reliable montage
-FZPZ = ["Fz", "Pz"]
+# Real 8-channel montage of the AS public dataset (no parietal site).
+ALL_CH = ["Fp1", "Fp2", "F7", "F3", "Fz", "F4", "F8", "C4"]
 
-# region-aggregate features (physiological, keep when >1 channel montage)
-REGION = ["frontal_theta_parietal_alpha", "frontal_mean_theta",
-          "parietal_mean_theta", "front_minus_parietal_theta",
-          "frontal_mean_alpha", "parietal_mean_alpha",
-          "front_minus_parietal_alpha", "frontal_mean_beta",
-          "parietal_mean_beta", "front_minus_parietal_beta"]
-# FAA asymmetry features -> always dropped
-FAA = ["asym_alpha_Fp1_Fp2", "asym_beta_Fp1_Fp2", "asym_alpha_F3_F4",
-       "asym_beta_F3_F4", "asym_alpha_P3_P4", "asym_beta_P3_P4"]
+# region-aggregate features actually emitted by eeg_make_window_features_aura.py
+# (frontal vs. CENTRAL/C4 contrast — there is no parietal region to contrast).
+REGION = ["theta_Fz_over_alpha_C4", "frontal_mean_theta", "central_mean_theta",
+          "front_minus_central_theta", "frontal_mean_alpha", "central_mean_alpha",
+          "front_minus_central_alpha", "frontal_mean_beta", "central_mean_beta",
+          "front_minus_central_beta"]
+# No FAA-style asymmetry columns exist in the current aura CSV (they were
+# frontopolar/parietal pairs tied to the old, wrong montage).
+FAA = []
 
 YD_MAP = {"natural": 0, "normal": 0, "low": 1, "mid": 1, "high": 2}
 CLASS_NAMES = ["baja", "optima", "alta"]
 
-MONTAGES = {"all8": (ALL_CH, True), "fp6": (FP6, True), "fzpz2": (FZPZ, False)}
+# fp6 / fzpz2 removed: both required a parietal electrode (Pz) that this
+# dataset never had. That ablation now lives in zyma_montage_cli.py (eegmat).
+MONTAGES = {"all8": (ALL_CH, True)}
 
 
 def montage_cols(df, channels, use_region):
@@ -135,14 +142,19 @@ def run_hier(df_c, cols, subjects):
 
 
 def run_cli(df):
-    """CLI = theta(Fz)/alpha(Pz), z-scored vs each subject's rest baseline.
+    """CLI substitute on AS: theta(Fz)/alpha(C4) — AS has no Pz, so this is
+    NOT the theta(Fz)/alpha(Pz) index reported in the paper (that one is
+    evaluated on eegmat, which has a real parietal electrode; see
+    zyma_montage_cli.py). Kept here only as a sanity cross-check, using the
+    theta_Fz_over_alpha_C4 column that eeg_make_window_features_aura.py
+    already computes for the real montage.
     Report Spearman rho vs the 4-level ordinal condition."""
     ord_map = {"normal": 0, "low": 1, "mid": 2, "high": 3}
     df = df.copy()
     df["lvl"] = df.condition_4.map(ord_map).astype(float)
-    df["cli_raw"] = df["Fz_bp_theta"] / df["Pz_bp_alpha"].replace(0, np.nan)
-    # existing frontal_theta/parietal_alpha index as cross-check
-    df["ftpa"] = df["frontal_theta_parietal_alpha"]
+    df["cli_raw"] = df["theta_Fz_over_alpha_C4"]
+    # region-aggregate frontal-theta/central-alpha index as cross-check
+    df["ftpa"] = df["frontal_mean_theta"] / df["central_mean_alpha"].replace(0, np.nan)
     rows_rho, rows_rho_ft = [], []
     zvals = np.full(len(df), np.nan)
     for s, g in df.groupby("subject_id"):
@@ -158,7 +170,7 @@ def run_cli(df):
     rho_all, _ = spearmanr(df["lvl"], df["cli_raw"], nan_policy="omit")
     rho_ft_all, _ = spearmanr(df["lvl"], df["ftpa"], nan_policy="omit")
     return {
-        "cli_definition": "theta(Fz)/alpha(Pz)",
+        "cli_definition": "theta(Fz)/alpha(C4) [AS substitute, no Pz on this dataset -- not the paper's CLI]",
         "spearman_pooled": float(rho_all),
         "spearman_persubj_mean": float(np.nanmean(rows_rho)),
         "spearman_persubj_std": float(np.nanstd(rows_rho)),

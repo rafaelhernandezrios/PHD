@@ -4,7 +4,21 @@ For each subject: take their 'normal' (natural baseline) windows, compute
 mean+std per feature on that subject's baseline only, and z-score ALL of
 that subject's windows against that baseline. This mimics what a real-time
 system would do with a 30 s pre-task calibration phase.
+
+NOTE: reads the legacy csv/eeg_window_features.csv (656 raw columns,
+includes accelerometer/battery/status channels), NOT the cleaned/relabeled
+eeg_window_features_aura.csv. main.tex's Table I "LOSO + per-subject
+calibration" row (0.82 acc / 0.56 recall-rest) does NOT come from this
+script -- it comes from eeg_channel_ablation.py's "binary_all8" run on the
+clean 218-feature aura CSV. Run this script on this CSV inflates accuracy
+(~0.85+) because the calibration z-score also latches onto non-EEG
+accelerometer/status columns that happen to correlate with task blocks.
+Kept here, with results now saved, so that fact is checkable rather than
+silently lost -- see the classifier-comparison + channel-ablation JSONs for
+the numbers that actually back the paper.
 """
+import json
+from pathlib import Path
 import numpy as np
 import pandas as pd
 from sklearn.ensemble import RandomForestClassifier
@@ -12,6 +26,7 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.metrics import classification_report, confusion_matrix, f1_score
 
 CSV = "csv/eeg_window_features.csv"
+OUT = Path("csv/loso_calibrated_results.json")
 META = {"file_name", "subject_id", "task_type", "condition_4", "load_3", "load_2",
         "timestamp", "window_start_idx", "window_end_idx"}
 
@@ -81,6 +96,17 @@ def loso(df, target, cols):
     print(f"Mean per-subject acc: {accs.mean():.3f}  std: {accs.std():.3f}")
     print(f"Mean per-subject macro-f1: {f1s.mean():.3f}  std: {f1s.std():.3f}")
 
+    pooled_acc = float(np.mean(np.array(all_y) == np.array(all_pred)))
+    return {
+        "target": target,
+        "pooled_acc": pooled_acc,
+        "macro_f1_pooled": float(f1_score(all_y, all_pred, average="macro", zero_division=0)),
+        "subj_acc_mean": float(accs.mean()),
+        "subj_acc_std": float(accs.std()),
+        "subj_macro_f1_mean": float(f1s.mean()),
+        "subj_macro_f1_std": float(f1s.std()),
+    }
+
 
 def main():
     df = pd.read_csv(CSV)
@@ -89,9 +115,16 @@ def main():
     print("\n>>> Applying per-subject baseline calibration (z-score vs subject's 'normal' windows)")
     df_cal = per_subject_calibrate(df, cols)
     print("\n###### LOSO load_2 (calibrated) ######")
-    loso(df_cal, "load_2", cols)
+    r2 = loso(df_cal, "load_2", cols)
     print("\n###### LOSO load_3 (calibrated) ######")
-    loso(df_cal, "load_3", cols)
+    r3 = loso(df_cal, "load_3", cols)
+
+    out = {"csv": CSV,
+           "note": "calibrated on the legacy 656-col CSV -- NOT the source of main.tex Table I's "
+                   "0.82 row, see module docstring. Kept for comparison.",
+           "load_2": r2, "load_3": r3}
+    OUT.write_text(json.dumps(out, indent=2))
+    print("\nSaved ->", OUT)
 
 
 if __name__ == "__main__":

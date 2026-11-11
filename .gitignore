@@ -11,3 +11,7 @@ venv/
 # Logs, instaladores y datos crudos pesados que no deben ir a GitHub
 .cursor/*.log
 Codigo/Clean EEG/USB-AURA/*.exe
+
+# Basura de macOS y temporales de entrenamiento
+.DS_Store
+Codigo/AI-Cognitive/csv/_cnn_tmp/

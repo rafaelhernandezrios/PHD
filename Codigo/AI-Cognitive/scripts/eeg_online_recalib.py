@@ -23,6 +23,8 @@ Run from the AI-Cognitive directory.
 from __future__ import annotations
 
 import argparse
+import json
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
@@ -32,6 +34,8 @@ from sklearn.metrics import f1_score
 
 AS_CSV = "csv/eeg_window_features.csv"
 ZYMA_CSV = "csv/zyma_window_features.csv"
+OUT = Path("csv/online_recalib_results.json")
+_RESULTS: dict = {}
 
 META = {"file_name", "subject_id", "task_type", "condition_4", "load_3", "load_2",
         "timestamp", "window_start_idx", "window_end_idx"}
@@ -72,7 +76,7 @@ def train_binary(train_cal, cols, n_est=400):
 
 
 def stream_online(test_stream_df, cols, mu0, sd0, sc, clf,
-                  alpha=0.02, conf_thresh=0.75, ema_smooth=0.4):
+                  alpha=0.001, conf_thresh=0.95, ema_smooth=0.4):
     """Process windows one by one, updating baseline online."""
     test_stream_df = test_stream_df.sort_values(
         ["file_name", "window_start_idx"]
@@ -146,8 +150,8 @@ def run_dataset(csv_path, label):
         # ---- Variant B: online recalibration ----
         pred_online, _, n_upd = stream_online(
             test_stream, cols, mu_te, sd_te, sc, clf,
-            alpha=globals().get("_ALPHA", 0.02),
-            conf_thresh=globals().get("_CONF", 0.75),
+            alpha=globals().get("_ALPHA", 0.001),
+            conf_thresh=globals().get("_CONF", 0.95),
             ema_smooth=0.4,
         )
         # align order
@@ -181,12 +185,26 @@ def run_dataset(csv_path, label):
     print(f"  Δ mean acc: {(o_arr[:,0]-s_arr[:,0]).mean():+.3f}  "
           f"Δ mean f1: {(o_arr[:,1]-s_arr[:,1]).mean():+.3f}")
 
+    _RESULTS[label] = {
+        "csv": csv_path,
+        "static": {"acc_mean": float(s_arr[:, 0].mean()), "acc_std": float(s_arr[:, 0].std()),
+                   "macro_f1_mean": float(s_arr[:, 1].mean()), "macro_f1_std": float(s_arr[:, 1].std())},
+        "online": {"acc_mean": float(o_arr[:, 0].mean()), "acc_std": float(o_arr[:, 0].std()),
+                   "macro_f1_mean": float(o_arr[:, 1].mean()), "macro_f1_std": float(o_arr[:, 1].std())},
+        "delta_acc_mean": float((o_arr[:, 0] - s_arr[:, 0]).mean()),
+        "delta_macro_f1_mean": float((o_arr[:, 1] - s_arr[:, 1]).mean()),
+    }
+
 
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", choices=["as", "zyma", "both"], default="both")
-    parser.add_argument("--alpha", type=float, default=0.02)
-    parser.add_argument("--conf", type=float, default=0.75)
+    # Defaults match the parameters main.tex declares (alpha_cal=0.001, tau=0.95).
+    # They used to be 0.02 / 0.75, which is far more aggressive and does NOT
+    # reproduce the paper: it nets +0.4 points instead of +2.6 because subjects
+    # 2, 5 and 9 lose 8-12 points to over-eager baseline updates.
+    parser.add_argument("--alpha", type=float, default=0.001)
+    parser.add_argument("--conf", type=float, default=0.95)
     args = parser.parse_args()
     # Patch the stream_online defaults via closure
     global _ALPHA, _CONF
@@ -195,6 +213,14 @@ def main():
         run_dataset(AS_CSV, "Arithmetic/Stroop")
     if args.dataset in ("zyma", "both"):
         run_dataset(ZYMA_CSV, "Zyma PhysioNet")
+
+    out = {"alpha": _ALPHA, "conf_thresh": _CONF,
+           "note": "static row reproduces main.tex Table I 'LOSO + per-subject calibration' "
+                   "scenario in spirit (per-subject calibrated RF, legacy 656-col CSV); "
+                   "online row is the '+online recalibration' row.",
+           "datasets": _RESULTS}
+    OUT.write_text(json.dumps(out, indent=2))
+    print("\nSaved ->", OUT)
 
 
 if __name__ == "__main__":
